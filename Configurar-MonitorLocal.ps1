@@ -95,8 +95,13 @@ try {
     $sid = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
 
     # 131107 = Enable (1) + Method Execute (2) + Remote Access (32) + Read Perm (131072)
-    $inherit = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
-    $sd.DiscretionaryAcl.AddAccess([System.Security.AccessControl.AccessControlType]::Allow, $sid, 131107, $inherit, [System.Security.AccessControl.PropagationFlags]::None)
+    $sd.DiscretionaryAcl.AddAccess(
+        [System.Security.AccessControl.AccessControlType]::Allow,
+        $sid,
+        131107,
+        [System.Security.AccessControl.InheritanceFlags]::None,
+        [System.Security.AccessControl.PropagationFlags]::None
+    )
 
     $newBinarySD = New-Object byte[] ($sd.BinaryLength)
     $sd.GetBinaryForm($newBinarySD, 0)
