@@ -248,13 +248,13 @@ $html = @"
         <div class="flex items-center gap-2">
             <span class="relative flex h-2.5 w-2.5">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                <span id="livePulseDot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 transition-colors duration-300"></span>
             </span>
             <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.0.2</span></h1>
             <span class="text-slate-500">|</span>
-            <span class="text-slate-400">$startTime &rarr; $endTime</span>
+            <span class="text-slate-400" id="headerTimeRange">$startTime &rarr; $endTime</span>
             <span class="text-slate-500">|</span>
-            <span class="text-cyan-400 font-semibold">$totalPoints amostras</span>
+            <span class="text-cyan-400 font-semibold" id="headerSampleCount">$totalPoints amostras</span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -302,11 +302,11 @@ $html = @"
                 <span class="text-[9px] px-1 rounded bg-blue-500/20 text-blue-400 font-semibold uppercase">Local</span>
             </div>
             <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white">$($stats['JFMELGACO3'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white">$($stats['JFMELGACO3'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO3'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO3'].maxIoW)k</strong></span>
-                <span>Tx: <strong class="text-cyan-400">$($stats['JFMELGACO3'].maxTx)k</strong></span>
+                <span>CPU: <strong class="text-white" id="card_JFMELGACO3_cpu">$($stats['JFMELGACO3'].avgCpu)%</strong></span>
+                <span>RAM: <strong class="text-white" id="card_JFMELGACO3_ram">$($stats['JFMELGACO3'].avgRam)%</strong></span>
+                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO3_io">$($stats['JFMELGACO3'].maxIoW)k</strong></span>
+                <span>Tx: <strong class="text-cyan-400" id="card_JFMELGACO3_tx">$($stats['JFMELGACO3'].maxTx)k</strong></span>
             </div>
         </div>
 
@@ -318,11 +318,11 @@ $html = @"
                 <span class="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase">SRV 1</span>
             </div>
             <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white">$($stats['JFMELGACO-1'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white">$($stats['JFMELGACO-1'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO-1'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO-1'].maxIoW)k</strong></span>
-                <span>Rx: <strong class="text-cyan-400">$($stats['JFMELGACO-1'].maxRx)k</strong></span>
+                <span>CPU: <strong class="text-white" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].avgCpu)%</strong></span>
+                <span>RAM: <strong class="text-white" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].avgRam)%</strong></span>
+                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoW)k</strong></span>
+                <span>Rx: <strong class="text-cyan-400" id="card_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx)k</strong></span>
             </div>
         </div>
 
@@ -334,11 +334,11 @@ $html = @"
                 <span class="text-[9px] px-1 rounded bg-amber-500/20 text-amber-400 font-semibold uppercase">NOTE 2</span>
             </div>
             <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white">$($stats['JFMELGACO-2'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white">$($stats['JFMELGACO-2'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO-2'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO-2'].maxIoW)k</strong></span>
-                <span>Rx: <strong class="text-cyan-400">$($stats['JFMELGACO-2'].maxRx)k</strong></span>
+                <span>CPU: <strong class="text-white" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].avgCpu)%</strong></span>
+                <span>RAM: <strong class="text-white" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].avgRam)%</strong></span>
+                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoW)k</strong></span>
+                <span>Rx: <strong class="text-cyan-400" id="card_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx)k</strong></span>
             </div>
         </div>
 
@@ -350,11 +350,11 @@ $html = @"
                 <span class="text-[9px] px-1 rounded bg-purple-500/20 text-purple-400 font-semibold uppercase">NOTE 3</span>
             </div>
             <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white">$($stats['JFMELGACO-3'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white">$($stats['JFMELGACO-3'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO-3'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO-3'].maxIoW)k</strong></span>
-                <span>Rx: <strong class="text-cyan-400">$($stats['JFMELGACO-3'].maxRx)k</strong></span>
+                <span>CPU: <strong class="text-white" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].avgCpu)%</strong></span>
+                <span>RAM: <strong class="text-white" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].avgRam)%</strong></span>
+                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO-3_io">$($stats['JFMELGACO-3'].maxIoW)k</strong></span>
+                <span>Rx: <strong class="text-cyan-400" id="card_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx)k</strong></span>
             </div>
         </div>
     </div>
@@ -468,47 +468,47 @@ $html = @"
                     <tbody class="divide-y divide-borderbg text-xs">
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-blue-400">JFMELGACO3 (Local)</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO3'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400">$($stats['JFMELGACO3'].maxCpu)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO3'].avgRam)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO3'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO3'].maxIoR) / $($stats['JFMELGACO3'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO3'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400">$($stats['JFMELGACO3'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO3'].diskFree) GB</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_cpuAvg">$($stats['JFMELGACO3'].avgCpu)%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO3_cpuMax">$($stats['JFMELGACO3'].maxCpu)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_ramAvg">$($stats['JFMELGACO3'].avgRam)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_ramMax">$($stats['JFMELGACO3'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO3_io">$($stats['JFMELGACO3'].maxIoR) / $($stats['JFMELGACO3'].maxIoW) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_rx">$($stats['JFMELGACO3'].maxRx) KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO3_tx">$($stats['JFMELGACO3'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-emerald-400">JFMELGACO-1</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400">$($stats['JFMELGACO-1'].maxCpu)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].avgRam)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO-1'].maxIoR) / $($stats['JFMELGACO-1'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400">$($stats['JFMELGACO-1'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO-1'].diskFree) GB</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">$($stats['JFMELGACO-1'].avgCpu)%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-1_cpuMax">$($stats['JFMELGACO-1'].maxCpu)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">$($stats['JFMELGACO-1'].avgRam)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">$($stats['JFMELGACO-1'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoR) / $($stats['JFMELGACO-1'].maxIoW) KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-amber-400">JFMELGACO-2</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400">$($stats['JFMELGACO-2'].maxCpu)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].avgRam)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO-2'].maxIoR) / $($stats['JFMELGACO-2'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO-2'].diskFree) GB</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">$($stats['JFMELGACO-2'].avgCpu)%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-2_cpuMax">$($stats['JFMELGACO-2'].maxCpu)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">$($stats['JFMELGACO-2'].avgRam)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">$($stats['JFMELGACO-2'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoR) / $($stats['JFMELGACO-2'].maxIoW) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-purple-400">JFMELGACO-3</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-rose-400">$($stats['JFMELGACO-3'].maxCpu)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].avgRam)%</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO-3'].maxIoR) / $($stats['JFMELGACO-3'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO-3'].diskFree) GB</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">$($stats['JFMELGACO-3'].avgCpu)%</td>
+                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">$($stats['JFMELGACO-3'].maxCpu)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">$($stats['JFMELGACO-3'].avgRam)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramMax">$($stats['JFMELGACO-3'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-3_io">$($stats['JFMELGACO-3'].maxIoR) / $($stats['JFMELGACO-3'].maxIoW) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_tx">$($stats['JFMELGACO-3'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree) GB</td>
                         </tr>
                     </tbody>
                 </table>
@@ -521,8 +521,8 @@ $html = @"
 
     <!-- SCRIPT CHART.JS -->
     <script>
-        const timestamps = $jsonTimestamps;
-        const rawData = $jsonData;
+        let timestamps = $jsonTimestamps;
+        let rawData = $jsonData;
 
         const colors = {
             'JFMELGACO3':  { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' },
@@ -711,16 +711,21 @@ $html = @"
             });
         }
 
-        function refreshChartsWindow() {
+        function refreshChartsWindow(updateMode) {
             const finalLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
+            const mode = updateMode !== undefined ? updateMode : 'none';
             ['cpu', 'ram', 'rx', 'tx', 'io'].forEach(k => {
                 if (!charts[k]) return;
                 charts[k].data.labels = finalLabels;
                 charts[k].data.datasets.forEach(ds => {
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                 });
-                charts[k].update();
+                charts[k].update(mode);
             });
+            if (charts.disk) {
+                charts.disk.data.datasets[0].data = Object.keys(rawData).map(pc => rawData[pc].stats ? rawData[pc].stats.diskFree : 0);
+                charts.disk.update(mode);
+            }
         }
 
         // Aplica o estilo do botão ativo
@@ -860,7 +865,105 @@ $html = @"
 
         applyScreenMode();
 
-        // 7. AUTO-REFRESH CONTROLLER (Atualiza a cada 5s)
+        // 7. ATUALIZAÇÃO CONTÍNUA EM SEGUNDO PLANO (SEM F5 / SEM REFRESH DA PÁGINA)
+        window.updateDashboardData = function(payload) {
+            if (!payload || !payload.timestamps || !payload.rawData) return;
+
+            timestamps = payload.timestamps;
+            rawData = payload.rawData;
+
+            // 1. Atualiza cabeçalho (período e contagem de amostras)
+            const timeRangeEl = document.getElementById('headerTimeRange');
+            if (timeRangeEl && payload.startTime && payload.endTime) {
+                timeRangeEl.innerHTML = payload.startTime + ' &rarr; ' + payload.endTime;
+            }
+            const sampleCountEl = document.getElementById('headerSampleCount');
+            if (sampleCountEl && payload.totalPoints) {
+                sampleCountEl.innerText = payload.totalPoints + ' amostras';
+            }
+
+            // 2. Atualiza Mini-Cards dos computadores e Modal estatístico
+            const pcs = ['JFMELGACO3', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3'];
+            pcs.forEach(pc => {
+                const s = payload.rawData[pc] ? payload.rawData[pc].stats : null;
+                if (!s) return;
+
+                // Cards do topo
+                const cCpu = document.getElementById('card_' + pc + '_cpu');
+                if (cCpu) cCpu.innerText = s.avgCpu + '%';
+                const cRam = document.getElementById('card_' + pc + '_ram');
+                if (cRam) cRam.innerText = s.avgRam + '%';
+                const cDisk = document.getElementById('card_' + pc + '_disk');
+                if (cDisk) cDisk.innerText = s.diskFree + 'G';
+                const cIo = document.getElementById('card_' + pc + '_io');
+                if (cIo) cIo.innerText = s.maxIoW + 'k';
+                const cTx = document.getElementById('card_' + pc + '_tx');
+                if (cTx) cTx.innerText = s.maxTx + 'k';
+                const cRx = document.getElementById('card_' + pc + '_rx');
+                if (cRx) cRx.innerText = s.maxRx + 'k';
+
+                // Tabela do Modal de Resumo
+                const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
+                if (mCpuAvg) mCpuAvg.innerText = s.avgCpu + '%';
+                const mCpuMax = document.getElementById('modal_' + pc + '_cpuMax');
+                if (mCpuMax) mCpuMax.innerText = s.maxCpu + '%';
+                const mRamAvg = document.getElementById('modal_' + pc + '_ramAvg');
+                if (mRamAvg) mRamAvg.innerText = s.avgRam + '%';
+                const mRamMax = document.getElementById('modal_' + pc + '_ramMax');
+                if (mRamMax) mRamMax.innerText = s.maxRam + '%';
+                const mIo = document.getElementById('modal_' + pc + '_io');
+                if (mIo) mIo.innerText = s.maxIoR + ' / ' + s.maxIoW + ' KB/s';
+                const mRx = document.getElementById('modal_' + pc + '_rx');
+                if (mRx) mRx.innerText = s.maxRx + ' KB/s';
+                const mTx = document.getElementById('modal_' + pc + '_tx');
+                if (mTx) mTx.innerText = s.maxTx + ' KB/s';
+                const mDisk = document.getElementById('modal_' + pc + '_disk');
+                if (mDisk) mDisk.innerText = s.diskFree + ' GB';
+            });
+
+            // 3. Atualiza os gráficos do Chart.js instantaneamente (modo 'none' = sem animação ou piscadeira)
+            refreshChartsWindow('none');
+
+            // 4. Feedback visual suave: o ponto de status pisca em ciano para sinalizar nova telemetria
+            const dot = document.getElementById('livePulseDot');
+            if (dot) {
+                dot.classList.remove('bg-emerald-500');
+                dot.classList.add('bg-cyan-400');
+                setTimeout(() => {
+                    dot.classList.remove('bg-cyan-400');
+                    dot.classList.add('bg-emerald-500');
+                }, 300);
+            }
+        };
+
+        function requestDataUpdate() {
+            if (window.location.protocol.startsWith('http')) {
+                fetch('dashboard_data.js?t=' + Date.now())
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.text();
+                    })
+                    .then(code => {
+                        eval(code);
+                    })
+                    .catch(() => {
+                        loadViaScriptTag();
+                    });
+            } else {
+                loadViaScriptTag();
+            }
+        }
+
+        function loadViaScriptTag() {
+            const old = document.getElementById('dynamicDataScript');
+            if (old) old.remove();
+            const s = document.createElement('script');
+            s.id = 'dynamicDataScript';
+            s.src = 'dashboard_data.js?t=' + Date.now();
+            document.head.appendChild(s);
+        }
+
+        // 8. AUTO-REFRESH CONTROLLER (Atualiza dados suavemente a cada 5s sem F5)
         let refreshTimer = 5;
         let autoRefreshActive = true;
 
@@ -881,7 +984,8 @@ $html = @"
                 const el = document.getElementById('countdownEl');
                 if (el) el.innerText = refreshTimer + 's';
                 if (refreshTimer <= 0) {
-                    window.location.reload();
+                    refreshTimer = 5;
+                    requestDataUpdate();
                 }
             }
         }, 1000);
@@ -890,15 +994,33 @@ $html = @"
 </html>
 "@
 
+$dataJsContent = @"
+window.updateDashboardData({
+    startTime: "$startTime",
+    endTime: "$endTime",
+    totalPoints: $totalPoints,
+    timestamps: $jsonTimestamps,
+    rawData: $jsonData
+});
+"@
+
+$outputDir = Split-Path -Parent $OutputFile
+if (-not $outputDir) { $outputDir = $PSScriptRoot }
+$dataJsFile = Join-Path $outputDir "dashboard_data.js"
+
 $utf8Bom = [System.Text.UTF8Encoding]::new($true)
 [System.IO.File]::WriteAllText($OutputFile, $html, $utf8Bom)
+[System.IO.File]::WriteAllText($dataJsFile, $dataJsContent, $utf8Bom)
 Write-Host "Dashboard HTML gerado com sucesso em: $OutputFile" -ForegroundColor Green
+Write-Host "Arquivo de dados JS gerado com sucesso em: $dataJsFile" -ForegroundColor Green
 
 # Sincroniza com o compartilhamento na rede se acessível
 $netShareDir = "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor"
 $netShareHtml = "$netShareDir\dashboard_desempenho.html"
+$netShareDataJs = "$netShareDir\dashboard_data.js"
 if ($OutputFile -ne $netShareHtml -and (Test-Path $netShareDir)) {
     try {
         Copy-Item $OutputFile $netShareHtml -Force -ErrorAction SilentlyContinue
+        Copy-Item $dataJsFile $netShareDataJs -Force -ErrorAction SilentlyContinue
     } catch {}
 }
