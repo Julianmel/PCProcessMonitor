@@ -83,7 +83,6 @@
     
     ## 🏗️ Fluxo e Arquitetura da Solução
 
-    ```text
     [1. Dispositivos da Rede]
      └── JFMELGACO3 (Local) + JFMELGACO-1, 2, 3 (Remotos)
            │
@@ -108,7 +107,6 @@
     ```    
     ## 📁 Estrutura de Arquivos
     
-    ```text
     C:\Users\Julian\Dev\PCProcessMonitor\
     ├── Monitor-Rede.ps1                    # Script principal de telemetria e console in-place
     ├── Build-HtmlDashboard.ps1             # Gerador analítico do dashboard HTML
