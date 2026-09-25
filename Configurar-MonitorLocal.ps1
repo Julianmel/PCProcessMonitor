@@ -102,15 +102,8 @@ foreach ($ns in $namespaces) {
         $sd = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $binarySD, 0)
         $sid = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
 
-        # Remove ACEs anteriores do Monitor para evitar duplicatas
-        for ($i = $sd.DiscretionaryAcl.Count - 1; $i -ge 0; $i--) {
-            if ($sd.DiscretionaryAcl[$i].SecurityIdentifier -eq $sid) {
-                $sd.DiscretionaryAcl.RemoveAccessSpecific($sd.DiscretionaryAcl[$i])
-            }
-        }
-
         # 131107 = Enable (1) + Method Execute (2) + Remote Access (32) + Read Perm (131072)
-        $sd.DiscretionaryAcl.AddAccess(
+        $sd.DiscretionaryAcl.SetAccess(
             [System.Security.AccessControl.AccessControlType]::Allow,
             $sid,
             131107,
