@@ -94,29 +94,31 @@ try {
 Write-Host "`n[5/8] Configurando permissões WMI no root e root\cimv2..." -ForegroundColor Cyan
 try {
     $sidObj = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
-    $sidVal = $sidObj.Value
+    $localSidBytes = New-Object byte[] ($sidObj.BinaryLength)
+    $sidObj.GetBinaryForm($localSidBytes, 0)
 
-    # 5.1 Configura namespace 'root' com ContainerInherit (CI) incluindo Monitor, NetworkService, LocalService e Admin
+    # 5.1 Restaura namespace 'root' para o descritor padrão genuíno do Windows (144 bytes)
+    # SDDL: O:BAG:BAD:(A;;CCDCRP;;;AU)(A;;CCDCRP;;;LS)(A;;CCDCRP;;;NS)(A;;CCDCLCSWRPWPRCWD;;;BA)
+    $b64Root = "AQAEgJQAAACkAAAAAAAAABQAAAACAIAABAAAAAACGAA/AAYAAQIAAAAAAAUgAAAAIAIAAAACFAATAAAAAQEAAAAAAAUUAAAAAAIUABMAAAABAQAAAAAABRMAAAAAAhQAEwAAAAEBAAAAAAAFCwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAECAAAAAAAFIAAAACACAAABAgAAAAAABSAAAAAgAgAA"
+    $binRoot = [Convert]::FromBase64String($b64Root)
     $invRoot = New-Object System.Management.ManagementClass("root:__SystemSecurity")
-    $sddlRoot = "D:(A;CI;CCDCWPRC;;;$sidVal)(A;CI;CCDCRP;;;AU)(A;CI;CCDCRP;;;LS)(A;CI;CCDCRP;;;NS)(A;CI;CCDCLCSWRPWPRCWD;;;BA)"
-    $sdRoot = New-Object System.Security.AccessControl.CommonSecurityDescriptor($true, $true, $sddlRoot)
-    $binRoot = New-Object byte[] ($sdRoot.BinaryLength)
-    $sdRoot.GetBinaryForm($binRoot, 0)
     $pRoot = $invRoot.GetMethodParameters("SetSD")
     $pRoot.Properties["SD"].Value = $binRoot
     $rRoot = $invRoot.InvokeMethod("SetSD", $pRoot, $null)
-    Write-Host "      [OK] Namespace 'root' configurado com ContainerInherit para Monitor e Servicos (ReturnCode: $($rRoot['ReturnValue']))" -ForegroundColor Green
+    Write-Host "      [OK] Namespace 'root' restaurado com descritor padrao do Windows (ReturnCode: $($rRoot['ReturnValue']))" -ForegroundColor Green
 
-    # 5.2 Concede acesso a 'Monitor' em 'root\cimv2'
+    # 5.2 Concede permissão a 'Monitor' em 'root\cimv2' clonando o descritor binario de 180 bytes comprovado
+    # SDDL: O:BAG:BAD:(A;;CCDCWPRC;;;<Monitor-SID>)(A;ID;CCDCLCSWRPWPRCWD;;;BA)(A;ID;CCDCRP;;;NS)(A;ID;CCDCRP;;;LS)(A;ID;CCDCRP;;;AU)
+    $b64Cim = "AQAEgJQAAACkAAAAAAAAABQAAAACAIAABQAAAAAAJAAjAAIAAQUAAAAAAAUVAAAAV3LPoKSHU0cqOBGlBAQAAAASGAA/AAYAAQIAAAAAAAUgAAAAIAIAAAASFAATAAAAAQEAAAAAAAUUAAAAABIUABMAAAABAQAAAAAABRMAAAAAEhQAEwAAAAEBAAAAAAAFCwAAAAECAAAAAAAFIAAAACACAAABAgAAAAAABSAAAAAgAgAA"
+    $binCim = [Convert]::FromBase64String($b64Cim)
+    # Substitui os 28 bytes do SID do Monitor local no offset 36 (ACE 0)
+    [System.Buffer]::BlockCopy($localSidBytes, 0, $binCim, 36, 28)
+
     $invCim = New-Object System.Management.ManagementClass("root\cimv2:__SystemSecurity")
-    $sddlCim = "D:(A;;CCDCWPRC;;;$sidVal)(A;ID;CCDCLCSWRPWPRCWD;;;BA)(A;ID;CCDCRP;;;NS)(A;ID;CCDCRP;;;LS)(A;ID;CCDCRP;;;AU)"
-    $sdCim = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $sddlCim)
-    $binCim = New-Object byte[] ($sdCim.BinaryLength)
-    $sdCim.GetBinaryForm($binCim, 0)
     $pCim = $invCim.GetMethodParameters("SetSD")
     $pCim.Properties["SD"].Value = $binCim
     $rCim = $invCim.InvokeMethod("SetSD", $pCim, $null)
-    Write-Host "      [OK] Namespace 'root\cimv2' configurado para Monitor (ReturnCode: $($rCim['ReturnValue']))" -ForegroundColor Green
+    Write-Host "      [OK] Namespace 'root\cimv2' configurado com descritor binario comprovado (ReturnCode: $($rCim['ReturnValue']))" -ForegroundColor Green
 } catch {
     Write-Warning "      [AVISO] Erro ao configurar WMI: $($_.Exception.Message)"
 }
@@ -171,13 +173,14 @@ try {
 # 9. Teste de validação imediata com o usuário Monitor
 Write-Host "`n[Validação] Testando leitura WMI como usuário 'Monitor' via WinRM..." -ForegroundColor Cyan
 try {
-    $sec = ConvertTo-SecureString 'Monitor2026@' -AsPlainText -Force
+    $sec = New-Object System.Security.SecureString
+    "Monitor2026@".ToCharArray() | ForEach-Object { $sec.AppendChar($_) }
     $cred = New-Object System.Management.Automation.PSCredential("JFMELGACO3\Monitor", $sec)
     $opt = New-CimSessionOption -Protocol Wsman
-    $s = New-CimSession -ComputerName "JFMELGACO3" -Credential $cred -SessionOption $opt -OperationTimeoutSec 5 -ErrorAction Stop
-    $osTest = Get-CimInstance Win32_OperatingSystem -CimSession $s -ErrorAction Stop
+    $s = New-CimSession -ComputerName "127.0.0.1" -Credential $cred -SessionOption $opt -OperationTimeoutSec 5 -ErrorAction Stop
+    $osTest = Get-CimInstance Win32_OperatingSystem -CimSession $s -Namespace "root\cimv2" -ErrorAction Stop
     Remove-CimSession $s
-    Write-Host "      [SUCESSO TOTAL] Conexão remota do Monitor 100% FUNCIONANDO! Sistema: $($osTest.Caption)" -ForegroundColor Green
+    Write-Host "      [SUCESSO TOTAL] Conexão WMI do Monitor 100% OPERACIONAL! Sistema: $($osTest.Caption)" -ForegroundColor Green
 } catch {
     Write-Warning "      Aviso no teste do Monitor: $($_.Exception.Message)"
 }
