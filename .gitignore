@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PCProcessMonitor Telemetry Logs
+*.txt
+Data/
+
