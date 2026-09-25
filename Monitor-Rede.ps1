@@ -1,4 +1,9 @@
-﻿# ============================================================
+﻿param(
+    [int]$MaxIterations = 0,
+    [int]$IntervalSeconds = 5
+)
+
+# ============================================================
 # PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO
 # ============================================================
 
@@ -15,16 +20,20 @@ $cGray   = "$esc[90m"  # Bordas e separadores
 $cRed    = "$esc[91m"  # OFFLINE
 $cOnline = "$esc[92m"  # ONLINE
 
-# Lista de máquinas para monitorar
+# Lista canônica de todas as máquinas da rede
 $Computadores = @(
-    'localhost',
+    'JFMELGACO3',
     'JFMELGACO-1',
     'JFMELGACO-2',
     'JFMELGACO-3'
 )
 
-# 2. Quando iniciar o script, os dados devem ser gravados em: "AAAAMMDD - HHMM - PC Processmonitor.txt"
-$LogDir = "C:\Users\Julian\Dev\PCProcessMonitor"
+# Resolução dinâmica da pasta de logs (suporta execução em qualquer computador e pasta 'Data' se existir)
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $ScriptDir) { $ScriptDir = $pwd.Path }
+
+$dataSubDir = Join-Path $ScriptDir "Data"
+$LogDir = if (Test-Path $dataSubDir) { $dataSubDir } else { $ScriptDir }
 if (-not (Test-Path $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 }
@@ -34,6 +43,7 @@ $logFileName = "$timestamp - PC Processmonitor.txt"
 $logFilePath = Join-Path $LogDir $logFileName
 
 Write-Host "Iniciando monitoramento da rede (JFMELGACO)..." -ForegroundColor Cyan
+Write-Host "Host Local identificado: $env:COMPUTERNAME" -ForegroundColor Yellow
 Write-Host "Arquivo de log gerado em: $logFilePath" -ForegroundColor Green
 Write-Host "Painel atualizado 'na mesma linha' com comparativo dinâmico de cores.`n" -ForegroundColor DarkGray
 
@@ -61,11 +71,25 @@ function Color-Num($current, $prev, [string]$displayStr) {
 function Get-MachineMetrics {
     param([string]$ComputerName)
 
-    $nomeDisplay = if ($ComputerName -eq 'localhost') { "$env:COMPUTERNAME (Local)" } else { $ComputerName }
+    # Identifica se a máquina alvo é a máquina local onde o script está rodando
+    $isLocal = ($ComputerName.ToUpper() -eq $env:COMPUTERNAME.ToUpper()) -or ($ComputerName -eq 'localhost')
+    $nomeDisplay = if ($isLocal) { "$ComputerName (Local)" } else { $ComputerName }
+
+    # Se for remoto, faz um ping rápido prévio para não travar com timeouts WMI caso a máquina esteja desligada
+    if (-not $isLocal) {
+        $alive = Test-Connection -ComputerName $ComputerName -Count 1 -Quiet -ErrorAction SilentlyContinue
+        if (-not $alive) {
+            return @{
+                Success  = $false
+                Computer = $ComputerName
+                Display  = $nomeDisplay
+            }
+        }
+    }
 
     try {
         $sessionArgs = @{ ErrorAction = 'Stop' }
-        if ($ComputerName -ne 'localhost') {
+        if (-not $isLocal) {
             $sessionArgs['ComputerName'] = $ComputerName
             $sessionArgs['OperationTimeoutSec'] = 3
         }
@@ -74,27 +98,50 @@ function Get-MachineMetrics {
         $cpuObj = Get-CimInstance Win32_Processor @sessionArgs | Measure-Object -Property LoadPercentage -Average
         $cpu = [math]::Round($cpuObj.Average, 0)
 
-        # 2. Memoria RAM
+        # 2. Memória RAM
         $os = Get-CimInstance Win32_OperatingSystem @sessionArgs
         $totalRam = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
         $freeRam  = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
         $usedRam  = [math]::Round($totalRam - $freeRam, 1)
         $pctRam   = [math]::Round(($usedRam / $totalRam) * 100, 0)
 
-        # 3. Disco C:
+        # 3. Disco C: (Espaço livre e ocupação)
         $disk = Get-CimInstance Win32_LogicalDisk @sessionArgs -Filter "DeviceID='C:'"
         $diskFree  = [math]::Round($disk.FreeSpace / 1GB, 1)
         $diskTotal = [math]::Round($disk.Size / 1GB, 1)
         $diskPct   = [math]::Round((($diskTotal - $diskFree) / $diskTotal) * 100, 0)
 
-        # 4. Trafego de Rede (Rx / Tx)
+        # 4. Disco C: Taxa de I/O (Input / Output: Leitura e Escrita em KB/s ou MB/s)
+        $diskReadBytes = 0.0
+        $diskWriteBytes = 0.0
+        $diskReadStr = "   0 KB/s"
+        $diskWriteStr = "   0 KB/s"
+        try {
+            $diskPerfArgs = @{ ErrorAction = 'Stop' }
+            if (-not $isLocal) {
+                $diskPerfArgs['ComputerName'] = $ComputerName
+                $diskPerfArgs['OperationTimeoutSec'] = 2
+            }
+            $diskPerf = Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk @diskPerfArgs -Filter "Name='C:'"
+            if ($diskPerf) {
+                $diskReadBytes = [double]$diskPerf.DiskReadBytesPersec
+                $diskWriteBytes = [double]$diskPerf.DiskWriteBytesPersec
+                $diskReadStr = Format-Speed $diskReadBytes
+                $diskWriteStr = Format-Speed $diskWriteBytes
+            }
+        } catch {
+            $diskReadStr = "  N/D"
+            $diskWriteStr = "  N/D"
+        }
+
+        # 5. Tráfego de Rede (Rx / Tx)
         $recvBytes = 0.0
         $sentBytes = 0.0
         $rxStr = "   0 KB/s"
         $txStr = "   0 KB/s"
         try {
             $netArgs = @{ ErrorAction = 'Stop' }
-            if ($ComputerName -ne 'localhost') {
+            if (-not $isLocal) {
                 $netArgs['ComputerName'] = $ComputerName
                 $netArgs['OperationTimeoutSec'] = 2
             }
@@ -112,20 +159,24 @@ function Get-MachineMetrics {
         }
 
         return @{
-            Success     = $true
-            Computer    = $ComputerName
-            Display     = $nomeDisplay
-            Cpu         = $cpu
-            TotalRam    = $totalRam
-            UsedRam     = $usedRam
-            PctRam      = $pctRam
-            DiskFree    = $diskFree
-            DiskTotal   = $diskTotal
-            DiskPct     = $diskPct
-            RxBytes     = $recvBytes
-            TxBytes     = $sentBytes
-            RxStr       = $rxStr
-            TxStr       = $txStr
+            Success        = $true
+            Computer       = $ComputerName
+            Display        = $nomeDisplay
+            Cpu            = $cpu
+            TotalRam       = $totalRam
+            UsedRam        = $usedRam
+            PctRam         = $pctRam
+            DiskFree       = $diskFree
+            DiskTotal      = $diskTotal
+            DiskPct        = $diskPct
+            DiskReadBytes  = $diskReadBytes
+            DiskWriteBytes = $diskWriteBytes
+            DiskReadStr    = $diskReadStr
+            DiskWriteStr   = $diskWriteStr
+            RxBytes        = $recvBytes
+            TxBytes        = $sentBytes
+            RxStr          = $rxStr
+            TxStr          = $txStr
         }
     } catch {
         return @{
@@ -140,8 +191,8 @@ $barLen = 10
 
 function Build-Lines($m, $prev) {
     if (-not $m.Success) {
-        $cLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5}" -f "$cRed`OFFLINE$cReset", $m.Display, "---", "---", "---", "---"
-        $fLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5}" -f "OFFLINE", $m.Display, "---", "---", "---", "---"
+        $cLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f "$cRed`OFFLINE$cReset", $m.Display, "---", "---", "---", "---", "---"
+        $fLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f "OFFLINE", $m.Display, "---", "---", "---", "---", "---"
         return @{ Console = $cLine; File = $fLine }
     }
 
@@ -153,30 +204,34 @@ function Build-Lines($m, $prev) {
     $barRam = ("=" * $fillRam) + ("-" * ($barLen - $fillRam))
 
     # Comparações de cores (Amarelo se subiu, Verde se desceu, Branco se estável)
-    $cpuColored     = Color-Num $m.Cpu $prev.Cpu ("{0,3}%" -f $m.Cpu)
-    $ramUsedColored = Color-Num $m.UsedRam $prev.UsedRam ("{0,4:N1}" -f $m.UsedRam)
-    $ramPctColored  = Color-Num $m.PctRam $prev.PctRam ("({0,2}%)" -f $m.PctRam)
-    $diskFreeColored= Color-Num $m.DiskFree $prev.DiskFree ("{0,5:N1} GB liv" -f $m.DiskFree)
-    $diskPctColored = Color-Num $m.DiskPct $prev.DiskPct ("({0,2}% us)" -f $m.DiskPct)
-    $rxColored      = Color-Num $m.RxBytes $prev.RxBytes $m.RxStr
-    $txColored      = Color-Num $m.TxBytes $prev.TxBytes $m.TxStr
+    $cpuColored       = Color-Num $m.Cpu $prev.Cpu ("{0,3}%" -f $m.Cpu)
+    $ramUsedColored   = Color-Num $m.UsedRam $prev.UsedRam ("{0,4:N1}" -f $m.UsedRam)
+    $ramPctColored    = Color-Num $m.PctRam $prev.PctRam ("({0,2}%)" -f $m.PctRam)
+    $diskFreeColored  = Color-Num $m.DiskFree $prev.DiskFree ("{0,5:N1} GB liv" -f $m.DiskFree)
+    $diskPctColored   = Color-Num $m.DiskPct $prev.DiskPct ("({0,2}% us)" -f $m.DiskPct)
+    $diskReadColored  = Color-Num $m.DiskReadBytes $prev.DiskReadBytes $m.DiskReadStr
+    $diskWriteColored = Color-Num $m.DiskWriteBytes $prev.DiskWriteBytes $m.DiskWriteStr
+    $rxColored        = Color-Num $m.RxBytes $prev.RxBytes $m.RxStr
+    $txColored        = Color-Num $m.TxBytes $prev.TxBytes $m.TxStr
 
     # Linha para o console (com cores ANSI)
-    $cStatus  = "$cOnline" + "ONLINE  " + "$cReset"
-    $cName    = "{0,-22}" -f $m.Display
-    $cCpuStr  = "[$cGray$barCpu$cReset] $cpuColored"
-    $cRamStr  = "[$cGray$barRam$cReset] $ramUsedColored/{0,4:N1} GB $ramPctColored" -f $m.TotalRam
-    $cDiskStr = "$diskFreeColored $diskPctColored"
-    $cNetStr  = "Rx: $rxColored | Tx: $txColored"
-    $cLine    = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cNetStr"
+    $cStatus    = "$cOnline" + "ONLINE  " + "$cReset"
+    $cName      = "{0,-22}" -f $m.Display
+    $cCpuStr    = "[$cGray$barCpu$cReset] $cpuColored"
+    $cRamStr    = "[$cGray$barRam$cReset] $ramUsedColored/{0,4:N1} GB $ramPctColored" -f $m.TotalRam
+    $cDiskStr   = "$diskFreeColored $diskPctColored"
+    $cDiskIOStr = "R: $diskReadColored | W: $diskWriteColored"
+    $cNetStr    = "Rx: $rxColored | Tx: $txColored"
+    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr"
 
     # Linha para o arquivo texto (texto puro, compatível com regex de auditoria)
-    $fStatus  = "ONLINE  "
-    $fCpuStr  = "[{0}] {1,3}%" -f $barCpu, $m.Cpu
-    $fRamStr  = "[{0}] {1,4:N1}/{2,4:N1} GB ({3,2}%)" -f $barRam, $m.UsedRam, $m.TotalRam, $m.PctRam
-    $fDiskStr = "{0,5:N1} GB liv ({1,2}% us)" -f $m.DiskFree, $m.DiskPct
-    $fNetStr  = "Rx: {0} | Tx: {1}" -f $m.RxStr, $m.TxStr
-    $fLine    = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fNetStr
+    $fStatus    = "ONLINE  "
+    $fCpuStr    = "[{0}] {1,3}%" -f $barCpu, $m.Cpu
+    $fRamStr    = "[{0}] {1,4:N1}/{2,4:N1} GB ({3,2}%)" -f $barRam, $m.UsedRam, $m.TotalRam, $m.PctRam
+    $fDiskStr   = "{0,5:N1} GB liv ({1,2}% us)" -f $m.DiskFree, $m.DiskPct
+    $fDiskIOStr = "R: {0} | W: {1}" -f $m.DiskReadStr, $m.DiskWriteStr
+    $fNetStr    = "Rx: {0} | Tx: {1}" -f $m.RxStr, $m.TxStr
+    $fLine      = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr
 
     return @{ Console = $cLine; File = $fLine }
 }
@@ -208,9 +263,9 @@ while ($true) {
 
     # 2. Grava bloco no arquivo texto (AAAAMMDD - HHMM - PC Processmonitor.txt)
     $fileBlock = [System.Text.StringBuilder]::new()
-    $null = $fileBlock.AppendLine("[$hora] ==================== DESEMPENHO DA REDE (JFMELGACO) ====================")
-    $null = $fileBlock.AppendLine("Status   Computador             CPU              RAM                          Disco C:               Rede (Rx / Tx)")
-    $null = $fileBlock.AppendLine("------   ----------             ---              ---                          --------               ---------------")
+    $null = $fileBlock.AppendLine("[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================")
+    $null = $fileBlock.AppendLine("Status   Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)")
+    $null = $fileBlock.AppendLine("------   ----------             ---              ---                          --------               -----------------        --------------")
     foreach ($fl in $fileLines) {
         $null = $fileBlock.AppendLine($fl)
     }
@@ -219,7 +274,6 @@ while ($true) {
 
     # 3. Atualiza o dashboard HTML em tempo real
     try {
-        $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { "C:\Users\Julian\Dev\PCProcessMonitor" }
         $builder = Join-Path $ScriptDir "Build-HtmlDashboard.ps1"
         if (Test-Path $builder) {
             & $builder -LogFile $logFilePath -OutputFile (Join-Path $ScriptDir "dashboard_desempenho.html") *>$null
@@ -249,25 +303,30 @@ while ($true) {
     }
 
     # Imprime tabela com cabeçalho, dados e rodapé de status
-    $headerBanner = "[$hora] ==================== DESEMPENHO DA REDE (JFMELGACO) ===================="
-    $headerCols   = "Status   Computador             CPU              RAM                          Disco C:               Rede (Rx / Tx)"
-    $headerDiv    = "------   ----------             ---              ---                          --------               ---------------"
+    $headerBanner = "[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) =============================="
+    $headerCols   = "Status   Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)"
+    $headerDiv    = "------   ----------             ---              ---                          --------               -----------------        --------------"
 
-    Write-Host "$cCyan$headerBanner$cReset".PadRight(120)
-    Write-Host "$cYellow$headerCols$cReset".PadRight(120)
-    Write-Host "$cGray$headerDiv$cReset".PadRight(120)
+    Write-Host "$cCyan$headerBanner$cReset".PadRight(150)
+    Write-Host "$cYellow$headerCols$cReset".PadRight(150)
+    Write-Host "$cGray$headerDiv$cReset".PadRight(150)
 
     foreach ($cl in $consoleLines) {
-        Write-Host $cl.PadRight(120)
+        Write-Host $cl.PadRight(150)
     }
 
-    $legenda = "$cGray------------------------------------------------------------------------------------------------------------------------$cReset"
+    $legenda = "$cGray-------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
     $infoRodape = "$cGray[$sampleCount amostras] $cYellow▲ Amarelo = Subiu$cReset $cGray|$cReset $cGreen▼ Verde = Desceu$cReset $cGray|$cReset $cWhite■ Branco = Estável$cReset $cGray| Log: $logFileName$cReset"
-    Write-Host $legenda.PadRight(120)
-    Write-Host $infoRodape.PadRight(120)
+    Write-Host $legenda.PadRight(150)
+    Write-Host $infoRodape.PadRight(150)
 
     # 5. Guarda as métricas atuais para a próxima comparação
     $prevMetrics = $currentMetrics
 
-    Start-Sleep -Seconds 5
+    if ($MaxIterations -gt 0 -and $sampleCount -ge $MaxIterations) {
+        Write-Host "Monitoramento concluído após $sampleCount medição(ões)." -ForegroundColor Cyan
+        break
+    }
+
+    Start-Sleep -Seconds $IntervalSeconds
 }

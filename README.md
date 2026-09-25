@@ -23,23 +23,27 @@ O ecossistema é composto por dois scripts PowerShell e uma interface web modern
 ## ⚡ Principais Características Técnicas
 
 ### 1. Coletor em Tempo Real (`Monitor-Rede.ps1`)
-- **Coleta Multimáquina via CIM/WMI:** Realiza consultas paralelizadas ou sequenciais leves aos nós da rede (`Win32_PerfFormattedData_PerfOS_Processor`, `Win32_OperatingSystem`, `Win32_LogicalDisk` e `Win32_PerfFormattedData_Tcpip_NetworkInterface`).
+- **Topologia Canônica e Detecção Automática do Host Local:** Lista unificada das 4 máquinas (`JFMELGACO3`, `JFMELGACO-1`, `JFMELGACO-2` e `JFMELGACO-3`). O script detecta automaticamente em qual máquina está rodando (`$env:COMPUTERNAME`), marcando-a como `(Local)` e consultando as demais remotamente, garantindo que o painel funcione de forma idêntica em qualquer notebook.
+- **Detecção Rápida de Máquinas Offline:** Realiza um teste de conectividade ultrarrápido (ping) prévio antes das consultas CIM/WMI, evitando travamentos e esperas de timeout caso um notebook esteja desligado.
 - **Terminal In-Place sem Flickering:** Em vez de usar `Clear-Host` (que causa cintilação na tela), utiliza o reposicionamento do cursor (`[Console]::SetCursorPosition(0,0)`), garantindo uma atualização suave e contínua no prompt.
 - **Heatmap de Cores no Console:**
   - 🟡 **Amarelo:** Valores numéricos que aumentaram em relação ao ciclo anterior (maior consumo).
   - 🟢 **Verde:** Valores numéricos que diminuíram (alívio de consumo).
   - ⚪ **Branco:** Valores estáveis ou medição de referência inicial.
+- **Telemetria de Disco C: (Espaço e Taxa de I/O):**
+  - Espaço livre em GB e porcentagem de ocupação do disco.
+  - Taxas em tempo real de **Input (Leitura - Read)** e **Output (Escrita - Write)** em KB/s ou MB/s (`Win32_PerfFormattedData_PerfDisk_LogicalDisk`).
 - **Métricas de Rede Bidirecionais:** Exibe e registra as taxas de download (**Rx**) e upload (**Tx**) em KB/s e MB/s para cada computador.
 - **Rotação de Logs com Timestamp:** Cria automaticamente na inicialização arquivos organizados no formato:
-  `AAAAMMDD - HHMM - PC Processmonitor.txt`.
+  `AAAAMMDD - HHMM - PC Processmonitor.txt` (gravados na subpasta `Data/` se disponível, ou na raiz do projeto).
 - **Gatilho Automático do Dashboard:** Dispara o script gerador de HTML a cada nova rodada de dados para manter o painel web sempre sincronizado.
 
 ---
 
 ### 2. Pipeline de Processamento Analítico (`Build-HtmlDashboard.ps1`)
-- **Detecção Inteligente do Último Log:** Localiza dinamicamente o arquivo de telemetria mais recente da pasta (incluindo subpasta `Data/`), sem necessidade de parâmetros manuais.
+- **Detecção Inteligente do Último Log:** Localiza dinamicamente o arquivo de telemetria mais recente da pasta (com busca recursiva na pasta `Data/`), sem necessidade de parâmetros manuais.
 - **Resiliência a Codificação (UTF-8 com BOM):** Leitura via `[System.IO.File]::ReadAllLines` e exportação com codificação UTF-8 com BOM, evitando problemas de caracteres corrompidos (*mojibake*) em ambientes Windows PowerShell 5.1 (PT-BR).
-- **Consolidação Estatística:** Calcula picos, médias operacionais e valores mínimos de cada nó para CPU, Memória e Rede.
+- **Consolidação Estatística:** Calcula picos, médias operacionais e valores mínimos de cada nó para CPU, Memória, Disco (Espaço e I/O) e Rede.
 
 ---
 
@@ -58,11 +62,10 @@ O ecossistema é composto por dois scripts PowerShell e uma interface web modern
   - Gráfico de CPU (%)
   - Gráfico de Memória RAM (%)
   - Gráfico de Download Rx (KB/s)
-  - Gráfico de Upload Tx (KB/s)
-  - Alternador de 1 clique para visualização de Armazenamento do Disco C:.
-- **Mini-Cards dos Computadores (46px):** Pílulas horizontais com status de conexão e métricas instantâneas de cada nó da rede.
+  - Gráfico com Abas Rápidas no 4º quadrante: `Tx (Upload)`, `Disco C: (GB)` e `I/O Disco (KB/s)`!
+- **Mini-Cards dos Computadores (46px):** Pílulas horizontais com status de conexão e métricas instantâneas de CPU, RAM, Disco C:, I/O e Rede.
 - **Auto-Refresh Integrado:** Contador regressivo de 5 segundos no cabeçalho com botões de `⏸ Pausar` e `▶ Retomar`.
-- **Modal Suspenso de Resumo Estatístico:** Botão `📋 Tabela Resumo` com exibição de tabela analítica completa (fechamento via `ESC` ou clique externo).
+- **Modal Suspenso de Resumo Estatístico:** Botão `📋 Tabela Resumo` com exibição de tabela analítica completa contendo picos de I/O de disco (fechamento via `ESC` ou clique externo).
 
 ---
 
@@ -93,7 +96,7 @@ flowchart TD
         MODAL["Modal Suspenso de Resumo Estatístico"]
     end
 
-    PC1 & PC2 & PC3 & PC4 -->|"Consultas WMI / CIM (CPU, RAM, Disco, Rx/Tx)"| MON
+    PC1 & PC2 & PC3 & PC4 -->|"Consultas WMI / CIM (CPU, RAM, Disco, I/O, Rx/Tx)"| MON
     MON -->|"Exibição em Linha Fixa"| TERMINAL
     MON -->|"Append Sequencial"| LOGS
     MON -->|"Disparo Automático"| BUILD

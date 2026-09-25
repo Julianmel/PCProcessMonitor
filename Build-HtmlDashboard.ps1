@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$LogFile = $null,
     [string]$OutputFile = "$PSScriptRoot\dashboard_desempenho.html"
 )
@@ -18,7 +18,7 @@ if ([string]::IsNullOrWhiteSpace($LogFile) -or -not (Test-Path $LogFile)) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-$pattern = '^(?:ONLINE|OFFLINE)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\,]+)\s*\/\s*(?<ramTotal>[\d\,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+Rx:\s*(?<rxVal>[\d\,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
+$pattern = '^(?:ONLINE|OFFLINE)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\,]+)\s*\/\s*(?<ramTotal>[\d\,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $pcsList = @('JFMELGACO3', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
@@ -30,6 +30,8 @@ foreach ($pc in $pcsList) {
         ramPct   = [System.Collections.Generic.List[object]]::new()
         ramUsed  = [System.Collections.Generic.List[object]]::new()
         diskFree = [System.Collections.Generic.List[object]]::new()
+        ioR      = [System.Collections.Generic.List[object]]::new()
+        ioW      = [System.Collections.Generic.List[object]]::new()
         rx       = [System.Collections.Generic.List[object]]::new()
         tx       = [System.Collections.Generic.List[object]]::new()
         ramTotal = 0
@@ -50,6 +52,8 @@ function Flush-Block {
                 $machineData[$p].ramPct.Add($obj.ramPct)
                 $machineData[$p].ramUsed.Add($obj.ramUsed)
                 $machineData[$p].diskFree.Add($obj.diskFree)
+                $machineData[$p].ioR.Add($obj.ioR)
+                $machineData[$p].ioW.Add($obj.ioW)
                 $machineData[$p].rx.Add($obj.rx)
                 $machineData[$p].tx.Add($obj.tx)
                 if ($obj.ramTotal -gt 0) { $machineData[$p].ramTotal = $obj.ramTotal }
@@ -58,6 +62,8 @@ function Flush-Block {
                 $machineData[$p].ramPct.Add($null)
                 $machineData[$p].ramUsed.Add($null)
                 $machineData[$p].diskFree.Add($null)
+                $machineData[$p].ioR.Add(0)
+                $machineData[$p].ioW.Add(0)
                 $machineData[$p].rx.Add(0)
                 $machineData[$p].tx.Add(0)
             }
@@ -81,6 +87,18 @@ foreach ($line in $lines) {
             $ramTotal = [double]($matches['ramTotal'] -replace ',', '.')
             $diskFree = [double]($matches['diskFree'] -replace ',', '.')
             
+            $ioR = 0.0
+            if ($matches['ioRVal'] -and $matches['ioRVal'] -ne 'N/D') {
+                $ioR = [double]($matches['ioRVal'] -replace ',', '.')
+                if ($matches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
+            }
+            
+            $ioW = 0.0
+            if ($matches['ioWVal'] -and $matches['ioWVal'] -ne 'N/D') {
+                $ioW = [double]($matches['ioWVal'] -replace ',', '.')
+                if ($matches['ioWUnit'] -eq 'MB/s') { $ioW = $ioW * 1024 }
+            }
+
             $rx = 0.0
             if ($matches['rxVal'] -and $matches['rxVal'] -ne 'N/D') {
                 $rx = [double]($matches['rxVal'] -replace ',', '.')
@@ -99,6 +117,8 @@ foreach ($line in $lines) {
                 ramUsed  = $ramUsed
                 ramTotal = $ramTotal
                 diskFree = $diskFree
+                ioR      = [math]::Round($ioR, 1)
+                ioW      = [math]::Round($ioW, 1)
                 rx       = [math]::Round($rx, 1)
                 tx       = [math]::Round($tx, 1)
             }
@@ -109,6 +129,8 @@ foreach ($line in $lines) {
                 ramUsed  = $null
                 ramTotal = 0
                 diskFree = $null
+                ioR      = 0
+                ioW      = 0
                 rx       = 0
                 tx       = 0
             }
@@ -127,6 +149,8 @@ foreach ($pc in $pcsList) {
     $validRx  = $machineData[$pc].rx | Where-Object { $null -ne $_ }
     $validTx  = $machineData[$pc].tx | Where-Object { $null -ne $_ }
     $validDisk= $machineData[$pc].diskFree | Where-Object { $null -ne $_ }
+    $validIoR = $machineData[$pc].ioR | Where-Object { $null -ne $_ }
+    $validIoW = $machineData[$pc].ioW | Where-Object { $null -ne $_ }
     
     $stats[$pc] = @{
         avgCpu  = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
@@ -137,6 +161,8 @@ foreach ($pc in $pcsList) {
         maxRx   = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
         maxTx   = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
         diskFree= if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
+        maxIoR  = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
+        maxIoW  = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
     }
 }
 
@@ -151,6 +177,8 @@ foreach ($pc in $pcsList) {
         ramUsed = $machineData[$pc].ramUsed
         rx      = $machineData[$pc].rx
         tx      = $machineData[$pc].tx
+        ioR     = $machineData[$pc].ioR
+        ioW     = $machineData[$pc].ioW
         stats   = $stats[$pc]
     }
 }
@@ -260,6 +288,7 @@ $html = @"
                 <span>CPU: <strong class="text-white">$($stats['JFMELGACO3'].avgCpu)%</strong></span>
                 <span>RAM: <strong class="text-white">$($stats['JFMELGACO3'].avgRam)%</strong></span>
                 <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO3'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO3'].maxIoW)k</strong></span>
                 <span>Tx: <strong class="text-cyan-400">$($stats['JFMELGACO3'].maxTx)k</strong></span>
             </div>
         </div>
@@ -275,6 +304,7 @@ $html = @"
                 <span>CPU: <strong class="text-white">$($stats['JFMELGACO-1'].avgCpu)%</strong></span>
                 <span>RAM: <strong class="text-white">$($stats['JFMELGACO-1'].avgRam)%</strong></span>
                 <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO-1'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO-1'].maxIoW)k</strong></span>
                 <span>Rx: <strong class="text-cyan-400">$($stats['JFMELGACO-1'].maxRx)k</strong></span>
             </div>
         </div>
@@ -290,6 +320,7 @@ $html = @"
                 <span>CPU: <strong class="text-white">$($stats['JFMELGACO-2'].avgCpu)%</strong></span>
                 <span>RAM: <strong class="text-white">$($stats['JFMELGACO-2'].avgRam)%</strong></span>
                 <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO-2'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO-2'].maxIoW)k</strong></span>
                 <span>Rx: <strong class="text-cyan-400">$($stats['JFMELGACO-2'].maxRx)k</strong></span>
             </div>
         </div>
@@ -305,6 +336,7 @@ $html = @"
                 <span>CPU: <strong class="text-white">$($stats['JFMELGACO-3'].avgCpu)%</strong></span>
                 <span>RAM: <strong class="text-white">$($stats['JFMELGACO-3'].avgRam)%</strong></span>
                 <span>C: <strong class="text-emerald-400">$($stats['JFMELGACO-3'].diskFree)G</strong></span>
+                <span>I/O: <strong class="text-amber-400">$($stats['JFMELGACO-3'].maxIoW)k</strong></span>
                 <span>Rx: <strong class="text-cyan-400">$($stats['JFMELGACO-3'].maxRx)k</strong></span>
             </div>
         </div>
@@ -369,6 +401,9 @@ $html = @"
                     <button onclick="switchBottomRightView('disk')" id="btnTabDisk" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
                         Disco C: (GB)
                     </button>
+                    <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                        I/O Disco
+                    </button>
                 </div>
             </div>
             <div class="flex-1 min-h-0 relative">
@@ -377,6 +412,9 @@ $html = @"
                 </div>
                 <div id="wrapperDiskChart" class="h-full w-full hidden">
                     <canvas id="diskChart"></canvas>
+                </div>
+                <div id="wrapperIoChart" class="h-full w-full hidden">
+                    <canvas id="ioChart"></canvas>
                 </div>
             </div>
         </div>
@@ -404,6 +442,7 @@ $html = @"
                             <th class="py-2.5 px-3">CPU Pico</th>
                             <th class="py-2.5 px-3">RAM Média</th>
                             <th class="py-2.5 px-3">RAM Máx</th>
+                            <th class="py-2.5 px-3">Pico I/O Disco (R / W)</th>
                             <th class="py-2.5 px-3">Pico Rx</th>
                             <th class="py-2.5 px-3">Pico Tx</th>
                             <th class="py-2.5 px-3">Disco C: Livre</th>
@@ -416,6 +455,7 @@ $html = @"
                             <td class="py-2.5 px-3 font-bold text-amber-400">$($stats['JFMELGACO3'].maxCpu)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO3'].avgRam)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO3'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO3'].maxIoR) / $($stats['JFMELGACO3'].maxIoW) KB/s</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO3'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400">$($stats['JFMELGACO3'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO3'].diskFree) GB</td>
@@ -426,6 +466,7 @@ $html = @"
                             <td class="py-2.5 px-3 font-bold text-amber-400">$($stats['JFMELGACO-1'].maxCpu)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].avgRam)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO-1'].maxIoR) / $($stats['JFMELGACO-1'].maxIoW) KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400">$($stats['JFMELGACO-1'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO-1'].diskFree) GB</td>
@@ -436,6 +477,7 @@ $html = @"
                             <td class="py-2.5 px-3 font-bold text-amber-400">$($stats['JFMELGACO-2'].maxCpu)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].avgRam)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO-2'].maxIoR) / $($stats['JFMELGACO-2'].maxIoW) KB/s</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO-2'].diskFree) GB</td>
@@ -446,6 +488,7 @@ $html = @"
                             <td class="py-2.5 px-3 font-bold text-rose-400">$($stats['JFMELGACO-3'].maxCpu)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].avgRam)%</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold">$($stats['JFMELGACO-3'].maxIoR) / $($stats['JFMELGACO-3'].maxIoW) KB/s</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3">$($stats['JFMELGACO-3'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold">$($stats['JFMELGACO-3'].diskFree) GB</td>
@@ -653,7 +696,7 @@ $html = @"
 
         function refreshChartsWindow() {
             const finalLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
-            ['cpu', 'ram', 'rx', 'tx'].forEach(k => {
+            ['cpu', 'ram', 'rx', 'tx', 'io'].forEach(k => {
                 if (!charts[k]) return;
                 charts[k].data.labels = finalLabels;
                 charts[k].data.datasets.forEach(ds => {
@@ -666,7 +709,31 @@ $html = @"
         // Aplica o estilo do botão ativo
         updateButtonStyles();
 
-        // 5. DISK BAR CHART
+        // 5. DISK IO LINE CHART
+        charts.io = new Chart(document.getElementById('ioChart'), {
+            type: 'line',
+            data: {
+                labels: initialLabels,
+                datasets: Object.keys(rawData).map(pc => ({
+                    pcKey: pc,
+                    metricKey: 'ioW',
+                    label: pc + ' (Write)',
+                    data: getAlignedDataset(pc, 'ioW'),
+                    borderColor: colors[pc].border,
+                    backgroundColor: colors[pc].bg,
+                    fill: false
+                }))
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' KB/s' } }
+                }
+            }
+        });
+
+        // 6. DISK BAR CHART
         charts.disk = new Chart(document.getElementById('diskChart'), {
             type: 'bar',
             data: {
@@ -694,7 +761,7 @@ $html = @"
             }
         });
 
-        // 6. CONTROLES DO MODAL E DO MODO DE TELA
+        // 7. CONTROLES DO MODAL E DO MODO DE TELA
         function toggleSummaryModal(show) {
             const modal = document.getElementById('summaryModal');
             if (!modal) return;
@@ -716,22 +783,36 @@ $html = @"
         function switchBottomRightView(view) {
             const wrapTx = document.getElementById('wrapperTxChart');
             const wrapDisk = document.getElementById('wrapperDiskChart');
+            const wrapIo = document.getElementById('wrapperIoChart');
             const btnTx = document.getElementById('btnTabTx');
             const btnDisk = document.getElementById('btnTabDisk');
+            const btnIo = document.getElementById('btnTabIo');
             const title = document.getElementById('titleBottomRight');
 
+            wrapTx.classList.add('hidden');
+            wrapDisk.classList.add('hidden');
+            wrapIo.classList.add('hidden');
+
+            const inactiveBtn = 'text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer';
+            const activeBtn = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer';
+
+            btnTx.className = inactiveBtn;
+            btnDisk.className = inactiveBtn;
+            btnIo.className = inactiveBtn;
+
             if (view === 'disk') {
-                wrapTx.classList.add('hidden');
                 wrapDisk.classList.remove('hidden');
-                btnDisk.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer';
-                btnTx.className = 'text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer';
+                btnDisk.className = activeBtn;
                 if (title) title.innerText = 'Armazenamento: Espaço Livre em Disco C: (GB)';
                 if (charts.disk) charts.disk.resize();
+            } else if (view === 'io') {
+                wrapIo.classList.remove('hidden');
+                btnIo.className = activeBtn;
+                if (title) title.innerText = 'Disco C: Taxa de I/O Escrita (KB/s)';
+                if (charts.io) charts.io.resize();
             } else {
-                wrapDisk.classList.add('hidden');
                 wrapTx.classList.remove('hidden');
-                btnTx.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer';
-                btnDisk.className = 'text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer';
+                btnTx.className = activeBtn;
                 if (title) title.innerText = 'Rede: Transmissão / Upload (Tx em KB/s)';
                 if (charts.tx) charts.tx.resize();
             }
