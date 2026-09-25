@@ -65,7 +65,7 @@ foreach ($item in $targetSids) {
 # 3. Ajusta o perfil da rede Wi-Fi/Ethernet para 'Private' (permite tráfego local seguro)
 Write-Host "`n[3/8] Verificando perfil de rede..." -ForegroundColor Cyan
 try {
-    Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq 'Public' -and ($_.Name -like '*TECHNOFLORA*' -or $_.InterfaceAlias -match 'Wi-Fi|Ethernet') } | ForEach-Object {
+    Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.NetworkCategory -eq 'Public' -and ($_.Name -like '*TECHNOFLORA*' -or $_.InterfaceAlias -match 'Wi-Fi|Ethernet') } | ForEach-Object {
         Set-NetConnectionProfile -InputObject $_ -NetworkCategory Private -ErrorAction SilentlyContinue
         Write-Host "      Perfil de rede '$($_.Name)' alterado de Public para Private." -ForegroundColor Green
     }
@@ -90,37 +90,34 @@ try {
     Write-Warning "      Erro ao configurar WinRM: $($_.Exception.Message)"
 }
 
-# 5. Concede permissão Remote Enable no WMI (root e root\cimv2)
-Write-Host "`n[5/8] Concedendo permissões remotas WMI (root e root\cimv2)..." -ForegroundColor Cyan
-$namespaces = @("root", "root\cimv2")
-foreach ($ns in $namespaces) {
-    try {
-        $invClass = New-Object System.Management.ManagementClass("$($ns):__SystemSecurity")
-        $outParams = $invClass.InvokeMethod("GetSD", $null, $null)
-        $binarySD = $outParams["SD"]
+# 5. Restaura e configura permissões WMI (root e root\cimv2)
+Write-Host "`n[5/8] Configurando permissões WMI no root e root\cimv2..." -ForegroundColor Cyan
+try {
+    # 5.1 Restaura namespace 'root' com ContainerInherit (CI) preservando NetworkService, LocalService e Admin
+    $invRoot = New-Object System.Management.ManagementClass("root:__SystemSecurity")
+    $sddlRoot = "D:(A;CI;CCDCRP;;;AU)(A;CI;CCDCRP;;;LS)(A;CI;CCDCRP;;;NS)(A;CI;CCDCLCSWRPWPRCWD;;;BA)"
+    $sdRoot = New-Object System.Security.AccessControl.CommonSecurityDescriptor($true, $true, $sddlRoot)
+    $binRoot = New-Object byte[] ($sdRoot.BinaryLength)
+    $sdRoot.GetBinaryForm($binRoot, 0)
+    $pRoot = $invRoot.GetMethodParameters("SetSD")
+    $pRoot.Properties["SD"].Value = $binRoot
+    $rRoot = $invRoot.InvokeMethod("SetSD", $pRoot, $null)
+    Write-Host "      [OK] Namespace 'root' restaurado com ContainerInherit (ReturnCode: $($rRoot['ReturnValue']))" -ForegroundColor Green
 
-        $sd = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $binarySD, 0)
-        $sid = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
-
-        # 131107 = Enable (1) + Method Execute (2) + Remote Access (32) + Read Perm (131072)
-        $sd.DiscretionaryAcl.SetAccess(
-            [System.Security.AccessControl.AccessControlType]::Allow,
-            $sid,
-            131107,
-            [System.Security.AccessControl.InheritanceFlags]::None,
-            [System.Security.AccessControl.PropagationFlags]::None
-        )
-
-        $newBinarySD = New-Object byte[] ($sd.BinaryLength)
-        $sd.GetBinaryForm($newBinarySD, 0)
-
-        $inParams = $invClass.GetMethodParameters("SetSD")
-        $inParams.Properties["SD"].Value = $newBinarySD
-        $res = $invClass.InvokeMethod("SetSD", $inParams, $null)
-        Write-Host "      [OK] Permissão WMI concedida em '$ns' (ReturnCode: $($res['ReturnValue']))" -ForegroundColor Green
-    } catch {
-        Write-Warning "      [AVISO] Erro ao ajustar WMI em '$ns': $($_.Exception.Message)"
-    }
+    # 5.2 Concede acesso a 'Monitor' em 'root\cimv2'
+    $invCim = New-Object System.Management.ManagementClass("root\cimv2:__SystemSecurity")
+    $sidObj = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
+    $sidVal = $sidObj.Value
+    $sddlCim = "D:(A;;CCDCWPRC;;;$sidVal)(A;ID;CCDCLCSWRPWPRCWD;;;BA)(A;ID;CCDCRP;;;NS)(A;ID;CCDCRP;;;LS)(A;ID;CCDCRP;;;AU)"
+    $sdCim = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $sddlCim)
+    $binCim = New-Object byte[] ($sdCim.BinaryLength)
+    $sdCim.GetBinaryForm($binCim, 0)
+    $pCim = $invCim.GetMethodParameters("SetSD")
+    $pCim.Properties["SD"].Value = $binCim
+    $rCim = $invCim.InvokeMethod("SetSD", $pCim, $null)
+    Write-Host "      [OK] Namespace 'root\cimv2' configurado para Monitor (ReturnCode: $($rCim['ReturnValue']))" -ForegroundColor Green
+} catch {
+    Write-Warning "      [AVISO] Erro ao configurar WMI: $($_.Exception.Message)"
 }
 
 # 6. Registra política LocalAccountTokenFilterPolicy
@@ -157,14 +154,26 @@ try {
     Write-Warning "      Erro ao configurar Firewall: $($_.Exception.Message)"
 }
 
-# 8. Reinicia os serviços para limpar cache de segurança
-Write-Host "`n[8/8] Reiniciando serviços Winmgmt e WinRM para atualizar cache de segurança..." -ForegroundColor Cyan
+# 8. Reinicia os serviços para limpar cache de segurança e matar instâncias antigas de provedores
+Write-Host "`n[8/8] Reiniciando WMI, WinRM e finalizando provedores antigos..." -ForegroundColor Cyan
 try {
-    Restart-Service winmgmt -Force -ErrorAction SilentlyContinue
-    Restart-Service WinRM -Force -ErrorAction SilentlyContinue
-    Write-Host "      Serviços reiniciados com sucesso! Caches renovados." -ForegroundColor Green
+    cmd.exe /c "taskkill /f /im WmiPrvSE.exe 2>nul" | Out-Null
+    cmd.exe /c "net stop winmgmt /y 2>nul" | Out-Null
+    cmd.exe /c "net start winmgmt 2>nul" | Out-Null
+    cmd.exe /c "net start winrm 2>nul" | Out-Null
+    cmd.exe /c "net start iphlpsvc 2>nul" | Out-Null
+    Write-Host "      Serviços reiniciados com sucesso! Provedores limpos." -ForegroundColor Green
 } catch {
     Write-Warning "      Aviso ao reiniciar serviços: $($_.Exception.Message)"
+}
+
+# 9. Teste de validação imediata
+Write-Host "`n[Validação] Testando leitura WMI local..." -ForegroundColor Cyan
+try {
+    $osTest = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+    Write-Host "      [SUCESSO] WMI operacional! Sistema: $($osTest.Caption)" -ForegroundColor Green
+} catch {
+    Write-Warning "      Aviso na validação local: $($_.Exception.Message)"
 }
 
 Write-Host "`n============================================================" -ForegroundColor Cyan
