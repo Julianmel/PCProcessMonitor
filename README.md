@@ -81,41 +81,31 @@
     
     ---
     
-    ## 🏗️ Arquitetura do Sistema
-    
+    ## 🏗️ Fluxo e Arquitetura da Solução
 
-  ┌─────────────────────────────────────────────────────────────┐
-  │                      Nós da Rede Local                      │
-  │   [JFMELGACO3]     [JFMELGACO-1]    [JFMELGACO-2]   ...     │
-  └──────────────┬───────────────────────────────┬──────────────┘
-  │ WMI / CIM                     │ WMI / CIM
-  ▼                               ▼
-  ┌─────────────────────────────────────────────────────────────┐
-  │                    Monitor-Rede.ps1                         │
-  │  - Coleta CPU, RAM, Disco C: e Tráfego de Rede (Rx/Tx)      │
-  │  - Atualização In-Place com cores (Amarelo / Verde)         │
-  │  - Gravação do arquivo de log timestamped                   │
-  └──────────────────────────────┬──────────────────────────────┘
-  │ Dispara a cada ciclo
-  ▼
-  ┌─────────────────────────────────────────────────────────────┐
-  │                 Build-HtmlDashboard.ps1                     │
-  │  - Seleciona o último log gerado                            │
-  │  - Trata encoding UTF-8 com BOM (zero mojibake)             │
-  │  - Calcula métricas, médias e picos                         │
-  └──────────────────────────────┬──────────────────────────────┘
-  │ Gera
-  ▼
-  ┌─────────────────────────────────────────────────────────────┐
-  │                dashboard_desempenho.html                    │
-  │  - Layout 100vh NOC (Tela única sem rolagem)                │
-  │  - Chart.js com fluxo contínuo direita -> esquerda          │
-  │  - Auto-refresh de 5s, seletores de janela e modal resumo   │
-  └─────────────────────────────────────────────────────────────┘
-
-    
-    ---
-    
+    ```text
+    [1. Dispositivos da Rede]
+     └── JFMELGACO3 (Local) + JFMELGACO-1, 2, 3 (Remotos)
+           │
+           ▼ (Consultas periódicas WMI/CIM: CPU, RAM, Disco C: e Tráfego Rx/Tx)
+    [2. Coletor Principal: Monitor-Rede.ps1]
+     ├── Saída Visual ────► Terminal In-Place (Atualização em linha fixa + Cores Amarelo/Verde)
+     ├── Persistência ────► Arquivo de Log "AAAAMMDD - HHMM - PC Processmonitor.txt"
+     └── Automação   ─────► Disparo do gerador a cada ciclo de medição
+           │
+           ▼ (Processamento analítico com codificação UTF-8 com BOM)
+    [3. Compilador de Telemetria: Build-HtmlDashboard.ps1]
+     ├── Detecção do log mais recente
+     ├── Cálculo de médias, picos e ordenação temporal
+     └── Injeção de dados no template HTML
+           │
+           ▼ (Gera arquivo autocontido sem dependência de servidor web)
+    [4. Painel de Operações: dashboard_desempenho.html]
+     ├── Layout NOC 100vh em Tela Única sem rolagem (com alternador para rolagem vertical)
+     ├── 4 Mini-Cards horizontais com telemetria ao vivo por computador
+     ├── Grade 2x2 de gráficos Chart.js com fluxo contínuo da direita para a esquerda
+     └── Modal suspenso translúcido com resumo estatístico consolidado
+    ```    
     ## 📁 Estrutura de Arquivos
     
     ```text
