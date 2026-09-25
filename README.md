@@ -2,6 +2,7 @@
 
 > **Sistema leve e autônomo de monitoramento de infraestrutura local em tempo real, com telemetria via PowerShell/WMI e Dashboard visual estilo NOC (Network Operations Center).**
 
+![Versão](https://img.shields.io/badge/Versão-1.0.1-brightgreen)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-blue?logo=powershell)
 ![Interface](https://img.shields.io/badge/UI-TailwindCSS%20%2B%20Chart.js-38B2AC?logo=tailwind-css)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows%2010%20%2F%2011-0078D6?logo=windows)
@@ -159,3 +160,18 @@ PCProcessMonitor/
 - **Tailwind CSS:** Estilização utilitária moderna para layout responsivo de alta densidade e modo escuro.
 - **Chart.js:** Renderização de gráficos temporais em Canvas HTML5 com animações suaves.
 - **HTML5 / Vanilla JavaScript:** Lógica de fluxo temporal contínuo, persistência local de preferências (`localStorage`) e auto-refresh.
+
+---
+
+## 📜 Histórico de Versões
+
+### [v1.0.1] - 2026-09-25
+- **Solução da ISSUE #1:** Detecção dinâmica do nó local (`$env:COMPUTERNAME`) substituindo a referência fixa `localhost`, garantindo que todas as 4 máquinas (`JFMELGACO3`, `JFMELGACO-1`, `JFMELGACO-2`, `JFMELGACO-3`) sejam monitoradas sem duplicidades, independente do computador onde o script for iniciado.
+- **Telemetria de I/O de Disco C: (Input / Output):** Coleta em tempo real de taxas de Leitura (`R: DiskReadBytesPersec`) e Escrita (`W: DiskWriteBytesPersec`) em KB/s e MB/s via WMI/CIM com heatmap visual (amarelo/verde) no terminal.
+- **Fast Ping Pre-Check:** Pré-validação rápida de conectividade via ICMP ping antes das chamadas CIM, reduzindo timeouts de nós desligados de 12 segundos para menos de 500ms.
+- **Dashboard Integrado com I/O de Disco:** Visualização nos mini-cards superiores, nova aba de gráfico dedicada `[I/O Disco]` no 4º quadrante e resumo de picos no modal analítico.
+- **Formatação Alinhada de Status:** Alinhamento monoespaçado perfeito das colunas no terminal e arquivos de log.
+
+### [v1.0.0] - 2026-09-25
+- Lançamento inicial com monitoramento contínuo de CPU, Memória RAM, Espaço livre no Disco C: e Tráfego de Rede (Rx/Tx).
+- Terminal in-place sem cintilação e gerador de dashboard web interativo estilo NOC.

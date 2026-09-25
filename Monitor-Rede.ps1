@@ -4,7 +4,7 @@
 )
 
 # ============================================================
-# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO
+# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.0.1)
 # ============================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -191,7 +191,8 @@ $barLen = 10
 
 function Build-Lines($m, $prev) {
     if (-not $m.Success) {
-        $cLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f "$cRed`OFFLINE$cReset", $m.Display, "---", "---", "---", "---", "---"
+        $cStatus = "$cRed" + "OFFLINE " + "$cReset"
+        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5}" -f $m.Display, "---", "---", "---", "---", "---"
         $fLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f "OFFLINE", $m.Display, "---", "---", "---", "---", "---"
         return @{ Console = $cLine; File = $fLine }
     }

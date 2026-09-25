@@ -1,4 +1,7 @@
-﻿param(
+﻿# ============================================================
+# GERADOR DE DASHBOARD HTML - JFMELGACO (v1.0.1)
+# ============================================================
+param(
     [string]$LogFile = $null,
     [string]$OutputFile = "$PSScriptRoot\dashboard_desempenho.html"
 )
@@ -233,7 +236,7 @@ $html = @"
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <h1 class="text-sm font-bold text-white tracking-tight">Monitor de Rede JFMELGACO</h1>
+            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.0.1</span></h1>
             <span class="text-slate-500">|</span>
             <span class="text-slate-400">$startTime &rarr; $endTime</span>
             <span class="text-slate-500">|</span>
@@ -873,5 +876,6 @@ $html = @"
 </html>
 "@
 
-[System.IO.File]::WriteAllText($OutputFile, $html, [System.Text.Encoding]::UTF8)
+$utf8Bom = [System.Text.UTF8Encoding]::new($true)
+[System.IO.File]::WriteAllText($OutputFile, $html, $utf8Bom)
 Write-Host "Dashboard HTML gerado com sucesso em: $OutputFile" -ForegroundColor Green
