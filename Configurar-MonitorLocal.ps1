@@ -93,21 +93,22 @@ try {
 # 5. Restaura e configura permissões WMI (root e root\cimv2)
 Write-Host "`n[5/8] Configurando permissões WMI no root e root\cimv2..." -ForegroundColor Cyan
 try {
-    # 5.1 Restaura namespace 'root' com ContainerInherit (CI) preservando NetworkService, LocalService e Admin
+    $sidObj = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
+    $sidVal = $sidObj.Value
+
+    # 5.1 Configura namespace 'root' com ContainerInherit (CI) incluindo Monitor, NetworkService, LocalService e Admin
     $invRoot = New-Object System.Management.ManagementClass("root:__SystemSecurity")
-    $sddlRoot = "D:(A;CI;CCDCRP;;;AU)(A;CI;CCDCRP;;;LS)(A;CI;CCDCRP;;;NS)(A;CI;CCDCLCSWRPWPRCWD;;;BA)"
+    $sddlRoot = "D:(A;CI;CCDCWPRC;;;$sidVal)(A;CI;CCDCRP;;;AU)(A;CI;CCDCRP;;;LS)(A;CI;CCDCRP;;;NS)(A;CI;CCDCLCSWRPWPRCWD;;;BA)"
     $sdRoot = New-Object System.Security.AccessControl.CommonSecurityDescriptor($true, $true, $sddlRoot)
     $binRoot = New-Object byte[] ($sdRoot.BinaryLength)
     $sdRoot.GetBinaryForm($binRoot, 0)
     $pRoot = $invRoot.GetMethodParameters("SetSD")
     $pRoot.Properties["SD"].Value = $binRoot
     $rRoot = $invRoot.InvokeMethod("SetSD", $pRoot, $null)
-    Write-Host "      [OK] Namespace 'root' restaurado com ContainerInherit (ReturnCode: $($rRoot['ReturnValue']))" -ForegroundColor Green
+    Write-Host "      [OK] Namespace 'root' configurado com ContainerInherit para Monitor e Servicos (ReturnCode: $($rRoot['ReturnValue']))" -ForegroundColor Green
 
     # 5.2 Concede acesso a 'Monitor' em 'root\cimv2'
     $invCim = New-Object System.Management.ManagementClass("root\cimv2:__SystemSecurity")
-    $sidObj = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
-    $sidVal = $sidObj.Value
     $sddlCim = "D:(A;;CCDCWPRC;;;$sidVal)(A;ID;CCDCLCSWRPWPRCWD;;;BA)(A;ID;CCDCRP;;;NS)(A;ID;CCDCRP;;;LS)(A;ID;CCDCRP;;;AU)"
     $sdCim = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $sddlCim)
     $binCim = New-Object byte[] ($sdCim.BinaryLength)
@@ -167,13 +168,18 @@ try {
     Write-Warning "      Aviso ao reiniciar serviços: $($_.Exception.Message)"
 }
 
-# 9. Teste de validação imediata
-Write-Host "`n[Validação] Testando leitura WMI local..." -ForegroundColor Cyan
+# 9. Teste de validação imediata com o usuário Monitor
+Write-Host "`n[Validação] Testando leitura WMI como usuário 'Monitor' via WinRM..." -ForegroundColor Cyan
 try {
-    $osTest = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
-    Write-Host "      [SUCESSO] WMI operacional! Sistema: $($osTest.Caption)" -ForegroundColor Green
+    $sec = ConvertTo-SecureString 'Monitor2026@' -AsPlainText -Force
+    $cred = New-Object System.Management.Automation.PSCredential("JFMELGACO3\Monitor", $sec)
+    $opt = New-CimSessionOption -Protocol Wsman
+    $s = New-CimSession -ComputerName "JFMELGACO3" -Credential $cred -SessionOption $opt -OperationTimeoutSec 5 -ErrorAction Stop
+    $osTest = Get-CimInstance Win32_OperatingSystem -CimSession $s -ErrorAction Stop
+    Remove-CimSession $s
+    Write-Host "      [SUCESSO TOTAL] Conexão remota do Monitor 100% FUNCIONANDO! Sistema: $($osTest.Caption)" -ForegroundColor Green
 } catch {
-    Write-Warning "      Aviso na validação local: $($_.Exception.Message)"
+    Write-Warning "      Aviso no teste do Monitor: $($_.Exception.Message)"
 }
 
 Write-Host "`n============================================================" -ForegroundColor Cyan
