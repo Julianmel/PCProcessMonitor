@@ -220,4 +220,5 @@ __marimo__/
 # PCProcessMonitor Telemetry Logs
 *.txt
 Data/
+dashboard_data.js
 
