@@ -1,5 +1,5 @@
 ﻿# ============================================================
-# GERADOR DE DASHBOARD HTML - JFMELGACO (v1.0.1)
+# GERADOR DE DASHBOARD HTML - JFMELGACO (v1.0.2)
 # ============================================================
 param(
     [string]$LogFile = $null,
@@ -21,7 +21,7 @@ if ([string]::IsNullOrWhiteSpace($LogFile) -or -not (Test-Path $LogFile)) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-$pattern = '^(?:ONLINE|OFFLINE)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\,]+)\s*\/\s*(?<ramTotal>[\d\,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\,]+)\s*\/\s*(?<ramTotal>[\d\,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $pcsList = @('JFMELGACO3', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
@@ -236,7 +236,7 @@ $html = @"
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.0.1</span></h1>
+            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.0.2</span></h1>
             <span class="text-slate-500">|</span>
             <span class="text-slate-400">$startTime &rarr; $endTime</span>
             <span class="text-slate-500">|</span>

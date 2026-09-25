@@ -2,7 +2,7 @@
 
 > **Sistema leve e autônomo de monitoramento de infraestrutura local em tempo real, com telemetria via PowerShell/WMI e Dashboard visual estilo NOC (Network Operations Center).**
 
-![Versão](https://img.shields.io/badge/Versão-1.0.1-brightgreen)
+![Versão](https://img.shields.io/badge/Versão-1.0.2-brightgreen)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-blue?logo=powershell)
 ![Interface](https://img.shields.io/badge/UI-TailwindCSS%20%2B%20Chart.js-38B2AC?logo=tailwind-css)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows%2010%20%2F%2011-0078D6?logo=windows)
@@ -116,6 +116,7 @@ flowchart TD
 PCProcessMonitor/
 ├── Monitor-Rede.ps1                    # Script principal de telemetria e console in-place
 ├── Build-HtmlDashboard.ps1             # Gerador analítico do dashboard HTML
+├── Setup-MonitorHost.ps1               # Utilitário de preparação de nós de rede (WinRM/Firewall)
 ├── dashboard_desempenho.html           # Interface visual aberta no navegador
 ├── Data/                               # Pasta de arquivamento dos logs históricos
 │   └── AAAAMMDD - HHMM - PC Processmonitor.txt
@@ -164,6 +165,14 @@ PCProcessMonitor/
 ---
 
 ## 📜 Histórico de Versões
+
+### [v1.0.2] - 2026-09-25
+- **Solução da ISSUE #2:** Resolução de falhas de monitoramento remoto entre computadores da rede em Workgroup:
+  - **Negociação Dual-Protocol (WinRM com Fallback para DCOM):** Caso a porta padrão do WinRM (5985) esteja restrita pelas políticas de perfil público do Firewall do Windows, o coletor comuta automaticamente para DCOM (RPC) transparente, garantindo telemetria contínua.
+  - **Novo Status `SEM ACESSO` (em Magenta):** Distinção clara e transparente entre máquinas verdadeiramente desligadas/desconectadas (`OFFLINE` - sem resposta ao ping) e máquinas ativas mas com restrição de permissão WMI/WinRM (`SEM ACESSO` - ping OK, consulta bloqueada).
+  - **Parâmetro de Credencial (`-Credential`):** Suporte opcional à passagem explícita de credenciais administrativas (`[pscredential]`) para execuções originadas em contas locais restritas (ex: usuário `Monitor`).
+  - **Script de Preparação `Setup-MonitorHost.ps1`:** Utilitário automatizado para configurar com 1 clique o WinRM, TrustedHosts, exceções de firewall e política de token UAC (`LocalAccountTokenFilterPolicy`) em qualquer nó da rede.
+- **Validação Completa de Rede:** Todos os 4 nós (`JFMELGACO3`, `JFMELGACO-1`, `JFMELGACO-2`, `JFMELGACO-3`) ativos e reportando métricas em tempo real.
 
 ### [v1.0.1] - 2026-09-25
 - **Solução da ISSUE #1:** Detecção dinâmica do nó local (`$env:COMPUTERNAME`) substituindo a referência fixa `localhost`, garantindo que todas as 4 máquinas (`JFMELGACO3`, `JFMELGACO-1`, `JFMELGACO-2`, `JFMELGACO-3`) sejam monitoradas sem duplicidades, independente do computador onde o script for iniciado.

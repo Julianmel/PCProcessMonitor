@@ -1,24 +1,26 @@
 ﻿param(
     [int]$MaxIterations = 0,
-    [int]$IntervalSeconds = 5
+    [int]$IntervalSeconds = 5,
+    [pscredential]$Credential = $null
 )
 
 # ============================================================
-# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.0.1)
+# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.0.2)
 # ============================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Cores ANSI para formatação dinâmica
 $esc = [char]27
-$cReset  = "$esc[0m"
-$cYellow = "$esc[93m"  # Maior que a medição anterior
-$cGreen  = "$esc[92m"  # Menor que a medição anterior
-$cWhite  = "$esc[97m"  # Inalterado / medição inicial
-$cCyan   = "$esc[96m"  # Cabeçalho e títulos
-$cGray   = "$esc[90m"  # Bordas e separadores
-$cRed    = "$esc[91m"  # OFFLINE
-$cOnline = "$esc[92m"  # ONLINE
+$cReset    = "$esc[0m"
+$cYellow   = "$esc[93m"  # Maior que a medição anterior
+$cGreen    = "$esc[92m"  # Menor que a medição anterior
+$cWhite    = "$esc[97m"  # Inalterado / medição inicial
+$cCyan     = "$esc[96m"  # Cabeçalho e títulos
+$cGray     = "$esc[90m"  # Bordas e separadores
+$cRed      = "$esc[91m"  # OFFLINE
+$cOnline   = "$esc[92m"  # ONLINE
+$cNoAccess = "$esc[95m"  # SEM ACESSO (Rosa/Magenta: computador ligado, mas consulta WMI bloqueada)
 
 # Lista canônica de todas as máquinas da rede
 $Computadores = @(
@@ -69,29 +71,62 @@ function Color-Num($current, $prev, [string]$displayStr) {
 }
 
 function Get-MachineMetrics {
-    param([string]$ComputerName)
+    param(
+        [string]$ComputerName,
+        [pscredential]$Cred = $null
+    )
 
     # Identifica se a máquina alvo é a máquina local onde o script está rodando
     $isLocal = ($ComputerName.ToUpper() -eq $env:COMPUTERNAME.ToUpper()) -or ($ComputerName -eq 'localhost')
     $nomeDisplay = if ($isLocal) { "$ComputerName (Local)" } else { $ComputerName }
 
     # Se for remoto, faz um ping rápido prévio para não travar com timeouts WMI caso a máquina esteja desligada
+    $isPingable = $true
     if (-not $isLocal) {
-        $alive = Test-Connection -ComputerName $ComputerName -Count 1 -Quiet -ErrorAction SilentlyContinue
-        if (-not $alive) {
+        $isPingable = Test-Connection -ComputerName $ComputerName -Count 1 -Quiet -ErrorAction SilentlyContinue
+        if (-not $isPingable) {
             return @{
-                Success  = $false
-                Computer = $ComputerName
-                Display  = $nomeDisplay
+                Success     = $false
+                Status      = 'OFFLINE'
+                Computer    = $ComputerName
+                Display     = $nomeDisplay
+                ErrorReason = 'Host inacessível (sem resposta ao ping/desligado)'
             }
         }
     }
 
+    $cimSession = $null
+    $needCleanup = $false
+
     try {
         $sessionArgs = @{ ErrorAction = 'Stop' }
         if (-not $isLocal) {
-            $sessionArgs['ComputerName'] = $ComputerName
-            $sessionArgs['OperationTimeoutSec'] = 3
+            # Tenta primeiro WinRM padrão; se falhar, faz fallback para DCOM (RPC)
+            try {
+                $testArgs = @{
+                    ComputerName = $ComputerName
+                    OperationTimeoutSec = 2
+                    ErrorAction = 'Stop'
+                }
+                if ($Cred) { $testArgs['Credential'] = $Cred }
+                $null = Get-CimInstance Win32_OperatingSystem @testArgs
+                $sessionArgs['ComputerName'] = $ComputerName
+                $sessionArgs['OperationTimeoutSec'] = 3
+                if ($Cred) { $sessionArgs['Credential'] = $Cred }
+            } catch {
+                # Fallback para DCOM (resiliente a perfis de rede públicos e restrições de porta WinRM)
+                $opt = New-CimSessionOption -Protocol Dcom
+                $cimSessionArgs = @{
+                    ComputerName = $ComputerName
+                    SessionOption = $opt
+                    OperationTimeoutSec = 3
+                    ErrorAction = 'Stop'
+                }
+                if ($Cred) { $cimSessionArgs['Credential'] = $Cred }
+                $cimSession = New-CimSession @cimSessionArgs
+                $needCleanup = $true
+                $sessionArgs['CimSession'] = $cimSession
+            }
         }
 
         # 1. CPU
@@ -117,12 +152,7 @@ function Get-MachineMetrics {
         $diskReadStr = "   0 KB/s"
         $diskWriteStr = "   0 KB/s"
         try {
-            $diskPerfArgs = @{ ErrorAction = 'Stop' }
-            if (-not $isLocal) {
-                $diskPerfArgs['ComputerName'] = $ComputerName
-                $diskPerfArgs['OperationTimeoutSec'] = 2
-            }
-            $diskPerf = Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk @diskPerfArgs -Filter "Name='C:'"
+            $diskPerf = Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk @sessionArgs -Filter "Name='C:'"
             if ($diskPerf) {
                 $diskReadBytes = [double]$diskPerf.DiskReadBytesPersec
                 $diskWriteBytes = [double]$diskPerf.DiskWriteBytesPersec
@@ -140,12 +170,7 @@ function Get-MachineMetrics {
         $rxStr = "   0 KB/s"
         $txStr = "   0 KB/s"
         try {
-            $netArgs = @{ ErrorAction = 'Stop' }
-            if (-not $isLocal) {
-                $netArgs['ComputerName'] = $ComputerName
-                $netArgs['OperationTimeoutSec'] = 2
-            }
-            $net = Get-CimInstance Win32_PerfFormattedData_Tcpip_NetworkInterface @netArgs |
+            $net = Get-CimInstance Win32_PerfFormattedData_Tcpip_NetworkInterface @sessionArgs |
                    Where-Object { $_.Name -notmatch 'Loopback|isatap|Teredo' }
             if ($net) {
                 $recvBytes = [double]($net | Measure-Object -Property BytesReceivedPersec -Sum).Sum
@@ -160,6 +185,7 @@ function Get-MachineMetrics {
 
         return @{
             Success        = $true
+            Status         = 'ONLINE'
             Computer       = $ComputerName
             Display        = $nomeDisplay
             Cpu            = $cpu
@@ -179,10 +205,17 @@ function Get-MachineMetrics {
             TxStr          = $txStr
         }
     } catch {
+        $statusFail = if ($isPingable) { 'SEM ACESSO' } else { 'OFFLINE' }
         return @{
             Success     = $false
+            Status      = $statusFail
             Computer    = $ComputerName
             Display     = $nomeDisplay
+            ErrorReason = $_.Exception.Message
+        }
+    } finally {
+        if ($needCleanup -and $cimSession) {
+            Remove-CimSession $cimSession -ErrorAction SilentlyContinue
         }
     }
 }
@@ -191,9 +224,15 @@ $barLen = 10
 
 function Build-Lines($m, $prev) {
     if (-not $m.Success) {
-        $cStatus = "$cRed" + "OFFLINE " + "$cReset"
+        if ($m.Status -eq 'SEM ACESSO') {
+            $cStatus = "$cNoAccess" + "SEM ACESSO" + "$cReset"
+            $fStatus = "SEM ACESSO"
+        } else {
+            $cStatus = "$cRed" + "OFFLINE   " + "$cReset"
+            $fStatus = "OFFLINE   "
+        }
         $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5}" -f $m.Display, "---", "---", "---", "---", "---"
-        $fLine = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f "OFFLINE", $m.Display, "---", "---", "---", "---", "---"
+        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---"
         return @{ Console = $cLine; File = $fLine }
     }
 
@@ -216,7 +255,7 @@ function Build-Lines($m, $prev) {
     $txColored        = Color-Num $m.TxBytes $prev.TxBytes $m.TxStr
 
     # Linha para o console (com cores ANSI)
-    $cStatus    = "$cOnline" + "ONLINE  " + "$cReset"
+    $cStatus    = "$cOnline" + "ONLINE    " + "$cReset"
     $cName      = "{0,-22}" -f $m.Display
     $cCpuStr    = "[$cGray$barCpu$cReset] $cpuColored"
     $cRamStr    = "[$cGray$barRam$cReset] $ramUsedColored/{0,4:N1} GB $ramPctColored" -f $m.TotalRam
@@ -226,13 +265,13 @@ function Build-Lines($m, $prev) {
     $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr"
 
     # Linha para o arquivo texto (texto puro, compatível com regex de auditoria)
-    $fStatus    = "ONLINE  "
+    $fStatus    = "ONLINE    "
     $fCpuStr    = "[{0}] {1,3}%" -f $barCpu, $m.Cpu
     $fRamStr    = "[{0}] {1,4:N1}/{2,4:N1} GB ({3,2}%)" -f $barRam, $m.UsedRam, $m.TotalRam, $m.PctRam
     $fDiskStr   = "{0,5:N1} GB liv ({1,2}% us)" -f $m.DiskFree, $m.DiskPct
     $fDiskIOStr = "R: {0} | W: {1}" -f $m.DiskReadStr, $m.DiskWriteStr
     $fNetStr    = "Rx: {0} | Tx: {1}" -f $m.RxStr, $m.TxStr
-    $fLine      = "{0,-8} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr
+    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr
 
     return @{ Console = $cLine; File = $fLine }
 }
@@ -252,7 +291,7 @@ while ($true) {
     $fileLines = [System.Collections.Generic.List[string]]::new()
 
     foreach ($pc in $Computadores) {
-        $m = Get-MachineMetrics -ComputerName $pc
+        $m = Get-MachineMetrics -ComputerName $pc -Cred $Credential
         $prev = if ($prevMetrics.ContainsKey($pc)) { $prevMetrics[$pc] } else { $null }
         $res = Build-Lines $m $prev
         $consoleLines.Add($res.Console)
@@ -265,8 +304,8 @@ while ($true) {
     # 2. Grava bloco no arquivo texto (AAAAMMDD - HHMM - PC Processmonitor.txt)
     $fileBlock = [System.Text.StringBuilder]::new()
     $null = $fileBlock.AppendLine("[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================")
-    $null = $fileBlock.AppendLine("Status   Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)")
-    $null = $fileBlock.AppendLine("------   ----------             ---              ---                          --------               -----------------        --------------")
+    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)")
+    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------")
     foreach ($fl in $fileLines) {
         $null = $fileBlock.AppendLine($fl)
     }
@@ -305,8 +344,8 @@ while ($true) {
 
     # Imprime tabela com cabeçalho, dados e rodapé de status
     $headerBanner = "[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) =============================="
-    $headerCols   = "Status   Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)"
-    $headerDiv    = "------   ----------             ---              ---                          --------               -----------------        --------------"
+    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)"
+    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------"
 
     Write-Host "$cCyan$headerBanner$cReset".PadRight(150)
     Write-Host "$cYellow$headerCols$cReset".PadRight(150)
@@ -317,7 +356,7 @@ while ($true) {
     }
 
     $legenda = "$cGray-------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
-    $infoRodape = "$cGray[$sampleCount amostras] $cYellow▲ Amarelo = Subiu$cReset $cGray|$cReset $cGreen▼ Verde = Desceu$cReset $cGray|$cReset $cWhite■ Branco = Estável$cReset $cGray| Log: $logFileName$cReset"
+    $infoRodape = "$cGray[$sampleCount amostras] $cYellow▲ Amarelo = Subiu$cReset $cGray|$cReset $cGreen▼ Verde = Desceu$cReset $cGray|$cReset $cWhite■ Branco = Estável$cReset $cGray|$cReset $cNoAccess■ Magenta = Sem Acesso$cReset $cGray| Log: $logFileName$cReset"
     Write-Host $legenda.PadRight(150)
     Write-Host $infoRodape.PadRight(150)
 
