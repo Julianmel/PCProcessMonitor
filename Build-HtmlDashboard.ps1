@@ -7,21 +7,47 @@ param(
 )
 
 if ([string]::IsNullOrWhiteSpace($LogFile) -or -not (Test-Path $LogFile)) {
-    $latest = Get-ChildItem -Path $PSScriptRoot -Filter "*Processmonitor*.txt" -Recurse -ErrorAction SilentlyContinue |
-              Sort-Object LastWriteTime -Descending |
-              Select-Object -First 1
+    $searchPaths = @(
+        "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor\Data",
+        "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor",
+        "$PSScriptRoot\Data",
+        $PSScriptRoot
+    )
+    $candidateFiles = foreach ($p in $searchPaths) {
+        if (Test-Path $p) {
+            Get-ChildItem -Path $p -Filter "*Processmonitor*.txt" -ErrorAction SilentlyContinue
+        }
+    }
+    $latest = $candidateFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($latest) {
         $LogFile = $latest.FullName
     } else {
-        Write-Error "Nenhum arquivo de log encontrado em $PSScriptRoot"
+        Write-Error "Nenhum arquivo de log encontrado."
         return
     }
+}
+
+function Parse-MetricNumber([string]$str) {
+    if ([string]::IsNullOrWhiteSpace($str) -or $str -eq 'N/D') { return 0.0 }
+    $clean = $str.Trim()
+    if ($clean -match '^\d{1,3}(,\d{3})+(\.\d+)?$') {
+        $clean = $clean -replace ',', ''
+    } elseif ($clean -match '^\d{1,3}(\.\d{3})+(,\d+)?$') {
+        $clean = ($clean -replace '\.', '') -replace ',', '.'
+    } else {
+        $clean = $clean -replace ',', '.'
+    }
+    $val = 0.0
+    if ([double]::TryParse($clean, [System.Globalization.NumberStyles]::Any, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$val)) {
+        return $val
+    }
+    return 0.0
 }
 
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\,]+)\s*\/\s*(?<ramTotal>[\d\,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $pcsList = @('JFMELGACO3', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
@@ -83,36 +109,24 @@ foreach ($line in $lines) {
         $pc = $matches['pc']
         $isOnline = $line.StartsWith('ONLINE')
         
-        if ($isOnline) {
+        if ($isOnline -and $matches['cpu']) {
             $cpu = [int]$matches['cpu']
             $ramPct = [int]$matches['ramPct']
-            $ramUsed = [double]($matches['ramUsed'] -replace ',', '.')
-            $ramTotal = [double]($matches['ramTotal'] -replace ',', '.')
-            $diskFree = [double]($matches['diskFree'] -replace ',', '.')
+            $ramUsed = Parse-MetricNumber $matches['ramUsed']
+            $ramTotal = Parse-MetricNumber $matches['ramTotal']
+            $diskFree = Parse-MetricNumber $matches['diskFree']
             
-            $ioR = 0.0
-            if ($matches['ioRVal'] -and $matches['ioRVal'] -ne 'N/D') {
-                $ioR = [double]($matches['ioRVal'] -replace ',', '.')
-                if ($matches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
-            }
+            $ioR = Parse-MetricNumber $matches['ioRVal']
+            if ($matches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
             
-            $ioW = 0.0
-            if ($matches['ioWVal'] -and $matches['ioWVal'] -ne 'N/D') {
-                $ioW = [double]($matches['ioWVal'] -replace ',', '.')
-                if ($matches['ioWUnit'] -eq 'MB/s') { $ioW = $ioW * 1024 }
-            }
+            $ioW = Parse-MetricNumber $matches['ioWVal']
+            if ($matches['ioWUnit'] -eq 'MB/s') { $ioW = $ioW * 1024 }
 
-            $rx = 0.0
-            if ($matches['rxVal'] -and $matches['rxVal'] -ne 'N/D') {
-                $rx = [double]($matches['rxVal'] -replace ',', '.')
-                if ($matches['rxUnit'] -eq 'MB/s') { $rx = $rx * 1024 }
-            }
+            $rx = Parse-MetricNumber $matches['rxVal']
+            if ($matches['rxUnit'] -eq 'MB/s') { $rx = $rx * 1024 }
             
-            $tx = 0.0
-            if ($matches['txVal'] -and $matches['txVal'] -ne 'N/D') {
-                $tx = [double]($matches['txVal'] -replace ',', '.')
-                if ($matches['txUnit'] -eq 'MB/s') { $tx = $tx * 1024 }
-            }
+            $tx = Parse-MetricNumber $matches['txVal']
+            if ($matches['txUnit'] -eq 'MB/s') { $tx = $tx * 1024 }
 
             $currentBlockPcs[$pc] = @{
                 cpu      = $cpu
@@ -879,3 +893,12 @@ $html = @"
 $utf8Bom = [System.Text.UTF8Encoding]::new($true)
 [System.IO.File]::WriteAllText($OutputFile, $html, $utf8Bom)
 Write-Host "Dashboard HTML gerado com sucesso em: $OutputFile" -ForegroundColor Green
+
+# Sincroniza com o compartilhamento na rede se acessível
+$netShareDir = "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor"
+$netShareHtml = "$netShareDir\dashboard_desempenho.html"
+if ($OutputFile -ne $netShareHtml -and (Test-Path $netShareDir)) {
+    try {
+        Copy-Item $OutputFile $netShareHtml -Force -ErrorAction SilentlyContinue
+    } catch {}
+}
