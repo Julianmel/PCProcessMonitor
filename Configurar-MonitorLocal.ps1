@@ -5,6 +5,12 @@
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+$logFile = "$PSScriptRoot\setup_log.txt"
+if (-not $PSScriptRoot) { $logFile = "C:\Users\Julian\Dev\PCProcessMonitor\setup_log.txt" }
+
+# Inicia registro de log
+Start-Transcript -Path $logFile -Force -ErrorAction SilentlyContinue | Out-Null
+
 # Auto-elevação para Administrador caso executado sem elevação
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
@@ -20,7 +26,7 @@ Write-Host " Configurando Usuário Monitor e Telemetria (JFMELGACO3)" -Foregroun
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Cria ou atualiza o usuário Monitor
-Write-Host "`n[1/7] Configurando conta de usuário 'Monitor'..." -ForegroundColor Cyan
+Write-Host "`n[1/8] Configurando conta de usuário 'Monitor'..." -ForegroundColor Cyan
 try {
     $existing = Get-LocalUser -Name "Monitor" -ErrorAction SilentlyContinue
     if (-not $existing) {
@@ -36,7 +42,7 @@ try {
 }
 
 # 2. Adiciona aos grupos de telemetria usando SIDs conhecidos (independente do idioma do Windows)
-Write-Host "`n[2/7] Adicionando 'Monitor' aos grupos de monitoramento..." -ForegroundColor Cyan
+Write-Host "`n[2/8] Adicionando 'Monitor' aos grupos de monitoramento..." -ForegroundColor Cyan
 $targetSids = @(
     @{ SID = 'S-1-5-32-558'; Role = 'Performance Monitor Users' },
     @{ SID = 'S-1-5-32-559'; Role = 'Performance Log Users' },
@@ -57,7 +63,7 @@ foreach ($item in $targetSids) {
 }
 
 # 3. Ajusta o perfil da rede Wi-Fi/Ethernet para 'Private' (permite tráfego local seguro)
-Write-Host "`n[3/7] Verificando perfil de rede..." -ForegroundColor Cyan
+Write-Host "`n[3/8] Verificando perfil de rede..." -ForegroundColor Cyan
 try {
     Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq 'Public' -and ($_.Name -like '*TECHNOFLORA*' -or $_.InterfaceAlias -match 'Wi-Fi|Ethernet') } | ForEach-Object {
         Set-NetConnectionProfile -InputObject $_ -NetworkCategory Private -ErrorAction SilentlyContinue
@@ -68,7 +74,7 @@ try {
 }
 
 # 4. Habilita e configura WinRM
-Write-Host "`n[4/7] Configurando serviço WinRM e PowerShell Remoting..." -ForegroundColor Cyan
+Write-Host "`n[4/8] Configurando serviço WinRM e PowerShell Remoting..." -ForegroundColor Cyan
 try {
     Start-Service WinRM -ErrorAction SilentlyContinue
     Set-Service WinRM -StartupType Automatic -ErrorAction SilentlyContinue
@@ -84,38 +90,48 @@ try {
     Write-Warning "      Erro ao configurar WinRM: $($_.Exception.Message)"
 }
 
-# 5. Concede permissão Remote Enable no WMI (root\cimv2)
-Write-Host "`n[5/7] Concedendo permissões remotas WMI (root\cimv2)..." -ForegroundColor Cyan
-try {
-    $invClass = New-Object System.Management.ManagementClass("root\cimv2:__SystemSecurity")
-    $outParams = $invClass.InvokeMethod("GetSD", $null, $null)
-    $binarySD = $outParams["SD"]
+# 5. Concede permissão Remote Enable no WMI (root e root\cimv2)
+Write-Host "`n[5/8] Concedendo permissões remotas WMI (root e root\cimv2)..." -ForegroundColor Cyan
+$namespaces = @("root", "root\cimv2")
+foreach ($ns in $namespaces) {
+    try {
+        $invClass = New-Object System.Management.ManagementClass("$ns`:::__SystemSecurity")
+        $outParams = $invClass.InvokeMethod("GetSD", $null, $null)
+        $binarySD = $outParams["SD"]
 
-    $sd = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $binarySD, 0)
-    $sid = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
+        $sd = New-Object System.Security.AccessControl.CommonSecurityDescriptor($false, $false, $binarySD, 0)
+        $sid = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
 
-    # 131107 = Enable (1) + Method Execute (2) + Remote Access (32) + Read Perm (131072)
-    $sd.DiscretionaryAcl.AddAccess(
-        [System.Security.AccessControl.AccessControlType]::Allow,
-        $sid,
-        131107,
-        [System.Security.AccessControl.InheritanceFlags]::None,
-        [System.Security.AccessControl.PropagationFlags]::None
-    )
+        # Remove ACEs anteriores do Monitor para evitar duplicatas
+        for ($i = $sd.DiscretionaryAcl.Count - 1; $i -ge 0; $i--) {
+            if ($sd.DiscretionaryAcl[$i].SecurityIdentifier -eq $sid) {
+                $sd.DiscretionaryAcl.RemoveAccessSpecific($sd.DiscretionaryAcl[$i])
+            }
+        }
 
-    $newBinarySD = New-Object byte[] ($sd.BinaryLength)
-    $sd.GetBinaryForm($newBinarySD, 0)
+        # 131107 = Enable (1) + Method Execute (2) + Remote Access (32) + Read Perm (131072)
+        $sd.DiscretionaryAcl.AddAccess(
+            [System.Security.AccessControl.AccessControlType]::Allow,
+            $sid,
+            131107,
+            [System.Security.AccessControl.InheritanceFlags]::None,
+            [System.Security.AccessControl.PropagationFlags]::None
+        )
 
-    $inParams = $invClass.GetMethodParameters("SetSD")
-    $inParams.Properties["SD"].Value = $newBinarySD
-    $res = $invClass.InvokeMethod("SetSD", $inParams, $null)
-    Write-Host "      Permissão WMI concedida com sucesso! (ReturnCode: $($res['ReturnValue']))" -ForegroundColor Green
-} catch {
-    Write-Warning "      Erro ao ajustar permissão WMI: $($_.Exception.Message)"
+        $newBinarySD = New-Object byte[] ($sd.BinaryLength)
+        $sd.GetBinaryForm($newBinarySD, 0)
+
+        $inParams = $invClass.GetMethodParameters("SetSD")
+        $inParams.Properties["SD"].Value = $newBinarySD
+        $res = $invClass.InvokeMethod("SetSD", $inParams, $null)
+        Write-Host "      [OK] Permissão WMI concedida em '$ns' (ReturnCode: $($res['ReturnValue']))" -ForegroundColor Green
+    } catch {
+        Write-Warning "      [AVISO] Erro ao ajustar WMI em '$ns': $($_.Exception.Message)"
+    }
 }
 
 # 6. Registra política LocalAccountTokenFilterPolicy
-Write-Host "`n[6/7] Ajustando LocalAccountTokenFilterPolicy no Registro..." -ForegroundColor Cyan
+Write-Host "`n[6/8] Ajustando LocalAccountTokenFilterPolicy no Registro..." -ForegroundColor Cyan
 try {
     $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
     New-ItemProperty -Path $regPath -Name "LocalAccountTokenFilterPolicy" -Value 1 -PropertyType DWord -Force | Out-Null
@@ -125,7 +141,7 @@ try {
 }
 
 # 7. Liberando regras do Firewall do Windows para todos os perfis
-Write-Host "`n[7/7] Configurando regras de Firewall do Windows (para todos os perfis)..." -ForegroundColor Cyan
+Write-Host "`n[7/8] Configurando regras de Firewall do Windows (para todos os perfis)..." -ForegroundColor Cyan
 try {
     # 7.1 WinRM HTTP (5985)
     netsh advfirewall firewall delete rule name="PCProcessMonitor-WinRM-In" | Out-Null
@@ -148,11 +164,23 @@ try {
     Write-Warning "      Erro ao configurar Firewall: $($_.Exception.Message)"
 }
 
+# 8. Reinicia os serviços para limpar cache de segurança
+Write-Host "`n[8/8] Reiniciando serviços Winmgmt e WinRM para atualizar cache de segurança..." -ForegroundColor Cyan
+try {
+    Restart-Service winmgmt -Force -ErrorAction SilentlyContinue
+    Restart-Service WinRM -Force -ErrorAction SilentlyContinue
+    Write-Host "      Serviços reiniciados com sucesso! Caches renovados." -ForegroundColor Green
+} catch {
+    Write-Warning "      Aviso ao reiniciar serviços: $($_.Exception.Message)"
+}
+
 Write-Host "`n============================================================" -ForegroundColor Cyan
 Write-Host " CONFIGURAÇÃO CONCLUÍDA COM SUCESSO!" -ForegroundColor Green
 Write-Host " O JFMELGACO3 agora permite conexões de telemetria do Monitor." -ForegroundColor Green
 Write-Host " O script no JFMELGACO-1 passará a mostrar ONLINE automaticamente." -ForegroundColor White
 Write-Host "============================================================`n" -ForegroundColor Cyan
+
+Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
 
 Write-Host "Pressione qualquer tecla para fechar..." -ForegroundColor Yellow
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
