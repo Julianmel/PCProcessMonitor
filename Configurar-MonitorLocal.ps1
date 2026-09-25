@@ -95,7 +95,7 @@ Write-Host "`n[5/8] Concedendo permissões remotas WMI (root e root\cimv2)..." -
 $namespaces = @("root", "root\cimv2")
 foreach ($ns in $namespaces) {
     try {
-        $invClass = New-Object System.Management.ManagementClass("$ns`:::__SystemSecurity")
+        $invClass = New-Object System.Management.ManagementClass("$($ns):__SystemSecurity")
         $outParams = $invClass.InvokeMethod("GetSD", $null, $null)
         $binarySD = $outParams["SD"]
 
