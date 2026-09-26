@@ -332,16 +332,16 @@ $html = @"
     <!-- CARDS DOS COMPUTADORES (AMPLIADOS, ENRIQUECIDOS E COM LEGENDA MESTRE) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 my-2 shrink-0">
         <!-- Card 1: JFMELGACO3 (AZUL) -->
-        <div class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-blue-500"></div>
+        <div id="cardHost_JFMELGACO3" onclick="toggleMachineVisibility('JFMELGACO3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
+            <div id="cardTopBar_JFMELGACO3" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
-                    <span class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block"></span>
-                    <strong class="text-white text-xs tracking-wide">JFMELGACO3</strong>
+                    <span id="cardDot_JFMELGACO3" class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block transition-all"></span>
+                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO3">JFMELGACO3</strong>
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">$($pcRole['JFMELGACO3'])</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40">Linha Azul</span>
+                    <span id="visBadge_JFMELGACO3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 transition-all">Linha Azul &#10003;</span>
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
@@ -373,16 +373,16 @@ $html = @"
         </div>
 
         <!-- Card 2: JFMELGACO-1 (VERDE) -->
-        <div class="bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+        <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
+            <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
-                    <span class="h-3.5 w-3.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)] inline-block"></span>
-                    <strong class="text-white text-xs tracking-wide">JFMELGACO-1</strong>
+                    <span id="cardDot_JFMELGACO-1" class="h-3.5 w-3.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)] inline-block transition-all"></span>
+                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">$($pcRole['JFMELGACO-1'])</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Linha Verde</span>
+                    <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 transition-all">Linha Verde &#10003;</span>
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
@@ -414,16 +414,16 @@ $html = @"
         </div>
 
         <!-- Card 3: JFMELGACO-2 (AMARELO) -->
-        <div class="bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+        <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
+            <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
-                    <span class="h-3.5 w-3.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)] inline-block"></span>
-                    <strong class="text-white text-xs tracking-wide">JFMELGACO-2</strong>
+                    <span id="cardDot_JFMELGACO-2" class="h-3.5 w-3.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)] inline-block transition-all"></span>
+                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">$($pcRole['JFMELGACO-2'])</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">Linha Amarela</span>
+                    <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition-all">Linha Amarela &#10003;</span>
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
@@ -455,16 +455,16 @@ $html = @"
         </div>
 
         <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
-        <div class="bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
-            <div class="absolute top-0 left-0 right-0 h-1 bg-red-500"></div>
+        <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
+            <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
-                    <span class="h-3.5 w-3.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)] inline-block"></span>
-                    <strong class="text-white text-xs tracking-wide">JFMELGACO-3</strong>
+                    <span id="cardDot_JFMELGACO-3" class="h-3.5 w-3.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)] inline-block transition-all"></span>
+                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase">$($pcRole['JFMELGACO-3'])</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40">Linha Vermelha</span>
+                    <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 transition-all">Linha Vermelha &#10003;</span>
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
@@ -729,6 +729,91 @@ $html = @"
             }
         };
 
+        // ----------------------------------------------------
+        // CONTROLE INTERATIVO DE VISIBILIDADE DAS MÁQUINAS (CLICK NOS CARDS)
+        // ----------------------------------------------------
+        let machineVisibility = {};
+        try {
+            const saved = localStorage.getItem('monitorMachineVisibility');
+            if (saved) machineVisibility = JSON.parse(saved);
+        } catch(e) {
+            machineVisibility = {};
+        }
+
+        function isMachineVisible(pc) {
+            return machineVisibility[pc] !== false;
+        }
+
+        const pcCardConfig = {
+            'JFMELGACO3': {
+                colorName: 'Linha Azul',
+                colorBar: 'bg-blue-500',
+                dotClass: 'bg-blue-500 border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)]',
+                badgeActive: 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+            },
+            'JFMELGACO-1': {
+                colorName: 'Linha Verde',
+                colorBar: 'bg-emerald-500',
+                dotClass: 'bg-emerald-500 border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)]',
+                badgeActive: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+            },
+            'JFMELGACO-2': {
+                colorName: 'Linha Amarela',
+                colorBar: 'bg-amber-500',
+                dotClass: 'bg-amber-500 border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]',
+                badgeActive: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            },
+            'JFMELGACO-3': {
+                colorName: 'Linha Vermelha',
+                colorBar: 'bg-red-500',
+                dotClass: 'bg-red-500 border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)]',
+                badgeActive: 'bg-red-500/20 text-red-300 border-red-500/40'
+            }
+        };
+
+        function updateCardVisualState(pc) {
+            const card = document.getElementById('cardHost_' + pc);
+            const topBar = document.getElementById('cardTopBar_' + pc);
+            const badge = document.getElementById('visBadge_' + pc);
+            const dot = document.getElementById('cardDot_' + pc);
+            const name = document.getElementById('cardName_' + pc);
+            if (!card || !topBar || !badge) return;
+
+            const visible = isMachineVisible(pc);
+            const cfg = pcCardConfig[pc];
+
+            if (visible) {
+                card.classList.remove('opacity-40', 'grayscale-[0.8]', 'border-dashed');
+                card.classList.add('opacity-100');
+                card.title = 'Clique para ocultar ' + pc + ' nos gráficos';
+                if (name) name.classList.remove('line-through', 'text-slate-400');
+                if (cfg) {
+                    topBar.className = 'absolute top-0 left-0 right-0 h-1 ' + cfg.colorBar + ' transition-all';
+                    if (dot) dot.className = 'h-3.5 w-3.5 rounded-full inline-block transition-all border ' + cfg.dotClass;
+                    badge.className = 'text-[9px] px-1.5 py-0.2 rounded font-semibold transition-all border ' + cfg.badgeActive;
+                    badge.innerHTML = cfg.colorName + ' &#10003;';
+                }
+            } else {
+                card.classList.remove('opacity-100');
+                card.classList.add('opacity-40', 'grayscale-[0.8]', 'border-dashed');
+                card.title = 'Clique para exibir ' + pc + ' nos gráficos';
+                if (name) name.classList.add('line-through', 'text-slate-400');
+                topBar.className = 'absolute top-0 left-0 right-0 h-1 bg-slate-600 transition-all';
+                if (dot) dot.className = 'h-3.5 w-3.5 rounded-full inline-block transition-all border bg-slate-600 border-slate-500';
+                badge.className = 'text-[9px] px-1.5 py-0.2 rounded font-semibold transition-all border bg-slate-800/80 text-rose-300/80 border-rose-500/40 line-through';
+                badge.innerHTML = '&#10005; Oculto';
+            }
+        }
+
+        function toggleMachineVisibility(pc) {
+            machineVisibility[pc] = !isMachineVisible(pc);
+            try {
+                localStorage.setItem('monitorMachineVisibility', JSON.stringify(machineVisibility));
+            } catch(e) {}
+            updateCardVisualState(pc);
+            refreshChartsWindow('none');
+        }
+
         const initialLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
         const charts = {};
 
@@ -744,7 +829,8 @@ $html = @"
                     data: getAlignedDataset(pc, 'cpu'),
                     borderColor: colors[pc].border,
                     backgroundColor: colors[pc].bg,
-                    fill: false
+                    fill: false,
+                    hidden: !isMachineVisible(pc)
                 }))
             },
             options: {
@@ -768,7 +854,8 @@ $html = @"
                     data: getAlignedDataset(pc, 'ramPct'),
                     borderColor: colors[pc].border,
                     backgroundColor: colors[pc].bg,
-                    fill: false
+                    fill: false,
+                    hidden: !isMachineVisible(pc)
                 }))
             },
             options: {
@@ -792,7 +879,8 @@ $html = @"
                     data: getAlignedDataset(pc, 'rx'),
                     borderColor: colors[pc].border,
                     backgroundColor: colors[pc].bg,
-                    fill: true
+                    fill: true,
+                    hidden: !isMachineVisible(pc)
                 }))
             },
             options: {
@@ -816,7 +904,8 @@ $html = @"
                     data: getAlignedDataset(pc, 'tx'),
                     borderColor: colors[pc].border,
                     backgroundColor: colors[pc].bg,
-                    fill: true
+                    fill: true,
+                    hidden: !isMachineVisible(pc)
                 }))
             },
             options: {
@@ -855,11 +944,15 @@ $html = @"
                 charts[k].data.labels = finalLabels;
                 charts[k].data.datasets.forEach(ds => {
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
+                    ds.hidden = !isMachineVisible(ds.pcKey);
                 });
                 charts[k].update(mode);
             });
             if (charts.disk) {
-                charts.disk.data.datasets[0].data = Object.keys(rawData).map(pc => rawData[pc].stats ? rawData[pc].stats.diskFree : 0);
+                const visiblePcs = Object.keys(rawData).filter(pc => isMachineVisible(pc));
+                charts.disk.data.labels = visiblePcs;
+                charts.disk.data.datasets[0].data = visiblePcs.map(pc => rawData[pc].stats ? rawData[pc].stats.diskFree : 0);
+                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => colors[pc] ? colors[pc].border : '#3b82f6');
                 charts.disk.update(mode);
             }
         }
@@ -879,7 +972,8 @@ $html = @"
                     data: getAlignedDataset(pc, 'ioW'),
                     borderColor: colors[pc].border,
                     backgroundColor: colors[pc].bg,
-                    fill: false
+                    fill: false,
+                    hidden: !isMachineVisible(pc)
                 }))
             },
             options: {
@@ -892,15 +986,16 @@ $html = @"
         });
 
         // 6. DISK BAR CHART
+        const initialVisiblePcs = Object.keys(rawData).filter(pc => isMachineVisible(pc));
         charts.disk = new Chart(document.getElementById('diskChart'), {
             type: 'bar',
             data: {
-                labels: Object.keys(rawData),
+                labels: initialVisiblePcs,
                 datasets: [
                     {
                         label: 'Espaço Livre (GB)',
-                        data: Object.keys(rawData).map(pc => rawData[pc].stats.diskFree),
-                        backgroundColor: ['#3b82f6', '#10b981', '#eab308', '#ef4444'],
+                        data: initialVisiblePcs.map(pc => rawData[pc].stats ? rawData[pc].stats.diskFree : 0),
+                        backgroundColor: initialVisiblePcs.map(pc => colors[pc] ? colors[pc].border : '#3b82f6'),
                         borderRadius: 6
                     }
                 ]
@@ -918,6 +1013,9 @@ $html = @"
                 }
             }
         });
+
+        // Aplica o estado visual inicial aos cards superiores dos computadores
+        Object.keys(rawData).forEach(pc => updateCardVisualState(pc));
 
         // 7. CONTROLES DO MODAL E DO MODO DE TELA
         function toggleSummaryModal(show) {
