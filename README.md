@@ -1,3 +1,6 @@
+<img width="1249" height="636" alt="Capture" src="https://github.com/user-attachments/assets/72dfaee7-e645-449b-a2fc-d5d7c7a2a387" />
+
+
 # 🖥️ PCProcessMonitor
 
 > **Sistema leve e autônomo de monitoramento de infraestrutura local em tempo real, com telemetria via PowerShell/WMI e Dashboard visual estilo NOC (Network Operations Center).**
