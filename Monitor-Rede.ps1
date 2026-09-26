@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$MaxIterations = 0,
     [int]$IntervalSeconds = 5,
     [pscredential]$Credential = $null

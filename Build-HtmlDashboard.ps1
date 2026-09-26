@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # GERADOR DE DASHBOARD HTML - JFMELGACO (v1.1.0)
 # ============================================================
 param(
@@ -205,6 +205,40 @@ $startTime = $timestamps[0]
 $endTime = $timestamps[-1]
 $totalPoints = $timestamps.Count
 
+# Identificar dinamicamente qual maquina e o host Local (a partir dos logs gravados ou do computador atual)
+$detectedLocalHost = $null
+foreach ($line in $lines) {
+    if ($line -match '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)\s+\(Local\)') {
+        $detectedLocalHost = $matches['pc']
+        break
+    }
+}
+if (-not $detectedLocalHost -and $env:COMPUTERNAME) {
+    $matchedHost = $pcsList | Where-Object { $_ -eq $env:COMPUTERNAME }
+    if ($matchedHost) { $detectedLocalHost = $matchedHost }
+}
+if (-not $detectedLocalHost) {
+    $detectedLocalHost = 'JFMELGACO3'
+}
+
+$pcRole = @{}
+$pcDisplay = @{}
+foreach ($pc in $pcsList) {
+    if ($pc.ToUpper() -eq $detectedLocalHost.ToUpper()) {
+        $pcRole[$pc] = "LOCAL"
+        $pcDisplay[$pc] = "$pc (Local)"
+    } else {
+        switch ($pc) {
+            'JFMELGACO-1' { $pcRole[$pc] = "SRV 1";  $pcDisplay[$pc] = $pc }
+            'JFMELGACO-2' { $pcRole[$pc] = "NOTE 2"; $pcDisplay[$pc] = $pc }
+            'JFMELGACO-3' { $pcRole[$pc] = "NOTE 3"; $pcDisplay[$pc] = $pc }
+            'JFMELGACO3'   { $pcRole[$pc] = "NOTE 0"; $pcDisplay[$pc] = $pc }
+            default        { $pcRole[$pc] = "REMOTO"; $pcDisplay[$pc] = $pc }
+        }
+    }
+}
+Write-Host "Host Local detectado: $detectedLocalHost (Role: $($pcRole[$detectedLocalHost]))" -ForegroundColor Yellow
+
 # Template HTML do Dashboard
 $html = @"
 <!DOCTYPE html>
@@ -261,7 +295,7 @@ $html = @"
             <!-- Seletor Task Manager -->
             <div class="flex items-center gap-1 bg-slate-900/90 px-1 py-0.5 rounded-lg border border-slate-700/60">
                 <button onclick="setWindowMode(60)" id="btnWin_60" class="text-[11px] px-2.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer">
-                    ⚡ 60 (TaskMgr)
+                    &#9889; 60 (TaskMgr)
                 </button>
                 <button onclick="setWindowMode(120)" id="btnWin_120" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
                     120
@@ -279,32 +313,32 @@ $html = @"
                 <span class="text-slate-400 text-[11px]">Auto:</span>
                 <span id="countdownEl" class="text-emerald-400 font-bold text-[11px]">5s</span>
                 <button id="pauseBtn" onclick="toggleAutoRefresh()" class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
-                    ⏸
+                    &#9208;
                 </button>
             </div>
 
             <!-- Botão Tabela de Resumo Modal -->
             <button onclick="toggleSummaryModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-medium transition cursor-pointer flex items-center gap-1">
-                📋 Tabela Resumo
+                &#128203; Tabela Resumo
             </button>
 
             <!-- Alternador Tela Única / Rolagem -->
-            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Única e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
-                🖥️ Tela Única
+            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela &Uacute;nica e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
+                &#128421;&#xFE0F; Tela &Uacute;nica
             </button>
         </div>
     </header>
 
     <!-- CARDS DOS COMPUTADORES (AMPLIADOS, ENRIQUECIDOS E COM LEGENDA MESTRE) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 my-2 shrink-0">
-        <!-- Card 1: JFMELGACO3 (Local - AZUL) -->
+        <!-- Card 1: JFMELGACO3 (AZUL) -->
         <div class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
             <div class="absolute top-0 left-0 right-0 h-1 bg-blue-500"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
                     <span class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block"></span>
                     <strong class="text-white text-xs tracking-wide">JFMELGACO3</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">Local</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">$($pcRole['JFMELGACO3'])</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40">Linha Azul</span>
@@ -338,14 +372,14 @@ $html = @"
             </div>
         </div>
 
-        <!-- Card 2: JFMELGACO-1 (SRV 1 - VERDE) -->
+        <!-- Card 2: JFMELGACO-1 (VERDE) -->
         <div class="bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
             <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
                     <span class="h-3.5 w-3.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)] inline-block"></span>
                     <strong class="text-white text-xs tracking-wide">JFMELGACO-1</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">SRV 1</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">$($pcRole['JFMELGACO-1'])</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Linha Verde</span>
@@ -379,14 +413,14 @@ $html = @"
             </div>
         </div>
 
-        <!-- Card 3: JFMELGACO-2 (NOTE 2 - AMARELO) -->
+        <!-- Card 3: JFMELGACO-2 (AMARELO) -->
         <div class="bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
             <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
                     <span class="h-3.5 w-3.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)] inline-block"></span>
                     <strong class="text-white text-xs tracking-wide">JFMELGACO-2</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">NOTE 2</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">$($pcRole['JFMELGACO-2'])</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">Linha Amarela</span>
@@ -420,14 +454,14 @@ $html = @"
             </div>
         </div>
 
-        <!-- Card 4: JFMELGACO-3 (NOTE 3 - VERMELHO) -->
+        <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
         <div class="bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
             <div class="absolute top-0 left-0 right-0 h-1 bg-red-500"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
                     <span class="h-3.5 w-3.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)] inline-block"></span>
                     <strong class="text-white text-xs tracking-wide">JFMELGACO-3</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase">NOTE 3</span>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase">$($pcRole['JFMELGACO-3'])</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40">Linha Vermelha</span>
@@ -472,7 +506,7 @@ $html = @"
                     <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
                     Uso de CPU (%) &larr; Task Manager
                 </span>
-                <span class="text-[10px] text-slate-400">4 máquinas</span>
+                <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
             </div>
             <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
                 <canvas id="cpuChart"></canvas>
@@ -484,9 +518,9 @@ $html = @"
             <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    Uso de Memória RAM (%) &larr; Task Manager
+                    Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
                 </span>
-                <span class="text-[10px] text-slate-400">4 máquinas</span>
+                <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
             </div>
             <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
                 <canvas id="ramChart"></canvas>
@@ -498,7 +532,7 @@ $html = @"
             <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                    Rede: Recepção / Download (Rx em KB/s)
+                    Rede: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
                 </span>
                 <span class="text-[10px] text-slate-400">Tempo Real</span>
             </div>
@@ -512,7 +546,7 @@ $html = @"
             <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                    <span id="titleBottomRight">Rede: Transmissão / Upload (Tx)</span>
+                    <span id="titleBottomRight">Rede: Transmiss&atilde;o / Upload (Tx)</span>
                 </span>
                 <div class="flex items-center gap-1 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/60">
                     <button onclick="switchBottomRightView('tx')" id="btnTabTx" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer">
@@ -546,11 +580,11 @@ $html = @"
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between p-4 border-b border-borderbg bg-slate-800/40">
                 <div class="flex items-center gap-2">
-                    <span class="text-base">📋</span>
-                    <h2 class="text-sm font-bold text-white">Tabela de Resumo Estatístico Consolidado</h2>
+                    <span class="text-base">&#128203;</span>
+                    <h2 class="text-sm font-bold text-white">Tabela de Resumo Estat&iacute;stico Consolidado</h2>
                 </div>
                 <button onclick="toggleSummaryModal(false)" class="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs">
-                    ✕ Fechar
+                    &times; Fechar
                 </button>
             </div>
             <div class="p-4 overflow-x-auto flex-1">
@@ -558,10 +592,10 @@ $html = @"
                     <thead class="text-[11px] uppercase bg-slate-800 text-slate-400 border-b border-borderbg">
                         <tr>
                             <th class="py-2.5 px-3">Computador</th>
-                            <th class="py-2.5 px-3">CPU Média</th>
+                            <th class="py-2.5 px-3">CPU M&eacute;dia</th>
                             <th class="py-2.5 px-3">CPU Pico</th>
-                            <th class="py-2.5 px-3">RAM Média</th>
-                            <th class="py-2.5 px-3">RAM Máx</th>
+                            <th class="py-2.5 px-3">RAM M&eacute;dia</th>
+                            <th class="py-2.5 px-3">RAM M&aacute;x</th>
                             <th class="py-2.5 px-3">Pico I/O Disco (R / W)</th>
                             <th class="py-2.5 px-3">Pico Rx</th>
                             <th class="py-2.5 px-3">Pico Tx</th>
@@ -570,7 +604,7 @@ $html = @"
                     </thead>
                     <tbody class="divide-y divide-borderbg text-xs">
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-blue-400">JFMELGACO3 (Local)</td>
+                            <td class="py-2.5 px-3 font-semibold text-blue-400">$($pcDisplay['JFMELGACO3'])</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO3_cpuAvg">$($stats['JFMELGACO3'].avgCpu)%</td>
                             <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO3_cpuMax">$($stats['JFMELGACO3'].maxCpu)%</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO3_ramAvg">$($stats['JFMELGACO3'].avgRam)%</td>
@@ -581,7 +615,7 @@ $html = @"
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-emerald-400">JFMELGACO-1</td>
+                            <td class="py-2.5 px-3 font-semibold text-emerald-400">$($pcDisplay['JFMELGACO-1'])</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">$($stats['JFMELGACO-1'].avgCpu)%</td>
                             <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-1_cpuMax">$($stats['JFMELGACO-1'].maxCpu)%</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">$($stats['JFMELGACO-1'].avgRam)%</td>
@@ -592,7 +626,7 @@ $html = @"
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-amber-400">JFMELGACO-2</td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-400">$($pcDisplay['JFMELGACO-2'])</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">$($stats['JFMELGACO-2'].avgCpu)%</td>
                             <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-2_cpuMax">$($stats['JFMELGACO-2'].maxCpu)%</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">$($stats['JFMELGACO-2'].avgRam)%</td>
@@ -603,7 +637,7 @@ $html = @"
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-red-400">JFMELGACO-3</td>
+                            <td class="py-2.5 px-3 font-semibold text-red-400">$($pcDisplay['JFMELGACO-3'])</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">$($stats['JFMELGACO-3'].avgCpu)%</td>
                             <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">$($stats['JFMELGACO-3'].maxCpu)%</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">$($stats['JFMELGACO-3'].avgRam)%</td>
@@ -617,7 +651,7 @@ $html = @"
                 </table>
             </div>
             <div class="p-3 border-t border-borderbg text-center text-slate-500 text-[11px] bg-slate-800/20">
-                Pressione ESC ou clique fora para fechar | Relatório gerado pela IA Antigravity
+                Pressione ESC ou clique fora para fechar | Relat&oacute;rio gerado pela IA Antigravity
             </div>
         </div>
     </div>
@@ -927,17 +961,17 @@ $html = @"
             if (view === 'disk') {
                 wrapDisk.classList.remove('hidden');
                 btnDisk.className = activeBtn;
-                if (title) title.innerText = 'Armazenamento: Espaço Livre em Disco C: (GB)';
+                if (title) title.innerHTML = 'Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)';
                 if (charts.disk) charts.disk.resize();
             } else if (view === 'io') {
                 wrapIo.classList.remove('hidden');
                 btnIo.className = activeBtn;
-                if (title) title.innerText = 'Disco C: Taxa de I/O Escrita (KB/s)';
+                if (title) title.innerHTML = 'Disco C: Taxa de I/O Escrita (KB/s)';
                 if (charts.io) charts.io.resize();
             } else {
                 wrapTx.classList.remove('hidden');
                 btnTx.className = activeBtn;
-                if (title) title.innerText = 'Rede: Transmissão / Upload (Tx em KB/s)';
+                if (title) title.innerHTML = 'Rede: Transmiss&atilde;o / Upload (Tx em KB/s)';
                 if (charts.tx) charts.tx.resize();
             }
         }
@@ -960,7 +994,7 @@ $html = @"
                     w.classList.remove('min-h-[300px]');
                 });
                 if (btn) {
-                    btn.innerHTML = '🖥️ Tela Única';
+                    btn.innerHTML = '&#128421;&#xFE0F; Tela &Uacute;nica';
                     btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer transition';
                 }
             } else {
@@ -973,7 +1007,7 @@ $html = @"
                     w.classList.add('min-h-[300px]');
                 });
                 if (btn) {
-                    btn.innerHTML = '📜 Modo Rolagem (Ativo)';
+                    btn.innerHTML = '&#128220; Modo Rolagem (Ativo)';
                     btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/25 hover:bg-indigo-500/35 text-indigo-300 border border-indigo-500/50 font-semibold cursor-pointer transition shadow-sm';
                 }
             }
@@ -1096,7 +1130,7 @@ $html = @"
             autoRefreshActive = !autoRefreshActive;
             const btn = document.getElementById('pauseBtn');
             if (btn) {
-                btn.innerText = autoRefreshActive ? '⏸' : '▶';
+                btn.innerHTML = autoRefreshActive ? '&#9208;' : '&#9654;';
                 btn.className = autoRefreshActive 
                     ? 'ml-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer font-medium'
                     : 'ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition cursor-pointer font-semibold';
