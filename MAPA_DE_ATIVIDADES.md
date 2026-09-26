@@ -1,4 +1,4 @@
-﻿# 🗺️ Mapa de Atividades - PCProcessMonitor
+# 🗺️ Mapa de Atividades - PCProcessMonitor
 
 **Projeto:** PCProcessMonitor (Monitor de Infraestrutura Local & Dashboard NOC)  
 **Data de Referência:** 25/09/2026  
@@ -18,7 +18,7 @@
 | **Tempo Efetivo de Desenvolvimento/Diagnóstico:** | ~6h 13min |
 | **Sessões de Atividades Principais:** | 7 blocos estruturados |
 | **Total de Commits Realizados:** | 22 commits |
-| **Versões Lançadas:** | v1.0.0, v1.0.1, v1.0.2 |
+| **Versões Lançadas:** | v1.0.0, v1.0.1, v1.0.2, v1.1.0 |
 | **Status Final do Sistema:** | 100% Operacional (4/4 nós ativos com usuário restrito + Dashboard com streaming em tempo real sem F5) |
 
 ---
@@ -156,6 +156,30 @@
   * Adição de pulso suave no indicador visual ciano (`livePulseDot`) a cada ciclo de atualização.
   * Sincronização automática de `dashboard_desempenho.html` e `dashboard_data.js` para a pasta de produção `V:\Documents\PCProcessMonitor`.
   * Atualização do `.gitignore` para omitir dados de telemetria transitórios (Commits `70643a6` e `d50f236`).
+
+---
+
+### [Atividade 8] Evolução de UI/UX, Estrutura do Dashboard e Lançamento da Release v1.1.0 (Issues #12 a #17)
+* **Data:** 26/09/2026
+* **Hora Inicial:** 18:25
+* **Hora Final:** 19:25
+* **Tempo Gasto:** 1 hora (60 minutos)
+* **Questionamento / Demanda:**
+  * Implementação sequencial de 6 solicitações de evolução visual e funcional do Dashboard no GitHub Projects (View 6):
+    1. Diminuir tamanho dos gráficos (Issue #12).
+    2. Aumentar os quadros de dados dos computadores (Issue #13).
+    3. Centralizar nos quadros a única legenda de cores (Issue #14).
+    4. Padronizar cores das linhas para Vermelho, Amarelo, Verde e Azul (Issue #15).
+    5. Corrigir o modo de rolagem que não mudava nada (Issue #16).
+    6. Adicionar opção de grade temporal de 5 horas / 300 amostras (Issue #17).
+* **Atividades Realizadas:**
+  * Redução da altura dos contêineres de gráficos de 320px para ~205px em tela única (`p-2`), otimizando o aproveitamento vertical.
+  * Reformulação dos quadros superiores com cards enriquecidos e mini-boxes individuais para CPU, RAM, Disco C:, I/O e Rede.
+  * Desativação de legendas repetitivas nos gráficos (`legend: { display: false }`) e transformação dos cards superiores em legenda mestre oficial com swatches e badges (`Linha Azul`, `Linha Verde`, `Linha Amarela`, `Linha Vermelha`).
+  * Padronização cromática em todo o painel: Azul (`JFMELGACO3`), Verde (`JFMELGACO-1`), Amarelo (`JFMELGACO-2`) e Vermelho (`JFMELGACO-3`).
+  * Correção e diferenciação real do Modo Rolagem (`310px` de altura nos gráficos com scroll vertical livre) versus Tela Única (`100vh` sem scrollbar), com indicador de status ativo.
+  * Criação do filtro temporal `5h (300)` com persistência no `localStorage`.
+  * Lançamento oficial da **Release v1.1.0** no GitHub e espelhamento em produção.
 
 ---
 

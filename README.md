@@ -7,7 +7,7 @@
 
 > **Sistema leve e autônomo de monitoramento de infraestrutura local em tempo real, com telemetria via PowerShell/WMI e Dashboard visual estilo NOC (Network Operations Center).**
 
-![Versão](https://img.shields.io/badge/Versão-1.0.2-brightgreen)
+![Versão](https://img.shields.io/badge/Versão-1.1.0-brightgreen)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-blue?logo=powershell)
 ![Interface](https://img.shields.io/badge/UI-TailwindCSS%20%2B%20Chart.js-38B2AC?logo=tailwind-css)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows%2010%20%2F%2011-0078D6?logo=windows)
@@ -170,6 +170,19 @@ PCProcessMonitor/
 ---
 
 ## 📜 Histórico de Versões
+
+### [v1.1.0] - 2026-09-26
+- **Solução das ISSUES #12 a #17:** Evolução completa de UI/UX e controle operacional do Dashboard Web de Telemetria (NOC):
+  - **Gráficos Compactos e Equilibrados (#12):** Redução da altura dos contêineres de gráficos para ~205px em tela única e espaçamentos otimizados (`p-2`), liberando espaço vertical e acabando com a sensação de gráficos desproporcionalmente gigantes.
+  - **Quadros Superiores Ampliados e Estruturados (#13):** Substituição da barra compacta de texto por 4 cards de telemetria modernos e enriquecidos, com cabeçalhos de status e mini-boxes dedicados para **CPU**, **RAM**, **Disco C:**, **I/O de Disco** e **Rede (Tx/Rx)**.
+  - **Legenda Mestre Centralizada nos Cards (#14):** Remoção de legendas individuais repetitivas dentro de cada gráfico (`legend: { display: false }`) e transformação dos quadros superiores na legenda mestre oficial com swatches luminosos e identificadores claros (`Linha Azul`, `Linha Verde`, `Linha Amarela`, `Linha Vermelha`).
+  - **Padronização Cromática Harmonizada (#15):** Adoção estrita da paleta das 4 cores fundamentais para cada nó em todas as camadas (gráficos de linha, gráfico de barras do Disco C:, tabela de resumo estatístico e cards):
+    - 🔵 **Azul (`#3b82f6`):** `JFMELGACO3` (Local)
+    - 🟢 **Verde (`#10b981`):** `JFMELGACO-1` (SRV 1)
+    - 🟡 **Amarelo (`#eab308`):** `JFMELGACO-2` (NOTE 2)
+    - 🔴 **Vermelho (`#ef4444`):** `JFMELGACO-3` (NOTE 3)
+  - **Modo Rolagem vs Tela Única Funcional (#16):** Correção do comportamento do alternador de tela. No modo rolagem, os gráficos expandem para `310px` gerando rolagem vertical suave e fluida; no modo tela única, o layout se trava a `100vh` sem barra de rolagem. Botão com estado ativo em destaque (`📜 Modo Rolagem (Ativo)`).
+  - **Filtro de Janela Temporal de 5 Horas / 300 amostras (#17):** Novo botão seletor `5h (300)` na barra de controle superior, permitindo análise contínua de histórico estendido com persistência no `localStorage`.
 
 ### [v1.0.2] - 2026-09-25
 - **Solução da ISSUE #2:** Resolução de falhas de monitoramento remoto entre computadores da rede em Workgroup:

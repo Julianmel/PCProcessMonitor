@@ -1,11 +1,11 @@
-﻿param(
+param(
     [int]$MaxIterations = 0,
     [int]$IntervalSeconds = 5,
     [pscredential]$Credential = $null
 )
 
 # ============================================================
-# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.0.2)
+# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.1.0)
 # ============================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

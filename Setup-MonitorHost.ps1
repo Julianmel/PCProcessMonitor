@@ -1,6 +1,6 @@
-﻿# ============================================================
+# ============================================================
 # CONFIGURADOR DE NÓ DE REDE PARA MONITORAMENTO (JFMELGACO)
-# PCProcessMonitor - Setup-MonitorHost.ps1 (v1.0.2)
+# PCProcessMonitor - Setup-MonitorHost.ps1 (v1.1.0)
 # ============================================================
 # Execute este script como Administrador em qualquer notebook
 # da rede para habilitar a monitoração remota bidirecional.
