@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # GERADOR DE DASHBOARD HTML - JFMELGACO (v1.0.2)
 # ============================================================
 param(
@@ -234,7 +234,7 @@ $html = @"
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .chart-container { position: relative; height: 320px; width: 100%; }
+        .chart-container { position: relative; height: 210px; width: 100%; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -266,6 +266,9 @@ $html = @"
                 <button onclick="setWindowMode(120)" id="btnWin_120" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
                     120
                 </button>
+                <button onclick="setWindowMode(300)" id="btnWin_300" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                    5h (300)
+                </button>
                 <button onclick="setWindowMode('all')" id="btnWin_all" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
                     Todas
                 </button>
@@ -292,121 +295,221 @@ $html = @"
         </div>
     </header>
 
-    <!-- CARDS DOS COMPUTADORES (MINI-BARRA COMPACTA ~46px) -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 my-1.5 shrink-0">
-        <!-- Card 1: JFMELGACO3 -->
-        <div class="bg-cardbg border border-blue-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px] shadow">
-            <div class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                <strong class="text-white text-xs">JFMELGACO3</strong>
-                <span class="text-[9px] px-1 rounded bg-blue-500/20 text-blue-400 font-semibold uppercase">Local</span>
+    <!-- CARDS DOS COMPUTADORES (AMPLIADOS, ENRIQUECIDOS E COM LEGENDA MESTRE) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 my-2 shrink-0">
+        <!-- Card 1: JFMELGACO3 (Local - AZUL) -->
+        <div class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-blue-500"></div>
+            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
+                <div class="flex items-center gap-2">
+                    <span class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block"></span>
+                    <strong class="text-white text-xs tracking-wide">JFMELGACO3</strong>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">Local</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40">Linha Azul</span>
+                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                </div>
             </div>
-            <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white" id="card_JFMELGACO3_cpu">$($stats['JFMELGACO3'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white" id="card_JFMELGACO3_ram">$($stats['JFMELGACO3'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO3_io">$($stats['JFMELGACO3'].maxIoW)k</strong></span>
-                <span>Tx: <strong class="text-cyan-400" id="card_JFMELGACO3_tx">$($stats['JFMELGACO3'].maxTx)k</strong></span>
-            </div>
-        </div>
-
-        <!-- Card 2: JFMELGACO-1 -->
-        <div class="bg-cardbg border border-emerald-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px] shadow">
-            <div class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                <strong class="text-white text-xs">JFMELGACO-1</strong>
-                <span class="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 font-semibold uppercase">SRV 1</span>
-            </div>
-            <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoW)k</strong></span>
-                <span>Rx: <strong class="text-cyan-400" id="card_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx)k</strong></span>
-            </div>
-        </div>
-
-        <!-- Card 3: JFMELGACO-2 -->
-        <div class="bg-cardbg border border-amber-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px] shadow">
-            <div class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                <strong class="text-white text-xs">JFMELGACO-2</strong>
-                <span class="text-[9px] px-1 rounded bg-amber-500/20 text-amber-400 font-semibold uppercase">NOTE 2</span>
-            </div>
-            <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoW)k</strong></span>
-                <span>Rx: <strong class="text-cyan-400" id="card_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx)k</strong></span>
+            <div class="grid grid-cols-5 gap-1 text-center">
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO3_cpu">$($stats['JFMELGACO3'].avgCpu)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO3_ram">$($stats['JFMELGACO3'].avgRam)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree)G</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                    <strong class="text-xs text-amber-400" id="card_JFMELGACO3_io">$($stats['JFMELGACO3'].maxIoW)k</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO3_tx">$($stats['JFMELGACO3'].maxTx)k</strong>
+                </div>
             </div>
         </div>
 
-        <!-- Card 4: JFMELGACO-3 -->
-        <div class="bg-cardbg border border-purple-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px] shadow">
-            <div class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                <strong class="text-white text-xs">JFMELGACO-3</strong>
-                <span class="text-[9px] px-1 rounded bg-purple-500/20 text-purple-400 font-semibold uppercase">NOTE 3</span>
+        <!-- Card 2: JFMELGACO-1 (SRV 1 - VERDE) -->
+        <div class="bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
+                <div class="flex items-center gap-2">
+                    <span class="h-3.5 w-3.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)] inline-block"></span>
+                    <strong class="text-white text-xs tracking-wide">JFMELGACO-1</strong>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">SRV 1</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Linha Verde</span>
+                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                </div>
             </div>
-            <div class="flex items-center gap-2 text-slate-300">
-                <span>CPU: <strong class="text-white" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].avgCpu)%</strong></span>
-                <span>RAM: <strong class="text-white" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].avgRam)%</strong></span>
-                <span>C: <strong class="text-emerald-400" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong></span>
-                <span>I/O: <strong class="text-amber-400" id="card_JFMELGACO-3_io">$($stats['JFMELGACO-3'].maxIoW)k</strong></span>
-                <span>Rx: <strong class="text-cyan-400" id="card_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx)k</strong></span>
+            <div class="grid grid-cols-5 gap-1 text-center">
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].avgCpu)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].avgRam)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoW)k</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
+                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx)k</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: JFMELGACO-2 (NOTE 2 - AMARELO) -->
+        <div class="bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
+                <div class="flex items-center gap-2">
+                    <span class="h-3.5 w-3.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)] inline-block"></span>
+                    <strong class="text-white text-xs tracking-wide">JFMELGACO-2</strong>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">NOTE 2</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">Linha Amarela</span>
+                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                </div>
+            </div>
+            <div class="grid grid-cols-5 gap-1 text-center">
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].avgCpu)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].avgRam)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoW)k</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
+                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx)k</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: JFMELGACO-3 (NOTE 3 - VERMELHO) -->
+        <div class="bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-red-500"></div>
+            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
+                <div class="flex items-center gap-2">
+                    <span class="h-3.5 w-3.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)] inline-block"></span>
+                    <strong class="text-white text-xs tracking-wide">JFMELGACO-3</strong>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase">NOTE 3</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40">Linha Vermelha</span>
+                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                </div>
+            </div>
+            <div class="grid grid-cols-5 gap-1 text-center">
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].avgCpu)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].avgRam)%</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">$($stats['JFMELGACO-3'].maxIoW)k</strong>
+                </div>
+                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
+                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
+                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx)k</strong>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - PREENCHE 100% DA ALTURA RESTANTE) -->
+    <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - COMPACTO E EQUILIBRADO) -->
     <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
 
         <!-- 1. CPU CHART -->
-        <div class="bg-cardbg border border-borderbg rounded-xl p-2.5 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1">
+        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
                     Uso de CPU (%) &larr; Task Manager
                 </span>
                 <span class="text-[10px] text-slate-400">4 máquinas</span>
             </div>
-            <div class="flex-1 min-h-0 relative">
+            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
                 <canvas id="cpuChart"></canvas>
             </div>
         </div>
 
         <!-- 2. RAM CHART -->
-        <div class="bg-cardbg border border-borderbg rounded-xl p-2.5 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1">
+        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
                     Uso de Memória RAM (%) &larr; Task Manager
                 </span>
                 <span class="text-[10px] text-slate-400">4 máquinas</span>
             </div>
-            <div class="flex-1 min-h-0 relative">
+            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
                 <canvas id="ramChart"></canvas>
             </div>
         </div>
 
         <!-- 3. RX CHART (Download) -->
-        <div class="bg-cardbg border border-borderbg rounded-xl p-2.5 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1">
+        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                     Rede: Recepção / Download (Rx em KB/s)
                 </span>
                 <span class="text-[10px] text-slate-400">Tempo Real</span>
             </div>
-            <div class="flex-1 min-h-0 relative">
+            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
                 <canvas id="rxChart"></canvas>
             </div>
         </div>
 
         <!-- 4. TX CHART & DISCO C: COM ABAS RÁPIDAS -->
-        <div class="bg-cardbg border border-borderbg rounded-xl p-2.5 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1">
+        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <div class="flex items-center justify-between mb-1 px-1">
                 <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                     <span class="h-2 w-2 rounded-full bg-amber-400"></span>
                     <span id="titleBottomRight">Rede: Transmissão / Upload (Tx)</span>
@@ -423,7 +526,7 @@ $html = @"
                     </button>
                 </div>
             </div>
-            <div class="flex-1 min-h-0 relative">
+            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
                 <div id="wrapperTxChart" class="h-full w-full">
                     <canvas id="txChart"></canvas>
                 </div>
@@ -500,7 +603,7 @@ $html = @"
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-purple-400">JFMELGACO-3</td>
+                            <td class="py-2.5 px-3 font-semibold text-red-400">JFMELGACO-3</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">$($stats['JFMELGACO-3'].avgCpu)%</td>
                             <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">$($stats['JFMELGACO-3'].maxCpu)%</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">$($stats['JFMELGACO-3'].avgRam)%</td>
@@ -525,10 +628,10 @@ $html = @"
         let rawData = $jsonData;
 
         const colors = {
-            'JFMELGACO3':  { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.12)' },
-            'JFMELGACO-1': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
-            'JFMELGACO-2': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
-            'JFMELGACO-3': { border: '#c084fc', bg: 'rgba(192, 132, 252, 0.12)' }
+            'JFMELGACO3':  { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' },  // Azul
+            'JFMELGACO-1': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.14)' },  // Verde
+            'JFMELGACO-2': { border: '#eab308', bg: 'rgba(234, 179, 8, 0.14)' },   // Amarelo
+            'JFMELGACO-3': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.14)' }    // Vermelho
         };
 
         // LÓGICA TASK MANAGER: Os dados entram na DIREITA e fluem para a ESQUERDA
@@ -565,8 +668,7 @@ $html = @"
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
-                    position: 'top',
-                    labels: { color: '#94a3b8', font: { size: 12, family: 'Inter' }, usePointStyle: true, pointStyle: 'circle' }
+                    display: false
                 },
                 tooltip: {
                     backgroundColor: '#1e293b',
@@ -700,7 +802,7 @@ $html = @"
         }
 
         function updateButtonStyles() {
-            ['60', '120', 'all'].forEach(s => {
+            ['60', '120', '300', 'all'].forEach(s => {
                 const btn = document.getElementById('btnWin_' + s);
                 if (!btn) return;
                 if (String(currentWindowSize) === s) {
@@ -764,7 +866,7 @@ $html = @"
                     {
                         label: 'Espaço Livre (GB)',
                         data: Object.keys(rawData).map(pc => rawData[pc].stats.diskFree),
-                        backgroundColor: ['#38bdf8', '#10b981', '#f59e0b', '#c084fc'],
+                        backgroundColor: ['#3b82f6', '#10b981', '#eab308', '#ef4444'],
                         borderRadius: 6
                     }
                 ]
@@ -845,12 +947,35 @@ $html = @"
         function applyScreenMode() {
             const body = document.getElementById('mainBody');
             const btn = document.getElementById('btnScrollMode');
+            const chartsMain = document.getElementById('chartsMain');
+            const wrappers = document.querySelectorAll('.chart-wrapper');
+
             if (isSingleScreen) {
                 body.className = "bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs font-sans";
-                if (btn) btn.innerHTML = '🖥️ Tela Única';
+                if (chartsMain) {
+                    chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0";
+                }
+                wrappers.forEach(w => {
+                    w.style.height = "";
+                    w.classList.remove('min-h-[300px]');
+                });
+                if (btn) {
+                    btn.innerHTML = '🖥️ Tela Única';
+                    btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer transition';
+                }
             } else {
                 body.className = "bg-darkbg text-slate-100 min-h-screen p-3 overflow-y-auto text-xs font-sans";
-                if (btn) btn.innerHTML = '📜 Modo Rolagem';
+                if (chartsMain) {
+                    chartsMain.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 pb-8";
+                }
+                wrappers.forEach(w => {
+                    w.style.height = "310px";
+                    w.classList.add('min-h-[300px]');
+                });
+                if (btn) {
+                    btn.innerHTML = '📜 Modo Rolagem (Ativo)';
+                    btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/25 hover:bg-indigo-500/35 text-indigo-300 border border-indigo-500/50 font-semibold cursor-pointer transition shadow-sm';
+                }
             }
             setTimeout(() => {
                 Object.keys(charts).forEach(k => { if (charts[k]) charts[k].resize(); });
