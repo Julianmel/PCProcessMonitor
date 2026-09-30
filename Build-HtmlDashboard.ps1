@@ -50,7 +50,7 @@ $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 $pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
-$pcsList = @('JFMELGACO3', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
+$pcsList = @('JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
 
 $machineData = @{}
 foreach ($pc in $pcsList) {
@@ -107,6 +107,7 @@ foreach ($line in $lines) {
         $currentBlockPcs = @{}
     } elseif ($line -match $pattern -and $null -ne $currentTs) {
         $pc = $matches['pc']
+        if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
         $isOnline = $line.StartsWith('ONLINE')
         
         if ($isOnline -and $matches['cpu']) {
@@ -218,7 +219,7 @@ if (-not $detectedLocalHost -and $env:COMPUTERNAME) {
     if ($matchedHost) { $detectedLocalHost = $matchedHost }
 }
 if (-not $detectedLocalHost) {
-    $detectedLocalHost = 'JFMELGACO3'
+    $detectedLocalHost = 'JFMELGACO-4'
 }
 
 $pcRole = @{}
@@ -232,7 +233,8 @@ foreach ($pc in $pcsList) {
             'JFMELGACO-1' { $pcRole[$pc] = "SRV 1";  $pcDisplay[$pc] = $pc }
             'JFMELGACO-2' { $pcRole[$pc] = "NOTE 2"; $pcDisplay[$pc] = $pc }
             'JFMELGACO-3' { $pcRole[$pc] = "NOTE 3"; $pcDisplay[$pc] = $pc }
-            'JFMELGACO3'   { $pcRole[$pc] = "NOTE 0"; $pcDisplay[$pc] = $pc }
+            'JFMELGACO-4' { $pcRole[$pc] = "NOTE 4"; $pcDisplay[$pc] = $pc }
+            'JFMELGACO3'   { $pcRole[$pc] = "NOTE 4"; $pcDisplay[$pc] = $pc }
             default        { $pcRole[$pc] = "REMOTO"; $pcDisplay[$pc] = $pc }
         }
     }
@@ -331,17 +333,17 @@ $html = @"
 
     <!-- CARDS DOS COMPUTADORES (AMPLIADOS, ENRIQUECIDOS E COM LEGENDA MESTRE) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 my-2 shrink-0">
-        <!-- Card 1: JFMELGACO3 (AZUL) -->
-        <div id="cardHost_JFMELGACO3" onclick="toggleMachineVisibility('JFMELGACO3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO3" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
+        <!-- Card 1: JFMELGACO-4 (AZUL) -->
+        <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
+            <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                 <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO3" class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO3">JFMELGACO3</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">$($pcRole['JFMELGACO3'])</span>
+                    <span id="cardDot_JFMELGACO-4" class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block transition-all"></span>
+                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">$($pcRole['JFMELGACO-4'])</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 transition-all">Linha Azul &#10003;</span>
+                    <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 transition-all">Linha Azul &#10003;</span>
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
@@ -351,23 +353,23 @@ $html = @"
             <div class="grid grid-cols-5 gap-1 text-center">
                 <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
                     <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO3_cpu">$($stats['JFMELGACO3'].avgCpu)%</strong>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">$($stats['JFMELGACO-4'].avgCpu)%</strong>
                 </div>
                 <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
                     <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO3_ram">$($stats['JFMELGACO3'].avgRam)%</strong>
+                    <strong class="text-xs text-white" id="card_JFMELGACO-4_ram">$($stats['JFMELGACO-4'].avgRam)%</strong>
                 </div>
                 <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
                     <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree)G</strong>
+                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree)G</strong>
                 </div>
                 <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
                     <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO3_io">$($stats['JFMELGACO3'].maxIoW)k</strong>
+                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-4_io">$($stats['JFMELGACO-4'].maxIoW)k</strong>
                 </div>
                 <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
                     <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO3_tx">$($stats['JFMELGACO3'].maxTx)k</strong>
+                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].maxTx)k</strong>
                 </div>
             </div>
         </div>
@@ -604,15 +606,15 @@ $html = @"
                     </thead>
                     <tbody class="divide-y divide-borderbg text-xs">
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-blue-400">$($pcDisplay['JFMELGACO3'])</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_cpuAvg">$($stats['JFMELGACO3'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO3_cpuMax">$($stats['JFMELGACO3'].maxCpu)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_ramAvg">$($stats['JFMELGACO3'].avgRam)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_ramMax">$($stats['JFMELGACO3'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO3_io">$($stats['JFMELGACO3'].maxIoR) / $($stats['JFMELGACO3'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO3_rx">$($stats['JFMELGACO3'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO3_tx">$($stats['JFMELGACO3'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO3_disk">$($stats['JFMELGACO3'].diskFree) GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-blue-400">$($pcDisplay['JFMELGACO-4'])</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_cpuAvg">$($stats['JFMELGACO-4'].avgCpu)%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-4_cpuMax">$($stats['JFMELGACO-4'].maxCpu)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramAvg">$($stats['JFMELGACO-4'].avgRam)%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramMax">$($stats['JFMELGACO-4'].maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-4_io">$($stats['JFMELGACO-4'].maxIoR) / $($stats['JFMELGACO-4'].maxIoW) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">$($stats['JFMELGACO-4'].maxRx) KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree) GB</td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-emerald-400">$($pcDisplay['JFMELGACO-1'])</td>
@@ -662,7 +664,7 @@ $html = @"
         let rawData = $jsonData;
 
         const colors = {
-            'JFMELGACO3':  { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' },  // Azul
+            'JFMELGACO-4': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' },  // Azul
             'JFMELGACO-1': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.14)' },  // Verde
             'JFMELGACO-2': { border: '#eab308', bg: 'rgba(234, 179, 8, 0.14)' },   // Amarelo
             'JFMELGACO-3': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.14)' }    // Vermelho
@@ -745,7 +747,7 @@ $html = @"
         }
 
         const pcCardConfig = {
-            'JFMELGACO3': {
+            'JFMELGACO-4': {
                 colorName: 'Linha Azul',
                 colorBar: 'bg-blue-500',
                 dotClass: 'bg-blue-500 border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)]',
@@ -1140,7 +1142,7 @@ $html = @"
             }
 
             // 2. Atualiza Mini-Cards dos computadores e Modal estatístico
-            const pcs = ['JFMELGACO3', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3'];
+            const pcs = ['JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3'];
             pcs.forEach(pc => {
                 const s = payload.rawData[pc] ? payload.rawData[pc].stats : null;
                 if (!s) return;

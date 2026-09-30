@@ -24,7 +24,7 @@ $cNoAccess = "$esc[95m"  # SEM ACESSO (Rosa/Magenta: computador ligado, mas cons
 
 # Lista canônica de todas as máquinas da rede
 $Computadores = @(
-    'JFMELGACO3',
+    'JFMELGACO-4',
     'JFMELGACO-1',
     'JFMELGACO-2',
     'JFMELGACO-3'

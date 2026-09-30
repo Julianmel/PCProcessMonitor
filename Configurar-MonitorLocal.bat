@@ -1,5 +1,5 @@
 @echo off
-title Configurar Usuario Monitor - JFMELGACO3
+title Configurar Usuario Monitor e Telemetria
 echo ============================================================
 echo  Solicitando privilegios de Administrador para configuracao...
 echo ============================================================

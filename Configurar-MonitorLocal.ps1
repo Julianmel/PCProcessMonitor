@@ -1,5 +1,5 @@
 ﻿# ============================================================
-# CONFIGURAR USUÁRIO MONITOR LOCALMENTE (JFMELGACO3)
+# CONFIGURAR USUÁRIO MONITOR LOCALMENTE (JFMELGACO-4 / Qualquer Máquina)
 # PCProcessMonitor - Configurar-MonitorLocal.ps1
 # ============================================================
 
@@ -22,7 +22,7 @@ if (-not $isAdmin) {
 }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " Configurando Usuário Monitor e Telemetria (JFMELGACO3)" -ForegroundColor Green
+Write-Host " Configurando Usuário Monitor e Telemetria ($env:COMPUTERNAME)" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Cria ou atualiza o usuário Monitor
@@ -175,7 +175,7 @@ Write-Host "`n[Validação] Testando leitura WMI como usuário 'Monitor' via Win
 try {
     $sec = New-Object System.Security.SecureString
     "Monitor2026@".ToCharArray() | ForEach-Object { $sec.AppendChar($_) }
-    $cred = New-Object System.Management.Automation.PSCredential("JFMELGACO3\Monitor", $sec)
+    $cred = New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\Monitor", $sec)
     $opt = New-CimSessionOption -Protocol Wsman
     $s = New-CimSession -ComputerName "127.0.0.1" -Credential $cred -SessionOption $opt -OperationTimeoutSec 5 -ErrorAction Stop
     $osTest = Get-CimInstance Win32_OperatingSystem -CimSession $s -Namespace "root\cimv2" -ErrorAction Stop
@@ -187,7 +187,7 @@ try {
 
 Write-Host "`n============================================================" -ForegroundColor Cyan
 Write-Host " CONFIGURAÇÃO CONCLUÍDA COM SUCESSO!" -ForegroundColor Green
-Write-Host " O JFMELGACO3 agora permite conexões de telemetria do Monitor." -ForegroundColor Green
+Write-Host " O $env:COMPUTERNAME agora permite conexões de telemetria do Monitor." -ForegroundColor Green
 Write-Host " O script no JFMELGACO-1 passará a mostrar ONLINE automaticamente." -ForegroundColor White
 Write-Host "============================================================`n" -ForegroundColor Cyan
 

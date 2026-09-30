@@ -29,7 +29,7 @@ O ecossistema é composto por dois scripts PowerShell e uma interface web modern
 ## ⚡ Principais Características Técnicas
 
 ### 1. Coletor em Tempo Real (`Monitor-Rede.ps1`)
-- **Topologia Canônica e Detecção Automática do Host Local:** Lista unificada das 4 máquinas (`JFMELGACO3`, `JFMELGACO-1`, `JFMELGACO-2` e `JFMELGACO-3`). O script detecta automaticamente em qual máquina está rodando (`$env:COMPUTERNAME`), marcando-a como `(Local)` e consultando as demais remotamente, garantindo que o painel funcione de forma idêntica em qualquer notebook.
+- **Topologia Canônica e Detecção Automática do Host Local:** Lista unificada das 4 máquinas (`JFMELGACO-4`, `JFMELGACO-1`, `JFMELGACO-2` e `JFMELGACO-3`). O script detecta automaticamente em qual máquina está rodando (`$env:COMPUTERNAME`), marcando-a como `(Local)` e consultando as demais remotamente, garantindo que o painel funcione de forma idêntica em qualquer notebook.
 - **Detecção Rápida de Máquinas Offline:** Realiza um teste de conectividade ultrarrápido (ping) prévio antes das consultas CIM/WMI, evitando travamentos e esperas de timeout caso um notebook esteja desligado.
 - **Terminal In-Place sem Flickering:** Em vez de usar `Clear-Host` (que causa cintilação na tela), utiliza o reposicionamento do cursor (`[Console]::SetCursorPosition(0,0)`), garantindo uma atualização suave e contínua no prompt.
 - **Heatmap de Cores no Console:**
@@ -80,7 +80,7 @@ O ecossistema é composto por dois scripts PowerShell e uma interface web modern
 ```mermaid
 flowchart TD
     subgraph LAN["🌐 Nós da Rede Local (Workgroup Technoflora)"]
-        PC1["💻 JFMELGACO3 (Local)"]
+        PC1["💻 JFMELGACO-4"]
         PC2["💻 JFMELGACO-1"]
         PC3["💻 JFMELGACO-2"]
         PC4["💻 JFMELGACO-3"]
@@ -170,6 +170,13 @@ PCProcessMonitor/
 ---
 
 ## 📜 Histórico de Versões
+
+### [v1.1.3] - 2026-09-30
+- **Solução da ISSUE #24:** Atualização da topologia canônica da rede após renomeação do nó `JFMELGACO3` para `JFMELGACO-4`:
+  - **Topologia Canônica e Coletor:** Atualização do array `$Computadores` em `Monitor-Rede.ps1` para incluir `JFMELGACO-4`.
+  - **Retrocompatibilidade com Logs Históricos:** No `Build-HtmlDashboard.ps1`, mapeamento automático de registros antigos de `JFMELGACO3` para `JFMELGACO-4`, assegurando visualização contínua de todo o histórico sem perda de dados.
+  - **Padronização do Dashboard Web:** Atualização de Cards de telemetria, Legenda Mestre (Linha Azul), Tabela de Resumo e configurações de cores Chart.js para `JFMELGACO-4`.
+  - **Generalização de Scripts Utilitários:** Atualização de `Configurar-MonitorLocal.ps1` e `.bat` utilizando dinamicamente `$env:COMPUTERNAME` para aplicação sem atrito em qualquer host da rede.
 
 ### [v1.1.0] - 2026-09-26
 - **Solução das ISSUES #12 a #17:** Evolução completa de UI/UX e controle operacional do Dashboard Web de Telemetria (NOC):
