@@ -80,19 +80,34 @@ function Get-MachineMetrics {
     $isLocal = ($ComputerName.ToUpper() -eq $env:COMPUTERNAME.ToUpper()) -or ($ComputerName -eq 'localhost')
     $nomeDisplay = if ($isLocal) { "$ComputerName (Local)" } else { $ComputerName }
 
-    # Se for remoto, faz um ping rápido prévio para não travar com timeouts WMI caso a máquina esteja desligada
+    # Se for remoto, faz um ping rápido prévio para capturar RTT (ms) e evitar timeouts caso esteja desligado
     $isPingable = $true
+    $pingMs = 0
     if (-not $isLocal) {
-        $isPingable = Test-Connection -ComputerName $ComputerName -Count 1 -Quiet -ErrorAction SilentlyContinue
+        try {
+            $pObj = [System.Net.NetworkInformation.Ping]::new()
+            $reply = $pObj.Send($ComputerName, 1000)
+            if ($reply.Status -eq [System.Net.NetworkInformation.IPStatus]::Success) {
+                $isPingable = $true
+                $pingMs = [int]$reply.RoundtripTime
+            } else {
+                $isPingable = $false
+            }
+        } catch {
+            $isPingable = $false
+        }
         if (-not $isPingable) {
             return @{
                 Success     = $false
                 Status      = 'OFFLINE'
                 Computer    = $ComputerName
                 Display     = $nomeDisplay
+                Ping        = $null
                 ErrorReason = 'Host inacessível (sem resposta ao ping/desligado)'
             }
         }
+    } else {
+        $pingMs = 0
     }
 
     $cimSession = $null
@@ -203,6 +218,7 @@ function Get-MachineMetrics {
             TxBytes        = $sentBytes
             RxStr          = $rxStr
             TxStr          = $txStr
+            Ping           = $pingMs
         }
     } catch {
         $statusFail = if ($isPingable) { 'SEM ACESSO' } else { 'OFFLINE' }
@@ -211,6 +227,7 @@ function Get-MachineMetrics {
             Status      = $statusFail
             Computer    = $ComputerName
             Display     = $nomeDisplay
+            Ping        = if ($isPingable) { $pingMs } else { $null }
             ErrorReason = $_.Exception.Message
         }
     } finally {
@@ -231,8 +248,11 @@ function Build-Lines($m, $prev) {
             $cStatus = "$cRed" + "OFFLINE   " + "$cReset"
             $fStatus = "OFFLINE   "
         }
-        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5}" -f $m.Display, "---", "---", "---", "---", "---"
-        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---"
+        $pingDisplay = if ($null -ne $m.Ping) { "{0,3}ms" -f $m.Ping } else { "---" }
+        $cPingStr = "Ping: $pingDisplay"
+        $fPingStr = "Ping: $pingDisplay"
+        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5,-24}  {6}" -f $m.Display, "---", "---", "---", "---", "---", $cPingStr
+        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---", $fPingStr
         return @{ Console = $cLine; File = $fLine }
     }
 
@@ -253,6 +273,7 @@ function Build-Lines($m, $prev) {
     $diskWriteColored = Color-Num $m.DiskWriteBytes $prev.DiskWriteBytes $m.DiskWriteStr
     $rxColored        = Color-Num $m.RxBytes $prev.RxBytes $m.RxStr
     $txColored        = Color-Num $m.TxBytes $prev.TxBytes $m.TxStr
+    $pingColored      = Color-Num $m.Ping $prev.Ping ("{0,3}ms" -f $m.Ping)
 
     # Linha para o console (com cores ANSI)
     $cStatus    = "$cOnline" + "ONLINE    " + "$cReset"
@@ -262,7 +283,8 @@ function Build-Lines($m, $prev) {
     $cDiskStr   = "$diskFreeColored $diskPctColored"
     $cDiskIOStr = "R: $diskReadColored | W: $diskWriteColored"
     $cNetStr    = "Rx: $rxColored | Tx: $txColored"
-    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr"
+    $cPingStr   = "Ping: $pingColored"
+    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr  $cPingStr"
 
     # Linha para o arquivo texto (texto puro, compatível com regex de auditoria)
     $fStatus    = "ONLINE    "
@@ -271,7 +293,8 @@ function Build-Lines($m, $prev) {
     $fDiskStr   = "{0,5:N1} GB liv ({1,2}% us)" -f $m.DiskFree, $m.DiskPct
     $fDiskIOStr = "R: {0} | W: {1}" -f $m.DiskReadStr, $m.DiskWriteStr
     $fNetStr    = "Rx: {0} | Tx: {1}" -f $m.RxStr, $m.TxStr
-    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr
+    $fPingStr   = "Ping: {0,3}ms" -f $m.Ping
+    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr, $fPingStr
 
     return @{ Console = $cLine; File = $fLine }
 }
@@ -304,13 +327,15 @@ while ($true) {
     # 2. Grava bloco no arquivo texto (AAAAMMDD - HHMM - PC Processmonitor.txt)
     $fileBlock = [System.Text.StringBuilder]::new()
     $null = $fileBlock.AppendLine("[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================")
-    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)")
-    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------")
+    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)")
+    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------")
     foreach ($fl in $fileLines) {
         $null = $fileBlock.AppendLine($fl)
     }
-    $null = $fileBlock.AppendLine()
-    [System.IO.File]::AppendAllText($logFilePath, $fileBlock.ToString(), [System.Text.Encoding]::UTF8)
+    if (-not (Test-Path $logFilePath)) {
+        [System.IO.File]::WriteAllText($logFilePath, "", [System.Text.UTF8Encoding]::new($true))
+    }
+    [System.IO.File]::AppendAllText($logFilePath, $fileBlock.ToString(), [System.Text.UTF8Encoding]::new($false))
 
     # 3. Atualiza o dashboard HTML em tempo real
     try {
@@ -344,21 +369,21 @@ while ($true) {
 
     # Imprime tabela com cabeçalho, dados e rodapé de status
     $headerBanner = "[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) =============================="
-    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)"
-    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------"
+    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)"
+    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------"
 
-    Write-Host "$cCyan$headerBanner$cReset".PadRight(150)
-    Write-Host "$cYellow$headerCols$cReset".PadRight(150)
-    Write-Host "$cGray$headerDiv$cReset".PadRight(150)
+    Write-Host "$cCyan$headerBanner$cReset".PadRight(175)
+    Write-Host "$cYellow$headerCols$cReset".PadRight(175)
+    Write-Host "$cGray$headerDiv$cReset".PadRight(175)
 
     foreach ($cl in $consoleLines) {
-        Write-Host $cl.PadRight(150)
+        Write-Host $cl.PadRight(175)
     }
 
-    $legenda = "$cGray-------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
+    $legenda = "$cGray-----------------------------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
     $infoRodape = "$cGray[$sampleCount amostras] $cYellow▲ Amarelo = Subiu$cReset $cGray|$cReset $cGreen▼ Verde = Desceu$cReset $cGray|$cReset $cWhite■ Branco = Estável$cReset $cGray|$cReset $cNoAccess■ Magenta = Sem Acesso$cReset $cGray| Log: $logFileName$cReset"
-    Write-Host $legenda.PadRight(150)
-    Write-Host $infoRodape.PadRight(150)
+    Write-Host $legenda.PadRight(175)
+    Write-Host $infoRodape.PadRight(175)
 
     # 5. Guarda as métricas atuais para a próxima comparação
     $prevMetrics = $currentMetrics

@@ -47,7 +47,7 @@ function Parse-MetricNumber([string]$str) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?\s+(?:\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?.*?(?:Ping:\s*(?<ping>\d+|---|N\/D)\s*ms)?$'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $pcsList = @('JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
@@ -63,6 +63,7 @@ foreach ($pc in $pcsList) {
         ioW      = [System.Collections.Generic.List[object]]::new()
         rx       = [System.Collections.Generic.List[object]]::new()
         tx       = [System.Collections.Generic.List[object]]::new()
+        ping     = [System.Collections.Generic.List[object]]::new()
         ramTotal = 0
         diskTotal= 0
     }
@@ -85,6 +86,7 @@ function Flush-Block {
                 $machineData[$p].ioW.Add($obj.ioW)
                 $machineData[$p].rx.Add($obj.rx)
                 $machineData[$p].tx.Add($obj.tx)
+                $machineData[$p].ping.Add($obj.ping)
                 if ($obj.ramTotal -gt 0) { $machineData[$p].ramTotal = $obj.ramTotal }
             } else {
                 $machineData[$p].cpu.Add($null)
@@ -95,6 +97,7 @@ function Flush-Block {
                 $machineData[$p].ioW.Add(0)
                 $machineData[$p].rx.Add(0)
                 $machineData[$p].tx.Add(0)
+                $machineData[$p].ping.Add($null)
             }
         }
     }
@@ -109,6 +112,7 @@ foreach ($line in $lines) {
         $pc = $matches['pc']
         if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
         $isOnline = $line.StartsWith('ONLINE')
+        $pingVal = if ($matches['ping'] -and $matches['ping'] -ne '---' -and $matches['ping'] -ne 'N/D') { [int]$matches['ping'] } else { $null }
         
         if ($isOnline -and $matches['cpu']) {
             $cpu = [int]$matches['cpu']
@@ -139,6 +143,7 @@ foreach ($line in $lines) {
                 ioW      = [math]::Round($ioW, 1)
                 rx       = [math]::Round($rx, 1)
                 tx       = [math]::Round($tx, 1)
+                ping     = $pingVal
             }
         } else {
             $currentBlockPcs[$pc] = @{
@@ -151,6 +156,7 @@ foreach ($line in $lines) {
                 ioW      = 0
                 rx       = 0
                 tx       = 0
+                ping     = $pingVal
             }
         }
     }
@@ -169,6 +175,7 @@ foreach ($pc in $pcsList) {
     $validDisk= $machineData[$pc].diskFree | Where-Object { $null -ne $_ }
     $validIoR = $machineData[$pc].ioR | Where-Object { $null -ne $_ }
     $validIoW = $machineData[$pc].ioW | Where-Object { $null -ne $_ }
+    $validPing= $machineData[$pc].ping | Where-Object { $null -ne $_ }
     
     $stats[$pc] = @{
         avgCpu  = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
@@ -181,6 +188,9 @@ foreach ($pc in $pcsList) {
         diskFree= if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
         maxIoR  = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
         maxIoW  = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
+        ping    = if ($validPing) { ($validPing | Select-Object -Last 1) } else { 0 }
+        avgPing = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
+        maxPing = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
     }
 }
 
@@ -197,6 +207,7 @@ foreach ($pc in $pcsList) {
         tx      = $machineData[$pc].tx
         ioR     = $machineData[$pc].ioR
         ioW     = $machineData[$pc].ioW
+        ping    = $machineData[$pc].ping
         stats   = $stats[$pc]
     }
 }
@@ -347,6 +358,7 @@ $html = @"
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
+                        <span id="card_JFMELGACO-4_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-4'].ping)ms</span>
                     </span>
                 </div>
             </div>
@@ -388,6 +400,7 @@ $html = @"
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
+                        <span id="card_JFMELGACO-1_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-1'].ping)ms</span>
                     </span>
                 </div>
             </div>
@@ -429,6 +442,7 @@ $html = @"
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
+                        <span id="card_JFMELGACO-2_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-2'].ping)ms</span>
                     </span>
                 </div>
             </div>
@@ -470,6 +484,7 @@ $html = @"
                     <span class="flex items-center gap-1 text-[10px] text-slate-400">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
+                        <span id="card_JFMELGACO-3_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-3'].ping)ms</span>
                     </span>
                 </div>
             </div>
@@ -560,6 +575,9 @@ $html = @"
                     <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
                         I/O Disco
                     </button>
+                    <button onclick="switchBottomRightView('ping')" id="btnTabPing" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                        Lat&ecirc;ncia Ping (ms)
+                    </button>
                 </div>
             </div>
             <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
@@ -571,6 +589,9 @@ $html = @"
                 </div>
                 <div id="wrapperIoChart" class="h-full w-full hidden">
                     <canvas id="ioChart"></canvas>
+                </div>
+                <div id="wrapperPingChart" class="h-full w-full hidden">
+                    <canvas id="pingChart"></canvas>
                 </div>
             </div>
         </div>
@@ -602,6 +623,7 @@ $html = @"
                             <th class="py-2.5 px-3">Pico Rx</th>
                             <th class="py-2.5 px-3">Pico Tx</th>
                             <th class="py-2.5 px-3">Disco C: Livre</th>
+                            <th class="py-2.5 px-3">Ping (RTT)</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-borderbg text-xs">
@@ -615,6 +637,7 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">$($stats['JFMELGACO-4'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree) GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">$($stats['JFMELGACO-4'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-4'].avgPing)ms)</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-emerald-400">$($pcDisplay['JFMELGACO-1'])</td>
@@ -626,6 +649,7 @@ $html = @"
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree) GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">$($stats['JFMELGACO-1'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-1'].avgPing)ms)</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-amber-400">$($pcDisplay['JFMELGACO-2'])</td>
@@ -637,6 +661,7 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">$($stats['JFMELGACO-2'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-2'].avgPing)ms)</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-red-400">$($pcDisplay['JFMELGACO-3'])</td>
@@ -648,6 +673,7 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx) KB/s</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_tx">$($stats['JFMELGACO-3'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree) GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">$($stats['JFMELGACO-3'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-3'].avgPing)ms)</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -941,7 +967,7 @@ $html = @"
         function refreshChartsWindow(updateMode) {
             const finalLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
             const mode = updateMode !== undefined ? updateMode : 'none';
-            ['cpu', 'ram', 'rx', 'tx', 'io'].forEach(k => {
+            ['cpu', 'ram', 'rx', 'tx', 'io', 'ping'].forEach(k => {
                 if (!charts[k]) return;
                 charts[k].data.labels = finalLabels;
                 charts[k].data.datasets.forEach(ds => {
@@ -1016,6 +1042,31 @@ $html = @"
             }
         });
 
+        // 7. PING LATENCY LINE CHART
+        charts.ping = new Chart(document.getElementById('pingChart'), {
+            type: 'line',
+            data: {
+                labels: initialLabels,
+                datasets: Object.keys(rawData).map(pc => ({
+                    pcKey: pc,
+                    metricKey: 'ping',
+                    label: pc,
+                    data: getAlignedDataset(pc, 'ping'),
+                    borderColor: colors[pc].border,
+                    backgroundColor: colors[pc].bg,
+                    fill: false,
+                    hidden: !isMachineVisible(pc)
+                }))
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' ms' } }
+                }
+            }
+        });
+
         // Aplica o estado visual inicial aos cards superiores dos computadores
         Object.keys(rawData).forEach(pc => updateCardVisualState(pc));
 
@@ -1042,14 +1093,17 @@ $html = @"
             const wrapTx = document.getElementById('wrapperTxChart');
             const wrapDisk = document.getElementById('wrapperDiskChart');
             const wrapIo = document.getElementById('wrapperIoChart');
+            const wrapPing = document.getElementById('wrapperPingChart');
             const btnTx = document.getElementById('btnTabTx');
             const btnDisk = document.getElementById('btnTabDisk');
             const btnIo = document.getElementById('btnTabIo');
+            const btnPing = document.getElementById('btnTabPing');
             const title = document.getElementById('titleBottomRight');
 
             wrapTx.classList.add('hidden');
             wrapDisk.classList.add('hidden');
             wrapIo.classList.add('hidden');
+            wrapPing.classList.add('hidden');
 
             const inactiveBtn = 'text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer';
             const activeBtn = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer';
@@ -1057,6 +1111,7 @@ $html = @"
             btnTx.className = inactiveBtn;
             btnDisk.className = inactiveBtn;
             btnIo.className = inactiveBtn;
+            btnPing.className = inactiveBtn;
 
             if (view === 'disk') {
                 wrapDisk.classList.remove('hidden');
@@ -1068,6 +1123,11 @@ $html = @"
                 btnIo.className = activeBtn;
                 if (title) title.innerHTML = 'Disco C: Taxa de I/O Escrita (KB/s)';
                 if (charts.io) charts.io.resize();
+            } else if (view === 'ping') {
+                wrapPing.classList.remove('hidden');
+                btnPing.className = activeBtn;
+                if (title) title.innerHTML = 'Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)';
+                if (charts.ping) charts.ping.resize();
             } else {
                 wrapTx.classList.remove('hidden');
                 btnTx.className = activeBtn;
@@ -1160,6 +1220,8 @@ $html = @"
                 if (cTx) cTx.innerText = s.maxTx + 'k';
                 const cRx = document.getElementById('card_' + pc + '_rx');
                 if (cRx) cRx.innerText = s.maxRx + 'k';
+                const cPing = document.getElementById('card_' + pc + '_ping');
+                if (cPing) cPing.innerText = s.ping + 'ms';
 
                 // Tabela do Modal de Resumo
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
@@ -1178,6 +1240,8 @@ $html = @"
                 if (mTx) mTx.innerText = s.maxTx + ' KB/s';
                 const mDisk = document.getElementById('modal_' + pc + '_disk');
                 if (mDisk) mDisk.innerText = s.diskFree + ' GB';
+                const mPing = document.getElementById('modal_' + pc + '_ping');
+                if (mPing) mPing.innerHTML = s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d ' + s.avgPing + 'ms)</span>';
             });
 
             // 3. Atualiza os gráficos do Chart.js instantaneamente (modo 'none' = sem animação ou piscadeira)

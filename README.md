@@ -7,7 +7,7 @@
 
 > **Sistema leve e autônomo de monitoramento de infraestrutura local em tempo real, com telemetria via PowerShell/WMI e Dashboard visual estilo NOC (Network Operations Center).**
 
-![Versão](https://img.shields.io/badge/Versão-1.1.0-brightgreen)
+![Versão](https://img.shields.io/badge/Versão-1.1.4-brightgreen)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-blue?logo=powershell)
 ![Interface](https://img.shields.io/badge/UI-TailwindCSS%20%2B%20Chart.js-38B2AC?logo=tailwind-css)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows%2010%20%2F%2011-0078D6?logo=windows)
@@ -170,6 +170,16 @@ PCProcessMonitor/
 ---
 
 ## 📜 Histórico de Versões
+
+### [v1.1.4] - 2026-09-30
+- **Solução da ISSUE #18:** Medição e exibição contínua da Latência de Rede (Ping ICMP RTT em ms) por máquina:
+  - **Coleta Contínua de RTT via .NET:** Integração direta da classe `[System.Net.NetworkInformation.Ping]` no coletor `Monitor-Rede.ps1`, aferindo a latência real em milissegundos para cada nó em tempo recorde (~30ms) sem overhead de WMI ou subprocessos. O nó local é computado instantaneamente como 0 ms.
+  - **Exibição Dinâmica no Terminal e Logs:** Formatação de coluna dedicada `Latência (Ping)` com alinhamento preciso (`Ping: {0,3}ms`) e heatmap ANSI (`Color-Num`) destacando variações de latência em amarelo/verde.
+  - **Cards Superiores com Badge de Latência:** Inclusão de badge em tempo real de latência (`Xms`) no cabeçalho de status de cada um dos 4 computadores no Dashboard Web.
+  - **Novo Gráfico Histórico de Latência (4º Quadrante):** Nova aba interativa `Latência Ping (ms)` no quadrante inferior direito, renderizando curvas comparativas com Chart.js e suporte à alternância de visibilidade por máquina.
+  - **Tabela Consolidada do Modal de Resumo:** Nova coluna `Ping (RTT)` reportando o valor atual e a média de latência de cada nó.
+  - **Retrocompatibilidade Integral com Logs Históricos:** Tratamento seguro de logs antigos sem registro de ping através de expressões regulares flexíveis e preenchimento nulo suave no pipeline analítico.
+  - **Codificação UTF-8 BOM Preservada:** Garantia de persistência com UTF-8 BOM nos scripts e logs gerados, prevenindo quebras de caracteres e problemas de codificação no Windows PowerShell 5.1.
 
 ### [v1.1.3] - 2026-09-30
 - **Solução da ISSUE #24:** Atualização da topologia canônica da rede após renomeação do nó `JFMELGACO3` para `JFMELGACO-4`:
