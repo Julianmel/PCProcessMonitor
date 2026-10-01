@@ -47,7 +47,7 @@ function Parse-MetricNumber([string]$str) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?.*?(?:Ping:\s*(?<ping>\d+|---|N\/D)\s*ms)?.*?(?:Uptime:\s*(?<uptime>[^\r\n\(]+?)(?:\s*\(Boot:\s*(?<boot>[^\)]+)\))?)?\s*$'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $pcsList = @('JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
@@ -115,31 +115,46 @@ foreach ($line in $lines) {
         $currentTs = $matches[1]
         $currentBlockPcs = @{}
     } elseif ($line -match $pattern -and $null -ne $currentTs) {
-        $pc = $matches['pc']
+        $baseMatches = $matches
+        $pc = $baseMatches['pc']
         if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
         $isOnline = $line.StartsWith('ONLINE')
-        $pingVal = if ($matches['ping'] -and $matches['ping'] -ne '---' -and $matches['ping'] -ne 'N/D') { [int]$matches['ping'] } else { $null }
-        $uptimeVal = if ($matches['uptime'] -and $matches['uptime'].Trim() -ne '---' -and $matches['uptime'].Trim() -ne 'N/D') { $matches['uptime'].Trim() } else { $null }
-        $bootVal   = if ($matches['boot'] -and $matches['boot'].Trim() -ne '---' -and $matches['boot'].Trim() -ne 'N/D') { $matches['boot'].Trim() } else { $null }
 
-        if ($isOnline -and $matches['cpu']) {
-            $cpu = [int]$matches['cpu']
-            $ramPct = [int]$matches['ramPct']
-            $ramUsed = Parse-MetricNumber $matches['ramUsed']
-            $ramTotal = Parse-MetricNumber $matches['ramTotal']
-            $diskFree = Parse-MetricNumber $matches['diskFree']
-            
-            $ioR = Parse-MetricNumber $matches['ioRVal']
-            if ($matches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
-            
-            $ioW = Parse-MetricNumber $matches['ioWVal']
-            if ($matches['ioWUnit'] -eq 'MB/s') { $ioW = $ioW * 1024 }
+        $pingVal = $null
+        if ($line -match 'Ping:\s*(?<ping>\d+|---|N\/D)\s*ms') {
+            $pRaw = $matches['ping']
+            if ($pRaw -ne '---' -and $pRaw -ne 'N/D') { $pingVal = [int]$pRaw }
+        }
 
-            $rx = Parse-MetricNumber $matches['rxVal']
-            if ($matches['rxUnit'] -eq 'MB/s') { $rx = $rx * 1024 }
+        $uptimeVal = $null
+        $bootVal   = $null
+        if ($line -match 'Uptime:\s*(?<uptime>[^\r\n\(]+?)(?:\s*\(Boot:\s*(?<boot>[^\)]+)\))?\s*$') {
+            $uRaw = $matches['uptime'].Trim()
+            if ($uRaw -ne '---' -and $uRaw -ne 'N/D') { $uptimeVal = $uRaw }
+            if ($matches['boot']) {
+                $bRaw = $matches['boot'].Trim()
+                if ($bRaw -ne '---' -and $bRaw -ne 'N/D') { $bootVal = $bRaw }
+            }
+        }
+
+        if ($isOnline -and $baseMatches['cpu']) {
+            $cpu = [int]$baseMatches['cpu']
+            $ramPct = [int]$baseMatches['ramPct']
+            $ramUsed = Parse-MetricNumber $baseMatches['ramUsed']
+            $ramTotal = Parse-MetricNumber $baseMatches['ramTotal']
+            $diskFree = Parse-MetricNumber $baseMatches['diskFree']
             
-            $tx = Parse-MetricNumber $matches['txVal']
-            if ($matches['txUnit'] -eq 'MB/s') { $tx = $tx * 1024 }
+            $ioR = Parse-MetricNumber $baseMatches['ioRVal']
+            if ($baseMatches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
+            
+            $ioW = Parse-MetricNumber $baseMatches['ioWVal']
+            if ($baseMatches['ioWUnit'] -eq 'MB/s') { $ioW = $ioW * 1024 }
+
+            $rx = Parse-MetricNumber $baseMatches['rxVal']
+            if ($baseMatches['rxUnit'] -eq 'MB/s') { $rx = $rx * 1024 }
+            
+            $tx = Parse-MetricNumber $baseMatches['txVal']
+            if ($baseMatches['txUnit'] -eq 'MB/s') { $tx = $tx * 1024 }
 
             $currentBlockPcs[$pc] = @{
                 cpu      = $cpu
