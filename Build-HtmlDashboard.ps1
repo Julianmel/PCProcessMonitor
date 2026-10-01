@@ -1500,9 +1500,7 @@ $html = @"
                 }
 
                 // Tooltips informativos com médias e picos
-                const bCpu = document.getElementById('box_' + pc + '_cpu');
                 if (bCpu) bCpu.title = 'CPU Atual: ' + s.latestCpu + '% (M\u00e9dia: ' + s.avgCpu + '% | Pico: ' + s.maxCpu + '%)';
-                const bRam = document.getElementById('box_' + pc + '_ram');
                 if (bRam) bRam.title = 'RAM Atual: ' + s.latestRam + '% (M\u00e9dia: ' + s.avgRam + '% | Total: ' + (s.ramTotal || 0) + ' GB)';
                 const bIo = document.getElementById('box_' + pc + '_io');
                 if (bIo) bIo.title = 'I/O Escrita Atual: ' + s.latestIoW + ' KB/s (Pico: ' + s.maxIoW + ' KB/s)';
