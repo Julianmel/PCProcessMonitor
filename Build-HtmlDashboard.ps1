@@ -59,6 +59,7 @@ foreach ($pc in $pcsList) {
         ramPct   = [System.Collections.Generic.List[object]]::new()
         ramUsed  = [System.Collections.Generic.List[object]]::new()
         diskFree = [System.Collections.Generic.List[object]]::new()
+        diskPct  = [System.Collections.Generic.List[object]]::new()
         ioR      = [System.Collections.Generic.List[object]]::new()
         ioW      = [System.Collections.Generic.List[object]]::new()
         rx       = [System.Collections.Generic.List[object]]::new()
@@ -84,6 +85,7 @@ function Flush-Block {
                 $machineData[$p].ramPct.Add($obj.ramPct)
                 $machineData[$p].ramUsed.Add($obj.ramUsed)
                 $machineData[$p].diskFree.Add($obj.diskFree)
+                $machineData[$p].diskPct.Add($obj.diskPct)
                 $machineData[$p].ioR.Add($obj.ioR)
                 $machineData[$p].ioW.Add($obj.ioW)
                 $machineData[$p].rx.Add($obj.rx)
@@ -97,6 +99,7 @@ function Flush-Block {
                 $machineData[$p].ramPct.Add($null)
                 $machineData[$p].ramUsed.Add($null)
                 $machineData[$p].diskFree.Add($null)
+                $machineData[$p].diskPct.Add($null)
                 $machineData[$p].ioR.Add(0)
                 $machineData[$p].ioW.Add(0)
                 $machineData[$p].rx.Add(0)
@@ -143,6 +146,7 @@ foreach ($line in $lines) {
             $ramUsed = Parse-MetricNumber $baseMatches['ramUsed']
             $ramTotal = Parse-MetricNumber $baseMatches['ramTotal']
             $diskFree = Parse-MetricNumber $baseMatches['diskFree']
+            $diskPct  = if ($baseMatches['diskPct']) { [int]$baseMatches['diskPct'] } else { 0 }
             
             $ioR = Parse-MetricNumber $baseMatches['ioRVal']
             if ($baseMatches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
@@ -162,6 +166,7 @@ foreach ($line in $lines) {
                 ramUsed  = $ramUsed
                 ramTotal = $ramTotal
                 diskFree = $diskFree
+                diskPct  = $diskPct
                 ioR      = [math]::Round($ioR, 1)
                 ioW      = [math]::Round($ioW, 1)
                 rx       = [math]::Round($rx, 1)
@@ -177,6 +182,7 @@ foreach ($line in $lines) {
                 ramUsed  = $null
                 ramTotal = 0
                 diskFree = $null
+                diskPct  = 0
                 ioR      = 0
                 ioW      = 0
                 rx       = 0
@@ -237,25 +243,44 @@ foreach ($pc in $pcsList) {
     $latestRx  = if ($isOnline) { $machineData[$pc].rx[-1] } else { 0 }
     $latestPing = if ($validPing) { $validPing | Select-Object -Last 1 } else { 0 }
 
+    $validDiskPct = $machineData[$pc].diskPct | Where-Object { $null -ne $_ -and $_ -gt 0 }
+    $latestDiskPct = if ($validDiskPct) { $validDiskPct | Select-Object -Last 1 } else { 0 }
+
+    $avgCpuVal   = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
+    $avgRamVal   = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
+    $diskFreeVal = if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
+
+    $isCpuAlert  = ($latestCpu -ge 85 -or $avgCpuVal -ge 85)
+    $isRamAlert  = ($latestRam -ge 90 -or $avgRamVal -ge 90)
+    $isDiskAlert = (($latestDiskPct -ge 90) -or ($diskFreeVal -gt 0 -and $diskFreeVal -le 15))
+    $hasAlert    = ($isOnline -and ($isCpuAlert -or $isRamAlert -or $isDiskAlert))
+
+    $alertReasons = [System.Collections.Generic.List[string]]::new()
+    if ($isCpuAlert) { $alertReasons.Add("CPU: ${latestCpu}% (>=85%)") }
+    if ($isRamAlert) { $alertReasons.Add("RAM: ${latestRam}% (>=90%)") }
+    if ($isDiskAlert) { $alertReasons.Add("Disco C: ${diskFreeVal}GB livres (<=15GB ou >=90%)") }
+    $alertTitle = if ($alertReasons.Count -gt 0) { "Alerta: " + ($alertReasons -join " | ") } else { "" }
+
     $stats[$pc] = @{
         isOnline        = $isOnline
         statusText      = if ($isOnline) { "Online" } else { "Offline" }
-        onlineDotClass  = if ($isOnline) { "bg-emerald-400" } else { "bg-red-500" }
-        onlineTextClass = if ($isOnline) { "text-emerald-400" } else { "text-red-400" }
+        onlineDotClass  = if ($isOnline) { "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" } else { "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" }
+        onlineTextClass = if ($isOnline) { "text-emerald-400" } else { "text-red-400 font-bold" }
         latestCpu       = $latestCpu
         latestRam       = $latestRam
         latestIoW       = $latestIoW
         latestIoR       = $latestIoR
         latestTx        = $latestTx
         latestRx        = $latestRx
-        avgCpu          = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
+        avgCpu          = $avgCpuVal
         maxCpu          = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
-        avgRam          = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
+        avgRam          = $avgRamVal
         maxRam          = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
         ramTotal        = $machineData[$pc].ramTotal
         maxRx           = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
         maxTx           = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
-        diskFree        = if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
+        diskFree        = $diskFreeVal
+        diskPct         = $latestDiskPct
         maxIoR          = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
         maxIoW          = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
         ping            = $latestPing
@@ -263,6 +288,11 @@ foreach ($pc in $pcsList) {
         maxPing         = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
         uptime          = $lastUptime
         bootDate        = $lastBoot
+        isCpuAlert      = $isCpuAlert
+        isRamAlert      = $isRamAlert
+        isDiskAlert     = $isDiskAlert
+        hasAlert        = $hasAlert
+        alertTitle      = $alertTitle
     }
 }
 
@@ -358,6 +388,36 @@ $html = @"
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        @keyframes offlineBlink {
+            0%, 100% {
+                opacity: 1;
+                border-color: rgba(239, 68, 68, 0.95);
+                box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                opacity: 0.30;
+                border-color: rgba(239, 68, 68, 0.25);
+                box-shadow: none;
+            }
+        }
+        .card-offline-blink {
+            animation: offlineBlink 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+        }
+
+        @keyframes alertPulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 0 rgba(245, 158, 11, 0);
+                border-color: rgba(245, 158, 11, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 18px rgba(245, 158, 11, 0.75);
+                border-color: rgba(245, 158, 11, 1);
+            }
+        }
+        .card-alert-pulse {
+            animation: alertPulseGlow 1.5s ease-in-out infinite !important;
+        }
     </style>
 </head>
 <body id="mainBody" class="bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs">
@@ -513,7 +573,7 @@ $html = @"
             </div>
 
             <!-- Card 1: JFMELGACO-4 (AZUL) -->
-            <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+            <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-4'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-4'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5">
                     <div class="flex items-center gap-1.5 min-w-0">
@@ -521,7 +581,10 @@ $html = @"
                         <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-4'])</span>
                     </div>
-                    <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all">Linha Azul &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span id="cardAlertBadge_JFMELGACO-4" class="$(if (-not $stats['JFMELGACO-4'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-4'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all">Linha Azul &#10003;</span>
+                    </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
                     <span id="cardStatus_JFMELGACO-4" class="flex items-center gap-1">
@@ -534,17 +597,17 @@ $html = @"
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_cpu" title="CPU Atual: $($stats['JFMELGACO-4'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgCpu)% | Pico: $($stats['JFMELGACO-4'].maxCpu)%)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-4'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-4_cpu" title="CPU Atual: $($stats['JFMELGACO-4'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgCpu)% | Pico: $($stats['JFMELGACO-4'].maxCpu)%)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">$($stats['JFMELGACO-4'].latestCpu)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-4'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-4_cpu">$($stats['JFMELGACO-4'].latestCpu)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_ram" title="RAM Atual: $($stats['JFMELGACO-4'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgRam)% | Total: $($stats['JFMELGACO-4'].ramTotal) GB)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-4'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-4_ram" title="RAM Atual: $($stats['JFMELGACO-4'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgRam)% | Total: $($stats['JFMELGACO-4'].ramTotal) GB)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-4_ram">$($stats['JFMELGACO-4'].latestRam)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-4'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-4_ram">$($stats['JFMELGACO-4'].latestRam)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-4'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-4_disk" title="Espa&ccedil;o Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree)G</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-4'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree)G</strong>
                     </div>
                     <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_io" title="I/O Escrita Atual: $($stats['JFMELGACO-4'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-4'].maxIoW) KB/s)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
@@ -558,7 +621,7 @@ $html = @"
             </div>
 
             <!-- Card 2: JFMELGACO-1 (VERDE) -->
-            <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+            <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-1'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-1'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5">
                     <div class="flex items-center gap-1.5 min-w-0">
@@ -566,7 +629,10 @@ $html = @"
                         <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-1'])</span>
                     </div>
-                    <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all">Linha Verde &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span id="cardAlertBadge_JFMELGACO-1" class="$(if (-not $stats['JFMELGACO-1'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-1'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all">Linha Verde &#10003;</span>
+                    </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
                     <span id="cardStatus_JFMELGACO-1" class="flex items-center gap-1">
@@ -579,17 +645,17 @@ $html = @"
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_cpu" title="CPU Atual: $($stats['JFMELGACO-1'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgCpu)% | Pico: $($stats['JFMELGACO-1'].maxCpu)%)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-1'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-1_cpu" title="CPU Atual: $($stats['JFMELGACO-1'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgCpu)% | Pico: $($stats['JFMELGACO-1'].maxCpu)%)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].latestCpu)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-1'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].latestCpu)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_ram" title="RAM Atual: $($stats['JFMELGACO-1'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgRam)% | Total: $($stats['JFMELGACO-1'].ramTotal) GB)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-1'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-1_ram" title="RAM Atual: $($stats['JFMELGACO-1'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgRam)% | Total: $($stats['JFMELGACO-1'].ramTotal) GB)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].latestRam)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-1'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].latestRam)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-1'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-1_disk" title="Espa&ccedil;o Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-1'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong>
                     </div>
                     <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_io" title="I/O Escrita Atual: $($stats['JFMELGACO-1'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-1'].maxIoW) KB/s)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
@@ -603,7 +669,7 @@ $html = @"
             </div>
 
             <!-- Card 3: JFMELGACO-2 (AMARELO) -->
-            <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+            <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-2'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-2'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5">
                     <div class="flex items-center gap-1.5 min-w-0">
@@ -611,7 +677,10 @@ $html = @"
                         <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-2'])</span>
                     </div>
-                    <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all">Linha Amarela &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span id="cardAlertBadge_JFMELGACO-2" class="$(if (-not $stats['JFMELGACO-2'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-2'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all">Linha Amarela &#10003;</span>
+                    </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
                     <span id="cardStatus_JFMELGACO-2" class="flex items-center gap-1">
@@ -624,17 +693,17 @@ $html = @"
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_cpu" title="CPU Atual: $($stats['JFMELGACO-2'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgCpu)% | Pico: $($stats['JFMELGACO-2'].maxCpu)%)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-2'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-2_cpu" title="CPU Atual: $($stats['JFMELGACO-2'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgCpu)% | Pico: $($stats['JFMELGACO-2'].maxCpu)%)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].latestCpu)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-2'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].latestCpu)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_ram" title="RAM Atual: $($stats['JFMELGACO-2'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgRam)% | Total: $($stats['JFMELGACO-2'].ramTotal) GB)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-2'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-2_ram" title="RAM Atual: $($stats['JFMELGACO-2'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgRam)% | Total: $($stats['JFMELGACO-2'].ramTotal) GB)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].latestRam)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-2'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].latestRam)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-2'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-2_disk" title="Espa&ccedil;o Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-2'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong>
                     </div>
                     <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_io" title="I/O Escrita Atual: $($stats['JFMELGACO-2'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-2'].maxIoW) KB/s)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
@@ -648,7 +717,7 @@ $html = @"
             </div>
 
             <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
-            <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+            <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-3'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-3'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5">
                     <div class="flex items-center gap-1.5 min-w-0">
@@ -656,7 +725,10 @@ $html = @"
                         <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-3'])</span>
                     </div>
-                    <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all">Linha Vermelha &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span id="cardAlertBadge_JFMELGACO-3" class="$(if (-not $stats['JFMELGACO-3'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-3'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all">Linha Vermelha &#10003;</span>
+                    </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
                     <span id="cardStatus_JFMELGACO-3" class="flex items-center gap-1">
@@ -669,17 +741,17 @@ $html = @"
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_cpu" title="CPU Atual: $($stats['JFMELGACO-3'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgCpu)% | Pico: $($stats['JFMELGACO-3'].maxCpu)%)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-3'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-3_cpu" title="CPU Atual: $($stats['JFMELGACO-3'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgCpu)% | Pico: $($stats['JFMELGACO-3'].maxCpu)%)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].latestCpu)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-3'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].latestCpu)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_ram" title="RAM Atual: $($stats['JFMELGACO-3'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgRam)% | Total: $($stats['JFMELGACO-3'].ramTotal) GB)">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-3'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-3_ram" title="RAM Atual: $($stats['JFMELGACO-3'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgRam)% | Total: $($stats['JFMELGACO-3'].ramTotal) GB)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].latestRam)%</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-3'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].latestRam)%</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-3'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-3_disk" title="Espa&ccedil;o Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong>
+                        <strong class="text-xs $(if ($stats['JFMELGACO-3'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong>
                     </div>
                     <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_io" title="I/O Escrita Atual: $($stats['JFMELGACO-3'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-3'].maxIoW) KB/s)">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
@@ -1320,36 +1392,108 @@ $html = @"
                 const sDot = document.getElementById('cardStatusDot_' + pc);
                 const sText = document.getElementById('cardStatusText_' + pc);
                 const cardHost = document.getElementById('cardHost_' + pc);
+                const alertBadge = document.getElementById('cardAlertBadge_' + pc);
+                const bCpu = document.getElementById('box_' + pc + '_cpu');
+                const bRam = document.getElementById('box_' + pc + '_ram');
+                const bDisk = document.getElementById('box_' + pc + '_disk');
+
+                const cCpu = document.getElementById('card_' + pc + '_cpu');
+                const cRam = document.getElementById('card_' + pc + '_ram');
+                const cDisk = document.getElementById('card_' + pc + '_disk');
+                const cIo = document.getElementById('card_' + pc + '_io');
+                const cTx = document.getElementById('card_' + pc + '_tx');
+                const cRx = document.getElementById('card_' + pc + '_rx');
+                const cPing = document.getElementById('card_' + pc + '_ping');
+                const cUptime = document.getElementById('card_' + pc + '_uptime');
+
                 if (sDot && sText) {
                     if (s.isOnline) {
-                        sDot.className = 'h-2 w-2 rounded-full bg-emerald-400';
+                        sDot.className = 'h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]';
                         sText.className = 'text-emerald-400 font-medium';
                         sText.innerText = 'Online';
-                        if (cardHost) cardHost.classList.remove('border-red-500/80', 'opacity-70');
+                        if (cardHost) cardHost.classList.remove('card-offline-blink', 'opacity-70');
                     } else {
-                        sDot.className = 'h-2 w-2 rounded-full bg-red-500';
-                        sText.className = 'text-red-400 font-medium';
+                        sDot.className = 'h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]';
+                        sText.className = 'text-red-400 font-bold';
                         sText.innerText = 'Offline';
-                        if (cardHost) cardHost.classList.add('border-red-500/80');
+                        if (cardHost) {
+                            cardHost.classList.remove('card-alert-pulse');
+                            cardHost.classList.add('card-offline-blink');
+                        }
+                        if (alertBadge) alertBadge.classList.add('hidden');
                     }
                 }
 
+                // Alertas de saturação de recursos (quando online)
+                if (s.isOnline) {
+                    const isCpuAlert = (s.latestCpu >= 85 || s.avgCpu >= 85);
+                    const isRamAlert = (s.latestRam >= 90 || s.avgRam >= 90);
+                    const isDiskAlert = ((s.diskPct && s.diskPct >= 90) || (s.diskFree > 0 && s.diskFree <= 15));
+                    const hasAlert = (isCpuAlert || isRamAlert || isDiskAlert);
+
+                    const alertReasons = [];
+                    if (isCpuAlert) alertReasons.push('CPU: ' + s.latestCpu + '% (>=85%)');
+                    if (isRamAlert) alertReasons.push('RAM: ' + s.latestRam + '% (>=90%)');
+                    if (isDiskAlert) alertReasons.push('Disco C: ' + s.diskFree + 'GB livres (<=15GB ou >=90%)');
+
+                    if (cardHost) {
+                        if (hasAlert) {
+                            cardHost.classList.add('card-alert-pulse');
+                        } else {
+                            cardHost.classList.remove('card-alert-pulse');
+                        }
+                    }
+
+                    if (alertBadge) {
+                        if (hasAlert) {
+                            alertBadge.classList.remove('hidden');
+                            alertBadge.title = 'Alerta: ' + alertReasons.join(' | ');
+                        } else {
+                            alertBadge.classList.add('hidden');
+                        }
+                    }
+
+                    if (bCpu) {
+                        if (isCpuAlert) {
+                            bCpu.className = 'border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40';
+                            if (cCpu) cCpu.className = 'text-xs text-amber-300 font-bold';
+                        } else {
+                            bCpu.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
+                            if (cCpu) cCpu.className = 'text-xs text-white';
+                        }
+                    }
+                    if (bRam) {
+                        if (isRamAlert) {
+                            bRam.className = 'border rounded px-1 py-1 bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40';
+                            if (cRam) cRam.className = 'text-xs text-red-300 font-bold';
+                        } else {
+                            bRam.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
+                            if (cRam) cRam.className = 'text-xs text-white';
+                        }
+                    }
+                    if (bDisk) {
+                        if (isDiskAlert) {
+                            bDisk.className = 'border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40';
+                            if (cDisk) cDisk.className = 'text-xs text-amber-300 font-bold';
+                        } else {
+                            bDisk.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
+                            if (cDisk) cDisk.className = 'text-xs text-emerald-400';
+                        }
+                    }
+                } else {
+                    if (bCpu) { bCpu.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800'; if (cCpu) cCpu.className = 'text-xs text-white'; }
+                    if (bRam) { bRam.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800'; if (cRam) cRam.className = 'text-xs text-white'; }
+                    if (bDisk) { bDisk.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800'; if (cDisk) cDisk.className = 'text-xs text-emerald-400'; }
+                }
+
                 // Cards laterais - Métricas Instantâneas (Atual)
-                const cCpu = document.getElementById('card_' + pc + '_cpu');
                 if (cCpu) cCpu.innerText = s.latestCpu + '%';
-                const cRam = document.getElementById('card_' + pc + '_ram');
                 if (cRam) cRam.innerText = s.latestRam + '%';
-                const cDisk = document.getElementById('card_' + pc + '_disk');
                 if (cDisk) cDisk.innerText = s.diskFree + 'G';
-                const cIo = document.getElementById('card_' + pc + '_io');
                 if (cIo) cIo.innerText = s.latestIoW + 'k';
-                const cTx = document.getElementById('card_' + pc + '_tx');
                 if (cTx) cTx.innerText = s.latestTx + 'k';
-                const cRx = document.getElementById('card_' + pc + '_rx');
                 if (cRx) cRx.innerText = s.latestRx + 'k';
-                const cPing = document.getElementById('card_' + pc + '_ping');
                 if (cPing) cPing.innerText = s.ping + 'ms';
-                const cUptime = document.getElementById('card_' + pc + '_uptime');
                 if (cUptime && s.uptime) {
                     cUptime.innerHTML = '&#9201; ' + s.uptime;
                     if (s.bootDate) cUptime.title = 'Uptime cont\u00ednuo (\u00daltimo Boot: ' + s.bootDate + ')';
