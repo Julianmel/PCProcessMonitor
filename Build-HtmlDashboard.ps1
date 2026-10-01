@@ -354,6 +354,82 @@ foreach ($pc in $pcsList) {
 }
 Write-Host "Host Local detectado: $detectedLocalHost (Role: $($pcRole[$detectedLocalHost]))" -ForegroundColor Yellow
 
+# Carregamento ou extração de Top 10 Processos por máquina
+$topProcessesData = @{}
+$procJsonCandidates = @()
+if (-not [string]::IsNullOrWhiteSpace($LogFile)) {
+    $procJsonCandidates += (Join-Path (Split-Path $LogFile) "top_processes.json")
+}
+$procJsonCandidates += @(
+    (Join-Path $PSScriptRoot "Data\top_processes.json"),
+    (Join-Path $PSScriptRoot "top_processes.json"),
+    "V:\Documents\PCProcessMonitor\top_processes.json",
+    "V:\Documents\PCProcessMonitor\Data\top_processes.json"
+)
+foreach ($cPath in $procJsonCandidates) {
+    if (Test-Path $cPath) {
+        try {
+            $loaded = Get-Content -Raw $cPath -Encoding UTF8 | ConvertFrom-Json
+            foreach ($prop in $loaded.PSObject.Properties) {
+                if (-not $topProcessesData.ContainsKey($prop.Name)) {
+                    $topProcessesData[$prop.Name] = $prop.Value
+                }
+            }
+        } catch {}
+    }
+}
+# Se o nó local não tiver processos no json, consulta via CIM
+if (-not $topProcessesData.ContainsKey($detectedLocalHost)) {
+    try {
+        $locProcs = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process |
+            Where-Object { $_.Name -notin '_Total', 'Idle' } |
+            Sort-Object -Property PercentProcessorTime, WorkingSetPrivate -Descending |
+            Select-Object -First 10
+        $locList = [System.Collections.Generic.List[hashtable]]::new()
+        foreach ($lp in $locProcs) {
+            $cleanName = ($lp.Name -replace '#\d+$', '')
+            if (-not $cleanName.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase) -and $cleanName -ne 'System') {
+                $cleanName = "$cleanName.exe"
+            }
+            $locList.Add(@{
+                Name  = $cleanName
+                Pid   = [int]$lp.IDProcess
+                Cpu   = [int]$lp.PercentProcessorTime
+                MemMB = [math]::Round($lp.WorkingSetPrivate / 1MB, 1)
+            })
+        }
+        $topProcessesData[$detectedLocalHost] = $locList
+    } catch {}
+}
+
+# Tenta preencher nós remotos se ainda faltantes e online
+foreach ($remPc in $pcsList) {
+    if (-not $topProcessesData.ContainsKey($remPc) -and $stats[$remPc].isOnline) {
+        try {
+            $rProcs = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process -ComputerName $remPc -OperationTimeoutSec 1 |
+                Where-Object { $_.Name -notin '_Total', 'Idle' } |
+                Sort-Object -Property PercentProcessorTime, WorkingSetPrivate -Descending |
+                Select-Object -First 10
+            $rList = [System.Collections.Generic.List[hashtable]]::new()
+            foreach ($rp in $rProcs) {
+                $cleanName = ($rp.Name -replace '#\d+$', '')
+                if (-not $cleanName.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase) -and $cleanName -ne 'System') {
+                    $cleanName = "$cleanName.exe"
+                }
+                $rList.Add(@{
+                    Name  = $cleanName
+                    Pid   = [int]$rp.IDProcess
+                    Cpu   = [int]$rp.PercentProcessorTime
+                    MemMB = [math]::Round($rp.WorkingSetPrivate / 1MB, 1)
+                })
+            }
+            if ($rList.Count -gt 0) { $topProcessesData[$remPc] = $rList }
+        } catch {}
+    }
+}
+
+$topProcessesJson = $topProcessesData | ConvertTo-Json -Depth 4 -Compress
+
 # Template HTML do Dashboard
 $html = @"
 <!DOCTYPE html>
@@ -563,27 +639,27 @@ $html = @"
         </main>
 
         <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES -->
-        <aside id="nodesSidebar" class="w-full lg:w-80 xl:w-96 flex flex-col gap-2 shrink-0 overflow-y-auto pr-0.5">
+        <aside id="nodesSidebar" class="w-full lg:w-[355px] xl:w-[395px] flex flex-col gap-2 shrink-0 overflow-y-auto pr-0.5">
             <div class="flex items-center justify-between px-1 text-[11px] text-slate-400 font-semibold border-b border-borderbg pb-1 shrink-0">
                 <span class="flex items-center gap-1.5 text-slate-300">
                     <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
                     N&oacute;s Monitorados (4)
                 </span>
-                <span class="text-[10px] text-slate-500">Clique no card para filtrar</span>
+                <span class="text-[10px] text-slate-400">Clique para Top 10 | [Linha] para filtrar</span>
             </div>
 
             <!-- Card 1: JFMELGACO-4 (AZUL) -->
-            <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-4'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-4'].hasAlert) { 'card-alert-pulse ' })">
+            <div id="cardHost_JFMELGACO-4" onclick="openProcessModal('JFMELGACO-4')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-4'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-4'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5">
-                    <div class="flex items-center gap-1.5 min-w-0">
-                        <span id="cardDot_JFMELGACO-4" class="h-3 w-3 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
-                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-4'])</span>
+                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
+                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span id="cardDot_JFMELGACO-4" class="h-2.5 w-2.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-tight whitespace-nowrap" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
+                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-4'])</span>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <span id="cardAlertBadge_JFMELGACO-4" class="$(if (-not $stats['JFMELGACO-4'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-4'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all">Linha Azul &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
+                        <span id="cardAlertBadge_JFMELGACO-4" class="$(if (-not $stats['JFMELGACO-4'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-4'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-4" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-4')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para ligar/desligar nos gr&aacute;ficos">Linha Azul &#10003;</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
@@ -592,6 +668,7 @@ $html = @"
                         <span id="cardStatusText_JFMELGACO-4" class="$($stats['JFMELGACO-4'].onlineTextClass) font-medium">$($stats['JFMELGACO-4'].statusText)</span>
                     </span>
                     <div class="flex items-center gap-1">
+                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-4')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
                         <span id="card_JFMELGACO-4_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-4'].ping)ms</span>
                         <span id="card_JFMELGACO-4_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-4'].bootDate))">&#9201; $($stats['JFMELGACO-4'].uptime)</span>
                     </div>
@@ -621,17 +698,17 @@ $html = @"
             </div>
 
             <!-- Card 2: JFMELGACO-1 (VERDE) -->
-            <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-1'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-1'].hasAlert) { 'card-alert-pulse ' })">
+            <div id="cardHost_JFMELGACO-1" onclick="openProcessModal('JFMELGACO-1')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-1'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-1'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5">
-                    <div class="flex items-center gap-1.5 min-w-0">
-                        <span id="cardDot_JFMELGACO-1" class="h-3 w-3 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
-                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-1'])</span>
+                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
+                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span id="cardDot_JFMELGACO-1" class="h-2.5 w-2.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
+                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-1'])</span>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <span id="cardAlertBadge_JFMELGACO-1" class="$(if (-not $stats['JFMELGACO-1'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-1'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all">Linha Verde &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
+                        <span id="cardAlertBadge_JFMELGACO-1" class="$(if (-not $stats['JFMELGACO-1'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-1'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-1" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-1')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para alternar visibilidade nos gr&aacute;ficos">Linha Verde &#10003;</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
@@ -640,6 +717,7 @@ $html = @"
                         <span id="cardStatusText_JFMELGACO-1" class="$($stats['JFMELGACO-1'].onlineTextClass) font-medium">$($stats['JFMELGACO-1'].statusText)</span>
                     </span>
                     <div class="flex items-center gap-1">
+                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-1')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
                         <span id="card_JFMELGACO-1_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-1'].ping)ms</span>
                         <span id="card_JFMELGACO-1_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-1'].bootDate))">&#9201; $($stats['JFMELGACO-1'].uptime)</span>
                     </div>
@@ -669,17 +747,17 @@ $html = @"
             </div>
 
             <!-- Card 3: JFMELGACO-2 (AMARELO) -->
-            <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-2'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-2'].hasAlert) { 'card-alert-pulse ' })">
+            <div id="cardHost_JFMELGACO-2" onclick="openProcessModal('JFMELGACO-2')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-2'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-2'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5">
-                    <div class="flex items-center gap-1.5 min-w-0">
-                        <span id="cardDot_JFMELGACO-2" class="h-3 w-3 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_6px_rgba(245,158,11,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
-                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-2'])</span>
+                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
+                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span id="cardDot_JFMELGACO-2" class="h-2.5 w-2.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_6px_rgba(245,158,11,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-tight whitespace-nowrap" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
+                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-2'])</span>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <span id="cardAlertBadge_JFMELGACO-2" class="$(if (-not $stats['JFMELGACO-2'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-2'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all">Linha Amarela &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
+                        <span id="cardAlertBadge_JFMELGACO-2" class="$(if (-not $stats['JFMELGACO-2'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-2'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-2" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-2')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para alternar visibilidade nos gr&aacute;ficos">Linha Amarela &#10003;</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
@@ -688,6 +766,7 @@ $html = @"
                         <span id="cardStatusText_JFMELGACO-2" class="$($stats['JFMELGACO-2'].onlineTextClass) font-medium">$($stats['JFMELGACO-2'].statusText)</span>
                     </span>
                     <div class="flex items-center gap-1">
+                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-2')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
                         <span id="card_JFMELGACO-2_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-2'].ping)ms</span>
                         <span id="card_JFMELGACO-2_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-2'].bootDate))">&#9201; $($stats['JFMELGACO-2'].uptime)</span>
                     </div>
@@ -717,17 +796,17 @@ $html = @"
             </div>
 
             <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
-            <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-3'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-3'].hasAlert) { 'card-alert-pulse ' })">
+            <div id="cardHost_JFMELGACO-3" onclick="openProcessModal('JFMELGACO-3')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-3'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-3'].hasAlert) { 'card-alert-pulse ' })">
                 <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5">
-                    <div class="flex items-center gap-1.5 min-w-0">
-                        <span id="cardDot_JFMELGACO-3" class="h-3 w-3 rounded-full bg-red-500 border border-red-300 shadow-[0_0_6px_rgba(239,68,68,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
-                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-3'])</span>
+                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
+                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span id="cardDot_JFMELGACO-3" class="h-2.5 w-2.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_6px_rgba(239,68,68,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
+                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-3'])</span>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <span id="cardAlertBadge_JFMELGACO-3" class="$(if (-not $stats['JFMELGACO-3'].hasAlert) { 'hidden ' })text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse" title="$($stats['JFMELGACO-3'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all">Linha Vermelha &#10003;</span>
+                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
+                        <span id="cardAlertBadge_JFMELGACO-3" class="$(if (-not $stats['JFMELGACO-3'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-3'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
+                        <span id="visBadge_JFMELGACO-3" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-3')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para alternar visibilidade nos gr&aacute;ficos">Linha Vermelha &#10003;</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
@@ -736,6 +815,7 @@ $html = @"
                         <span id="cardStatusText_JFMELGACO-3" class="$($stats['JFMELGACO-3'].onlineTextClass) font-medium">$($stats['JFMELGACO-3'].statusText)</span>
                     </span>
                     <div class="flex items-center gap-1">
+                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-3')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
                         <span id="card_JFMELGACO-3_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-3'].ping)ms</span>
                         <span id="card_JFMELGACO-3_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-3'].bootDate))">&#9201; $($stats['JFMELGACO-3'].uptime)</span>
                     </div>
@@ -794,6 +874,7 @@ $html = @"
                             <th class="py-2.5 px-3">Disco C: Livre</th>
                             <th class="py-2.5 px-3">Ping (RTT)</th>
                             <th class="py-2.5 px-3">Uptime / &Uacute;ltimo Boot</th>
+                            <th class="py-2.5 px-3 text-center">Processos</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-borderbg text-xs">
@@ -809,6 +890,7 @@ $html = @"
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">$($stats['JFMELGACO-4'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-4'].avgPing)ms)</span></td>
                             <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; $($stats['JFMELGACO-4'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-4'].bootDate))</span></td>
+                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-4')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-emerald-400">$($pcDisplay['JFMELGACO-1'])</td>
@@ -818,10 +900,11 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">$($stats['JFMELGACO-1'].maxRam)%</td>
                             <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoR) / $($stats['JFMELGACO-1'].maxIoW) KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">$($stats['JFMELGACO-1'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-1'].avgPing)ms)</span></td>
                             <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; $($stats['JFMELGACO-1'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-1'].bootDate))</span></td>
+                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-1')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-amber-400">$($pcDisplay['JFMELGACO-2'])</td>
@@ -831,10 +914,11 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">$($stats['JFMELGACO-2'].maxRam)%</td>
                             <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoR) / $($stats['JFMELGACO-2'].maxIoW) KB/s</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">$($stats['JFMELGACO-2'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-2'].avgPing)ms)</span></td>
                             <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; $($stats['JFMELGACO-2'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-2'].bootDate))</span></td>
+                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-2')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-red-400">$($pcDisplay['JFMELGACO-3'])</td>
@@ -848,6 +932,7 @@ $html = @"
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">$($stats['JFMELGACO-3'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-3'].avgPing)ms)</span></td>
                             <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; $($stats['JFMELGACO-3'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-3'].bootDate))</span></td>
+                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-3')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -858,10 +943,60 @@ $html = @"
         </div>
     </div>
 
+    <!-- MODAL POPUP: TOP 10 PROCESSOS POR NÓ -->
+    <div id="processModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden transition-opacity">
+        <div class="bg-cardbg border border-borderbg rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-700/50">
+            <div class="flex items-center justify-between p-3.5 border-b border-borderbg bg-slate-800/60">
+                <div class="flex items-center gap-2">
+                    <span id="procModalDot" class="h-3.5 w-3.5 rounded-full bg-blue-500 shadow-md"></span>
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2" id="procModalTitle">
+                            &#9889; Top 10 Processos &mdash; <span class="font-mono text-cyan-300">JFMELGACO-4</span>
+                        </h3>
+                        <p class="text-[10px] text-slate-400" id="procModalSubtitle">Processos com maior consumo instant&acirc;neo de recursos</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="if(currentModalPc) toggleMachineVisibility(currentModalPc)" class="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1" title="Ligar/Desligar visibilidade nos gr&aacute;ficos">
+                        &#128065; Alternar Gr&aacute;ficos
+                    </button>
+                    <button onclick="closeProcessModal()" class="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs font-bold">
+                        &times; Fechar
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-y-auto flex-1 p-3">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="text-[10px] text-slate-400 uppercase border-b border-borderbg bg-slate-900/60">
+                            <th class="py-2 px-2.5 font-semibold text-center w-8">#</th>
+                            <th class="py-2 px-3 font-semibold">Processo</th>
+                            <th class="py-2 px-2 font-semibold text-right w-16">PID</th>
+                            <th class="py-2 px-3 font-semibold text-right w-28">CPU (%)</th>
+                            <th class="py-2 px-3 font-semibold text-right w-28">Mem&oacute;ria RAM</th>
+                        </tr>
+                    </thead>
+                    <tbody id="procModalTableBody" class="divide-y divide-borderbg/40 font-mono text-[11px]"></tbody>
+                </table>
+                <div id="procModalEmpty" class="hidden text-center py-8 text-slate-400 text-xs">
+                    Nenhum processo monitorado dispon&iacute;vel para este n&oacute; no momento.
+                </div>
+            </div>
+            <div class="flex items-center justify-between p-3 border-t border-borderbg bg-slate-900/80 text-[10px] text-slate-400">
+                <div class="flex items-center gap-3" id="procModalTotals">
+                    <span>Total CPU Top 10: <strong class="text-amber-400 font-bold" id="procTotalCpu">0%</strong></span>
+                    <span>Total RAM Top 10: <strong class="text-indigo-400 font-bold" id="procTotalRam">0 MB</strong></span>
+                </div>
+                <div class="text-[9px] text-slate-500">Fonte: Win32_PerfFormattedData_PerfProc_Process</div>
+            </div>
+        </div>
+    </div>
+
     <!-- SCRIPT CHART.JS -->
     <script>
         let timestamps = $jsonTimestamps;
         let rawData = $jsonData;
+        let dashboardTopProcesses = $topProcessesJson;
 
         const colors = {
             'JFMELGACO-4': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' },  // Azul
@@ -1255,12 +1390,110 @@ $html = @"
             }
         }
 
+        // 7.1 CONTROLES DO MODAL DE PROCESSOS (TOP 10)
+        let currentModalPc = null;
+
+        function openProcessModal(pc) {
+            currentModalPc = pc;
+            const modal = document.getElementById('processModal');
+            const title = document.getElementById('procModalTitle');
+            const dot = document.getElementById('procModalDot');
+            const cfg = pcCardConfig[pc];
+
+            if (title) {
+                title.innerHTML = '&#9889; Top 10 Processos &mdash; <span class="font-mono text-cyan-300">' + pc + '</span>';
+            }
+            if (dot && cfg) {
+                dot.className = 'h-3.5 w-3.5 rounded-full shadow-md ' + cfg.colorBar;
+            }
+
+            renderProcessModalBody(pc);
+
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeProcessModal() {
+            const modal = document.getElementById('processModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+            currentModalPc = null;
+        }
+
+        function renderProcessModalBody(pc) {
+            const tbody = document.getElementById('procModalTableBody');
+            const emptyEl = document.getElementById('procModalEmpty');
+            const totalCpuEl = document.getElementById('procTotalCpu');
+            const totalRamEl = document.getElementById('procTotalRam');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+            const procList = (dashboardTopProcesses && dashboardTopProcesses[pc]) ? dashboardTopProcesses[pc] : [];
+
+            if (!procList || procList.length === 0) {
+                if (emptyEl) emptyEl.classList.remove('hidden');
+                if (totalCpuEl) totalCpuEl.innerText = '0%';
+                if (totalRamEl) totalRamEl.innerText = '0 MB';
+                return;
+            }
+
+            if (emptyEl) emptyEl.classList.add('hidden');
+
+            let sumCpu = 0;
+            let sumRam = 0;
+
+            procList.slice(0, 10).forEach(function(proc, idx) {
+                const cpuVal = Number(proc.Cpu !== undefined ? proc.Cpu : (proc.PercentProcessorTime || 0));
+                const ramVal = Number(proc.MemMB !== undefined ? proc.MemMB : (proc.WorkingSetPrivateMB || 0));
+                const pidVal = proc.Pid !== undefined ? proc.Pid : (proc.IDProcess !== undefined ? proc.IDProcess : '-');
+                sumCpu += cpuVal;
+                sumRam += ramVal;
+
+                const cpuBarWidth = Math.min(100, Math.round(cpuVal));
+                const ramText = ramVal >= 1024 
+                    ? (ramVal / 1024).toFixed(2) + ' GB' 
+                    : ramVal.toFixed(1) + ' MB';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/60 transition';
+                
+                const tdIdx = '<td class="py-2 px-2.5 text-center text-slate-500 font-semibold">' + (idx + 1) + '</td>';
+                const tdName = '<td class="py-2 px-3 text-white font-medium truncate max-w-[210px]" title="' + (proc.Name || '') + '"><span class="text-cyan-300 font-mono text-[11px] truncate block">' + (proc.Name || 'Desconhecido') + '</span></td>';
+                const tdPid = '<td class="py-2 px-2 text-right text-slate-400 font-mono">' + pidVal + '</td>';
+                
+                const cpuColorClass = cpuVal > 25 ? 'text-amber-400 font-bold' : (cpuVal > 5 ? 'text-amber-300' : 'text-slate-300');
+                const tdCpu = '<td class="py-2 px-3 text-right"><div class="flex items-center justify-end gap-1.5"><div class="w-14 bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700/50"><div class="bg-amber-400 h-1.5 rounded-full" style="width: ' + cpuBarWidth + '%"></div></div><span class="' + cpuColorClass + '">' + cpuVal.toFixed(1) + '%</span></div></td>';
+                
+                const ramColorClass = ramVal > 1024 ? 'text-indigo-400 font-bold' : 'text-slate-300';
+                const tdRam = '<td class="py-2 px-3 text-right"><span class="' + ramColorClass + '">' + ramText + '</span></td>';
+
+                tr.innerHTML = tdIdx + tdName + tdPid + tdCpu + tdRam;
+                tbody.appendChild(tr);
+            });
+
+            if (totalCpuEl) totalCpuEl.innerText = sumCpu.toFixed(1) + '%';
+            if (totalRamEl) {
+                totalRamEl.innerText = sumRam >= 1024 
+                    ? (sumRam / 1024).toFixed(2) + ' GB' 
+                    : sumRam.toFixed(1) + ' MB';
+            }
+        }
+
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') toggleSummaryModal(false);
+            if (e.key === 'Escape') {
+                toggleSummaryModal(false);
+                closeProcessModal();
+            }
         });
 
         document.getElementById('summaryModal')?.addEventListener('click', (e) => {
             if (e.target.id === 'summaryModal') toggleSummaryModal(false);
+        });
+
+        document.getElementById('processModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'processModal') closeProcessModal();
         });
 
         function switchBottomRightView(view) {
@@ -1532,6 +1765,14 @@ $html = @"
                 }
             });
 
+            // 2.1 Atualiza dados de Top Processos se recebidos no payload dinâmico
+            if (payload.topProcesses) {
+                dashboardTopProcesses = payload.topProcesses;
+                if (currentModalPc) {
+                    renderProcessModalBody(currentModalPc);
+                }
+            }
+
             // 3. Atualiza os gráficos do Chart.js instantaneamente (modo 'none' = sem animação ou piscadeira)
             refreshChartsWindow('none');
 
@@ -1611,7 +1852,8 @@ window.updateDashboardData({
     endTime: "$endTime",
     totalPoints: $totalPoints,
     timestamps: $jsonTimestamps,
-    rawData: $jsonData
+    rawData: $jsonData,
+    topProcesses: $topProcessesJson
 });
 "@
 

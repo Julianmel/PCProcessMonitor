@@ -207,6 +207,27 @@ function Get-MachineMetrics {
             $txStr = "  N/D"
         }
 
+        # 6. Top 10 Processos com maior consumo (Win32_PerfFormattedData_PerfProc_Process)
+        $topProcs = [System.Collections.Generic.List[hashtable]]::new()
+        try {
+            $procPerf = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process @sessionArgs |
+                Where-Object { $_.Name -notin '_Total', 'Idle' } |
+                Sort-Object -Property PercentProcessorTime, WorkingSetPrivate -Descending |
+                Select-Object -First 10
+            foreach ($pr in $procPerf) {
+                $pClean = ($pr.Name -replace '#\d+$', '')
+                if (-not $pClean.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase) -and $pClean -ne 'System') {
+                    $pClean = "$pClean.exe"
+                }
+                $topProcs.Add(@{
+                    Name  = $pClean
+                    Pid   = [int]$pr.IDProcess
+                    Cpu   = [int]$pr.PercentProcessorTime
+                    MemMB = [math]::Round($pr.WorkingSetPrivate / 1MB, 1)
+                })
+            }
+        } catch {}
+
         return @{
             Success        = $true
             Status         = 'ONLINE'
@@ -230,6 +251,7 @@ function Get-MachineMetrics {
             Ping           = $pingMs
             Uptime         = $uptimeStr
             BootDate       = $bootDateStr
+            TopProcesses   = $topProcs
         }
     } catch {
         $statusFail = if ($isPingable) { 'SEM ACESSO' } else { 'OFFLINE' }
@@ -355,6 +377,21 @@ while ($true) {
         [System.IO.File]::WriteAllText($logFilePath, "", [System.Text.UTF8Encoding]::new($true))
     }
     [System.IO.File]::AppendAllText($logFilePath, $fileBlock.ToString(), [System.Text.UTF8Encoding]::new($false))
+
+    # 2.1 Grava snapshot dos Top 10 Processos por nó em top_processes.json
+    try {
+        $topProcMap = @{}
+        foreach ($pc in $Computadores) {
+            if ($currentMetrics.ContainsKey($pc) -and $currentMetrics[$pc].TopProcesses -and $currentMetrics[$pc].TopProcesses.Count -gt 0) {
+                $topProcMap[$pc] = $currentMetrics[$pc].TopProcesses
+            }
+        }
+        if ($topProcMap.Count -gt 0) {
+            $topProcJsonPath = Join-Path $LogDir "top_processes.json"
+            $jsonStr = $topProcMap | ConvertTo-Json -Depth 4
+            [System.IO.File]::WriteAllText($topProcJsonPath, $jsonStr, [System.Text.UTF8Encoding]::new($true))
+        }
+    } catch {}
 
     # 3. Atualiza o dashboard HTML em tempo real
     try {
