@@ -1,4 +1,4 @@
-# Diretrizes Globais do Projeto (Antigravity Rules)
+﻿# Diretrizes Globais do Projeto (Antigravity Rules)
 
 Este repositório adota as regras de governança de projetos, automação de calendário e salvaguardas técnicas do Windows PowerShell definidas a seguir.
 
@@ -41,11 +41,14 @@ Este repositório adota as regras de governança de projetos, automação de cal
 * **Formatação Tipográfica Obrigatória:**
   * O corpo das observações deve ser formatado estritamente na fonte **Courier New tamanho 10 pt**, via automação COM (`$insp.WordEditor`):
     ```powershell
+    $appt.Display()
     $doc = $appt.GetInspector.WordEditor
     if ($doc) {
         $doc.Range().Font.Name = "Courier New"
         $doc.Range().Font.Size = 10
     }
+    $appt.Save()
+    $appt.Close(0) # 0 = olSave
     ```
 * **Identificador de Conversa (Rodapé):**
   * Sempre na última anotação de uma sequência ou sobre o tema em questão, o rodapé DEVE conter a identificação da conversa:
