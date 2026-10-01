@@ -47,7 +47,7 @@ function Parse-MetricNumber([string]$str) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?.*?(?:Ping:\s*(?<ping>\d+|---|N\/D)\s*ms)?$'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?.*?(?:Ping:\s*(?<ping>\d+|---|N\/D)\s*ms)?.*?(?:Uptime:\s*(?<uptime>[^\r\n\(]+?)(?:\s*\(Boot:\s*(?<boot>[^\)]+)\))?)?\s*$'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $pcsList = @('JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
@@ -64,6 +64,8 @@ foreach ($pc in $pcsList) {
         rx       = [System.Collections.Generic.List[object]]::new()
         tx       = [System.Collections.Generic.List[object]]::new()
         ping     = [System.Collections.Generic.List[object]]::new()
+        uptime   = [System.Collections.Generic.List[object]]::new()
+        bootDate = [System.Collections.Generic.List[object]]::new()
         ramTotal = 0
         diskTotal= 0
     }
@@ -87,6 +89,8 @@ function Flush-Block {
                 $machineData[$p].rx.Add($obj.rx)
                 $machineData[$p].tx.Add($obj.tx)
                 $machineData[$p].ping.Add($obj.ping)
+                $machineData[$p].uptime.Add($obj.uptime)
+                $machineData[$p].bootDate.Add($obj.bootDate)
                 if ($obj.ramTotal -gt 0) { $machineData[$p].ramTotal = $obj.ramTotal }
             } else {
                 $machineData[$p].cpu.Add($null)
@@ -98,6 +102,8 @@ function Flush-Block {
                 $machineData[$p].rx.Add(0)
                 $machineData[$p].tx.Add(0)
                 $machineData[$p].ping.Add($null)
+                $machineData[$p].uptime.Add($null)
+                $machineData[$p].bootDate.Add($null)
             }
         }
     }
@@ -113,7 +119,9 @@ foreach ($line in $lines) {
         if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
         $isOnline = $line.StartsWith('ONLINE')
         $pingVal = if ($matches['ping'] -and $matches['ping'] -ne '---' -and $matches['ping'] -ne 'N/D') { [int]$matches['ping'] } else { $null }
-        
+        $uptimeVal = if ($matches['uptime'] -and $matches['uptime'].Trim() -ne '---' -and $matches['uptime'].Trim() -ne 'N/D') { $matches['uptime'].Trim() } else { $null }
+        $bootVal   = if ($matches['boot'] -and $matches['boot'].Trim() -ne '---' -and $matches['boot'].Trim() -ne 'N/D') { $matches['boot'].Trim() } else { $null }
+
         if ($isOnline -and $matches['cpu']) {
             $cpu = [int]$matches['cpu']
             $ramPct = [int]$matches['ramPct']
@@ -144,6 +152,8 @@ foreach ($line in $lines) {
                 rx       = [math]::Round($rx, 1)
                 tx       = [math]::Round($tx, 1)
                 ping     = $pingVal
+                uptime   = $uptimeVal
+                bootDate = $bootVal
             }
         } else {
             $currentBlockPcs[$pc] = @{
@@ -157,6 +167,8 @@ foreach ($line in $lines) {
                 rx       = 0
                 tx       = 0
                 ping     = $pingVal
+                uptime   = $null
+                bootDate = $null
             }
         }
     }
@@ -168,29 +180,54 @@ Write-Host "Total de pontos temporais processados: $($timestamps.Count)" -Foregr
 # Calculando estatisticas consolidadas
 $stats = @{}
 foreach ($pc in $pcsList) {
-    $validCpu = $machineData[$pc].cpu | Where-Object { $null -ne $_ }
-    $validRam = $machineData[$pc].ramPct | Where-Object { $null -ne $_ }
-    $validRx  = $machineData[$pc].rx | Where-Object { $null -ne $_ }
-    $validTx  = $machineData[$pc].tx | Where-Object { $null -ne $_ }
-    $validDisk= $machineData[$pc].diskFree | Where-Object { $null -ne $_ }
-    $validIoR = $machineData[$pc].ioR | Where-Object { $null -ne $_ }
-    $validIoW = $machineData[$pc].ioW | Where-Object { $null -ne $_ }
-    $validPing= $machineData[$pc].ping | Where-Object { $null -ne $_ }
-    
+    $validCpu    = $machineData[$pc].cpu | Where-Object { $null -ne $_ }
+    $validRam    = $machineData[$pc].ramPct | Where-Object { $null -ne $_ }
+    $validRx     = $machineData[$pc].rx | Where-Object { $null -ne $_ }
+    $validTx     = $machineData[$pc].tx | Where-Object { $null -ne $_ }
+    $validDisk   = $machineData[$pc].diskFree | Where-Object { $null -ne $_ }
+    $validIoR    = $machineData[$pc].ioR | Where-Object { $null -ne $_ }
+    $validIoW    = $machineData[$pc].ioW | Where-Object { $null -ne $_ }
+    $validPing   = $machineData[$pc].ping | Where-Object { $null -ne $_ }
+    $validUptime = $machineData[$pc].uptime | Where-Object { $null -ne $_ -and $_ -ne '---' -and $_ -ne 'N/D' }
+    $validBoot   = $machineData[$pc].bootDate | Where-Object { $null -ne $_ -and $_ -ne '---' -and $_ -ne 'N/D' }
+    $lastUptime  = if ($validUptime) { $validUptime | Select-Object -Last 1 } else { $null }
+    $lastBoot    = if ($validBoot) { $validBoot | Select-Object -Last 1 } else { $null }
+
+    if (-not $lastUptime -or -not $lastBoot) {
+        try {
+            $opt = New-CimSessionOption -Protocol Dcom
+            $s = New-CimSession -ComputerName $pc -SessionOption $opt -OperationTimeoutSec 1 -ErrorAction Stop
+            $osObj = Get-CimInstance Win32_OperatingSystem -CimSession $s -OperationTimeoutSec 1 -ErrorAction Stop
+            Remove-CimSession $s -ErrorAction SilentlyContinue
+            if ($osObj.LastBootUpTime) {
+                if (-not $lastBoot) { $lastBoot = $osObj.LastBootUpTime.ToString("dd/MM/yyyy HH:mm") }
+                if (-not $lastUptime) {
+                    $diff = (Get-Date) - $osObj.LastBootUpTime
+                    $lastUptime = if ($diff.Days -gt 0) { "{0}d {1}h" -f $diff.Days, $diff.Hours } else { "{0}h {1}m" -f $diff.Hours, $diff.Minutes }
+                }
+            }
+        } catch {
+            if (-not $lastUptime) { $lastUptime = "N/D" }
+            if (-not $lastBoot) { $lastBoot = "N/D" }
+        }
+    }
+
     $stats[$pc] = @{
-        avgCpu  = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
-        maxCpu  = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
-        avgRam  = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
-        maxRam  = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
-        ramTotal= $machineData[$pc].ramTotal
-        maxRx   = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
-        maxTx   = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
-        diskFree= if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
-        maxIoR  = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
-        maxIoW  = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
-        ping    = if ($validPing) { ($validPing | Select-Object -Last 1) } else { 0 }
-        avgPing = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
-        maxPing = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
+        avgCpu   = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
+        maxCpu   = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
+        avgRam   = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
+        maxRam   = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
+        ramTotal = $machineData[$pc].ramTotal
+        maxRx    = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
+        maxTx    = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
+        diskFree = if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
+        maxIoR   = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
+        maxIoW   = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
+        ping     = if ($validPing) { ($validPing | Select-Object -Last 1) } else { 0 }
+        avgPing  = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
+        maxPing  = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
+        uptime   = $lastUptime
+        bootDate = $lastBoot
     }
 }
 
@@ -359,6 +396,7 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
                         <span id="card_JFMELGACO-4_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-4'].ping)ms</span>
+                        <span id="card_JFMELGACO-4_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-4'].bootDate))">&#9201; $($stats['JFMELGACO-4'].uptime)</span>
                     </span>
                 </div>
             </div>
@@ -401,6 +439,7 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
                         <span id="card_JFMELGACO-1_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-1'].ping)ms</span>
+                        <span id="card_JFMELGACO-1_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-1'].bootDate))">&#9201; $($stats['JFMELGACO-1'].uptime)</span>
                     </span>
                 </div>
             </div>
@@ -443,6 +482,7 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
                         <span id="card_JFMELGACO-2_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-2'].ping)ms</span>
+                        <span id="card_JFMELGACO-2_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-2'].bootDate))">&#9201; $($stats['JFMELGACO-2'].uptime)</span>
                     </span>
                 </div>
             </div>
@@ -485,6 +525,7 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         <span class="text-emerald-400 font-medium">Online</span>
                         <span id="card_JFMELGACO-3_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-3'].ping)ms</span>
+                        <span id="card_JFMELGACO-3_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-3'].bootDate))">&#9201; $($stats['JFMELGACO-3'].uptime)</span>
                     </span>
                 </div>
             </div>
@@ -624,6 +665,7 @@ $html = @"
                             <th class="py-2.5 px-3">Pico Tx</th>
                             <th class="py-2.5 px-3">Disco C: Livre</th>
                             <th class="py-2.5 px-3">Ping (RTT)</th>
+                            <th class="py-2.5 px-3">Uptime / &Uacute;ltimo Boot</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-borderbg text-xs">
@@ -638,6 +680,7 @@ $html = @"
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">$($stats['JFMELGACO-4'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-4'].avgPing)ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; $($stats['JFMELGACO-4'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-4'].bootDate))</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-emerald-400">$($pcDisplay['JFMELGACO-1'])</td>
@@ -650,6 +693,7 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">$($stats['JFMELGACO-1'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-1'].avgPing)ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; $($stats['JFMELGACO-1'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-1'].bootDate))</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-amber-400">$($pcDisplay['JFMELGACO-2'])</td>
@@ -662,6 +706,7 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">$($stats['JFMELGACO-2'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-2'].avgPing)ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; $($stats['JFMELGACO-2'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-2'].bootDate))</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-red-400">$($pcDisplay['JFMELGACO-3'])</td>
@@ -674,6 +719,7 @@ $html = @"
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_tx">$($stats['JFMELGACO-3'].maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree) GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">$($stats['JFMELGACO-3'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-3'].avgPing)ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; $($stats['JFMELGACO-3'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-3'].bootDate))</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1222,6 +1268,11 @@ $html = @"
                 if (cRx) cRx.innerText = s.maxRx + 'k';
                 const cPing = document.getElementById('card_' + pc + '_ping');
                 if (cPing) cPing.innerText = s.ping + 'ms';
+                const cUptime = document.getElementById('card_' + pc + '_uptime');
+                if (cUptime && s.uptime) {
+                    cUptime.innerHTML = '&#9201; ' + s.uptime;
+                    if (s.bootDate) cUptime.title = 'Uptime cont\u00ednuo (\u00daltimo Boot: ' + s.bootDate + ')';
+                }
 
                 // Tabela do Modal de Resumo
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
@@ -1242,6 +1293,10 @@ $html = @"
                 if (mDisk) mDisk.innerText = s.diskFree + ' GB';
                 const mPing = document.getElementById('modal_' + pc + '_ping');
                 if (mPing) mPing.innerHTML = s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d ' + s.avgPing + 'ms)</span>';
+                const mUptime = document.getElementById('modal_' + pc + '_uptime');
+                if (mUptime && s.uptime) {
+                    mUptime.innerHTML = '&#9201; ' + s.uptime + ' <span class="text-[10px] text-slate-400 font-normal">(' + (s.bootDate || 'N/D') + ')</span>';
+                }
             });
 
             // 3. Atualiza os gráficos do Chart.js instantaneamente (modo 'none' = sem animação ou piscadeira)

@@ -148,12 +148,21 @@ function Get-MachineMetrics {
         $cpuObj = Get-CimInstance Win32_Processor @sessionArgs | Measure-Object -Property LoadPercentage -Average
         $cpu = [math]::Round($cpuObj.Average, 0)
 
-        # 2. Memória RAM
+        # 2. Memória RAM, Uptime e Último Boot
         $os = Get-CimInstance Win32_OperatingSystem @sessionArgs
         $totalRam = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
         $freeRam  = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
         $usedRam  = [math]::Round($totalRam - $freeRam, 1)
         $pctRam   = [math]::Round(($usedRam / $totalRam) * 100, 0)
+
+        # Uptime e Data do Último Boot
+        $lastBoot = $os.LastBootUpTime
+        $bootDateStr = if ($lastBoot) { $lastBoot.ToString("dd/MM/yyyy HH:mm") } else { "N/D" }
+        $uptimeSpan = if ($lastBoot) { (Get-Date) - $lastBoot } else { $null }
+        $uptimeStr = if ($uptimeSpan) {
+            if ($uptimeSpan.Days -gt 0) { "{0}d {1}h" -f $uptimeSpan.Days, $uptimeSpan.Hours }
+            else { "{0}h {1}m" -f $uptimeSpan.Hours, $uptimeSpan.Minutes }
+        } else { "N/D" }
 
         # 3. Disco C: (Espaço livre e ocupação)
         $disk = Get-CimInstance Win32_LogicalDisk @sessionArgs -Filter "DeviceID='C:'"
@@ -219,6 +228,8 @@ function Get-MachineMetrics {
             RxStr          = $rxStr
             TxStr          = $txStr
             Ping           = $pingMs
+            Uptime         = $uptimeStr
+            BootDate       = $bootDateStr
         }
     } catch {
         $statusFail = if ($isPingable) { 'SEM ACESSO' } else { 'OFFLINE' }
@@ -228,6 +239,8 @@ function Get-MachineMetrics {
             Computer    = $ComputerName
             Display     = $nomeDisplay
             Ping        = if ($isPingable) { $pingMs } else { $null }
+            Uptime      = "---"
+            BootDate    = "---"
             ErrorReason = $_.Exception.Message
         }
     } finally {
@@ -251,8 +264,11 @@ function Build-Lines($m, $prev) {
         $pingDisplay = if ($null -ne $m.Ping) { "{0,3}ms" -f $m.Ping } else { "---" }
         $cPingStr = "Ping: $pingDisplay"
         $fPingStr = "Ping: $pingDisplay"
-        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5,-24}  {6}" -f $m.Display, "---", "---", "---", "---", "---", $cPingStr
-        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---", $fPingStr
+        $uptimeDisplay = if ($m.Uptime) { $m.Uptime } else { "---" }
+        $cUptimeStr = "Uptime: {0,7}" -f $uptimeDisplay
+        $fUptimeStr = "Uptime: {0,7}" -f $uptimeDisplay
+        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5,-24}  {6}  {7}" -f $m.Display, "---", "---", "---", "---", "---", $cPingStr, $cUptimeStr
+        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---", $fPingStr, $fUptimeStr
         return @{ Console = $cLine; File = $fLine }
     }
 
@@ -284,7 +300,8 @@ function Build-Lines($m, $prev) {
     $cDiskIOStr = "R: $diskReadColored | W: $diskWriteColored"
     $cNetStr    = "Rx: $rxColored | Tx: $txColored"
     $cPingStr   = "Ping: $pingColored"
-    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr  $cPingStr"
+    $cUptimeStr = "Uptime: {0,7}" -f $m.Uptime
+    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr  $cPingStr  $cUptimeStr"
 
     # Linha para o arquivo texto (texto puro, compatível com regex de auditoria)
     $fStatus    = "ONLINE    "
@@ -294,7 +311,9 @@ function Build-Lines($m, $prev) {
     $fDiskIOStr = "R: {0} | W: {1}" -f $m.DiskReadStr, $m.DiskWriteStr
     $fNetStr    = "Rx: {0} | Tx: {1}" -f $m.RxStr, $m.TxStr
     $fPingStr   = "Ping: {0,3}ms" -f $m.Ping
-    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr, $fPingStr
+    $bootShort  = if ($m.BootDate -and $m.BootDate.Length -ge 16) { $m.BootDate.Substring(0, 16) } else { $m.BootDate }
+    $fUptimeStr = "Uptime: {0,7} (Boot: {1})" -f $m.Uptime, $bootShort
+    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr, $fPingStr, $fUptimeStr
 
     return @{ Console = $cLine; File = $fLine }
 }
@@ -327,8 +346,8 @@ while ($true) {
     # 2. Grava bloco no arquivo texto (AAAAMMDD - HHMM - PC Processmonitor.txt)
     $fileBlock = [System.Text.StringBuilder]::new()
     $null = $fileBlock.AppendLine("[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================")
-    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)")
-    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------")
+    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime / Último Boot")
+    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     --------------------")
     foreach ($fl in $fileLines) {
         $null = $fileBlock.AppendLine($fl)
     }
@@ -369,21 +388,21 @@ while ($true) {
 
     # Imprime tabela com cabeçalho, dados e rodapé de status
     $headerBanner = "[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) =============================="
-    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)"
-    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------"
+    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime"
+    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     ------"
 
-    Write-Host "$cCyan$headerBanner$cReset".PadRight(175)
-    Write-Host "$cYellow$headerCols$cReset".PadRight(175)
-    Write-Host "$cGray$headerDiv$cReset".PadRight(175)
+    Write-Host "$cCyan$headerBanner$cReset".PadRight(195)
+    Write-Host "$cYellow$headerCols$cReset".PadRight(195)
+    Write-Host "$cGray$headerDiv$cReset".PadRight(195)
 
     foreach ($cl in $consoleLines) {
-        Write-Host $cl.PadRight(175)
+        Write-Host $cl.PadRight(195)
     }
 
-    $legenda = "$cGray-----------------------------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
+    $legenda = "$cGray--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
     $infoRodape = "$cGray[$sampleCount amostras] $cYellow▲ Amarelo = Subiu$cReset $cGray|$cReset $cGreen▼ Verde = Desceu$cReset $cGray|$cReset $cWhite■ Branco = Estável$cReset $cGray|$cReset $cNoAccess■ Magenta = Sem Acesso$cReset $cGray| Log: $logFileName$cReset"
-    Write-Host $legenda.PadRight(175)
-    Write-Host $infoRodape.PadRight(175)
+    Write-Host $legenda.PadRight(195)
+    Write-Host $infoRodape.PadRight(195)
 
     # 5. Guarda as métricas atuais para a próxima comparação
     $prevMetrics = $currentMetrics

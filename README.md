@@ -1,4 +1,4 @@
-<img width="1226" height="236" alt="Capture-2" src="https://github.com/user-attachments/assets/9522c1c4-7602-46b9-b0c5-a7222eb1ed58" />
+﻿<img width="1226" height="236" alt="Capture-2" src="https://github.com/user-attachments/assets/9522c1c4-7602-46b9-b0c5-a7222eb1ed58" />
 
 <img width="1249" height="636" alt="Capture" src="https://github.com/user-attachments/assets/72dfaee7-e645-449b-a2fc-d5d7c7a2a387" />
 
@@ -7,7 +7,7 @@
 
 > **Sistema leve e autônomo de monitoramento de infraestrutura local em tempo real, com telemetria via PowerShell/WMI e Dashboard visual estilo NOC (Network Operations Center).**
 
-![Versão](https://img.shields.io/badge/Versão-1.1.4-brightgreen)
+![Versão](https://img.shields.io/badge/Versão-1.1.5-brightgreen)
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-blue?logo=powershell)
 ![Interface](https://img.shields.io/badge/UI-TailwindCSS%20%2B%20Chart.js-38B2AC?logo=tailwind-css)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows%2010%20%2F%2011-0078D6?logo=windows)
@@ -39,6 +39,10 @@ O ecossistema é composto por dois scripts PowerShell e uma interface web modern
 - **Telemetria de Disco C: (Espaço e Taxa de I/O):**
   - Espaço livre em GB e porcentagem de ocupação do disco.
   - Taxas em tempo real de **Input (Leitura - Read)** e **Output (Escrita - Write)** em KB/s ou MB/s (`Win32_PerfFormattedData_PerfDisk_LogicalDisk`).
+- **Uptime e Data do Último Boot (Win32_OperatingSystem):**
+  - Extração contínua da propriedade `LastBootUpTime` com 0 ms de overhead através da instância CIM de sistema operacional já consultada.
+  - Formatação inteligente de tempo decorrido no formato `{d}d {h}h` ou `{h}h {m}m`.
+  - Exibição de coluna dedicada `Uptime` no console e `Uptime / Último Boot` no log textual diário para auditoria de reinicializações inesperadas ou atualizações automáticas do Windows.
 - **Métricas de Rede Bidirecionais:** Exibe e registra as taxas de download (**Rx**) e upload (**Tx**) em KB/s e MB/s para cada computador.
 - **Rotação de Logs com Timestamp:** Cria automaticamente na inicialização arquivos organizados no formato:
   `AAAAMMDD - HHMM - PC Processmonitor.txt` (gravados na subpasta `Data/` se disponível, ou na raiz do projeto).
@@ -170,6 +174,15 @@ PCProcessMonitor/
 ---
 
 ## 📜 Histórico de Versões
+
+### [v1.1.5] - 2026-10-01
+- **Solução da ISSUE #19:** Telemetria: Exibição de Uptime (tempo de atividade) e data do último boot dos computadores:
+  - **Coleta de LastBootUpTime com Overhead Zero:** Aproveitamento da consulta CIM `Win32_OperatingSystem` já executada em cada ciclo do coletor `Monitor-Rede.ps1`, calculando a diferença temporal (`(Get-Date) - $os.LastBootUpTime`) e formatando em dias/horas (`{d}d {h}h`) ou horas/minutos (`{h}h {m}m`).
+  - **Exibição Formatada no Terminal e Logs:** Inclusão de coluna dedicada `Uptime` no prompt do console e gravação completa de `Uptime / Último Boot` nos arquivos de log diários (`AAAAMMDD - HHMM - PC Processmonitor.txt`).
+  - **Badge de Uptime com Ícone de Cronômetro nos Cards Superiores:** Inclusão de badge estilizado em âmbar (`⏱ Xh Ym`) ao lado da latência de ping no cabeçalho de cada card de nó, com tooltip exibindo a data e hora exata da última inicialização.
+  - **Coluna Dedicada na Tabela Resumo Modal:** Integração de coluna `Uptime / Último Boot` com destaque monoespaçado e atualização em tempo real sem F5 via `dashboard_data.js`.
+  - **Fallback Dinâmico e Retrocompatibilidade Completa:** O gerador analítico `Build-HtmlDashboard.ps1` suporta logs históricos legados anteriores à implementação, efetuando fallback pontual via CIM caso o log ainda não possua registros de Uptime.
+  - **Codificação UTF-8 com BOM Garantida:** Todos os arquivos de script e logs gerados mantêm estrita conformidade técnica com o padrão UTF-8 com BOM.
 
 ### [v1.1.4] - 2026-09-30
 - **Solução da ISSUE #18:** Medição e exibição contínua da Latência de Rede (Ping ICMP RTT em ms) por máquina:
