@@ -43,9 +43,9 @@
             </span>
             <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.1.0</span></h1>
             <span class="text-slate-500">|</span>
-            <span class="text-slate-400" id="headerTimeRange">17:04:01 &rarr; 17:04:01</span>
+            <span class="text-slate-400" id="headerTimeRange">15:20:24 &rarr; 18:00:10</span>
             <span class="text-slate-500">|</span>
-            <span class="text-cyan-400 font-semibold" id="headerSampleCount">1 amostras</span>
+            <span class="text-cyan-400 font-semibold" id="headerSampleCount">321 amostras</span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -86,265 +86,286 @@
         </div>
     </header>
 
-    <!-- CARDS DOS COMPUTADORES (AMPLIADOS, ENRIQUECIDOS E COM LEGENDA MESTRE) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 my-2 shrink-0">
-        <!-- Card 1: JFMELGACO-4 (AZUL) -->
-        <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-4" class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">LOCAL</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 transition-all">Linha Azul &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-4_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
-                        <span id="card_JFMELGACO-4_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: 01/10/2026 12:01)">&#9201; 5h 2m</span>
+    <!-- CONTAINER PRINCIPAL: GRÁFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
+    <div id="dashboardContent" class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden">
+
+        <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - À ESQUERDA) -->
+        <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
+
+            <!-- 1. CPU CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+                        Uso de CPU (%) &larr; Task Manager
                     </span>
+                    <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <canvas id="cpuChart"></canvas>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">27%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-4_ram">92%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">205G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-4_io">0k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">4k</strong>
-                </div>
-            </div>
-        </div>
 
-        <!-- Card 2: JFMELGACO-1 (VERDE) -->
-        <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-1" class="h-3.5 w-3.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">SRV 1</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 transition-all">Linha Verde &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-1_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
-                        <span id="card_JFMELGACO-1_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: 01/10/2026 06:56)">&#9201; 10h 7m</span>
+            <!-- 2. RAM CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
+                        Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
                     </span>
+                    <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <canvas id="ramChart"></canvas>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">29%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">80%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">437.8G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">0k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-1_rx">1k</strong>
-                </div>
-            </div>
-        </div>
 
-        <!-- Card 3: JFMELGACO-2 (AMARELO) -->
-        <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-2" class="h-3.5 w-3.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">NOTE 2</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition-all">Linha Amarela &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+            <!-- 3. RX CHART (Download) -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-2_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
-                        <span id="card_JFMELGACO-2_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: 01/10/2026 14:59)">&#9201; 2h 4m</span>
+                        Rede: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
                     </span>
+                    <span class="text-[10px] text-slate-400">Tempo Real</span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <canvas id="rxChart"></canvas>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-2_cpu">1%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">20%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">360.3G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-2_io">0k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-2_rx">0k</strong>
-                </div>
-            </div>
-        </div>
 
-        <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
-        <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-3" class="h-3.5 w-3.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase">NOTE 3</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 transition-all">Linha Vermelha &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-3_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
-                        <span id="card_JFMELGACO-3_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: 01/10/2026 15:23)">&#9201; 1h 41m</span>
+            <!-- 4. TX CHART & DISCO C: COM ABAS RÁPIDAS -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                        <span id="titleBottomRight">Rede: Transmiss&atilde;o / Upload (Tx)</span>
                     </span>
+                    <div class="flex items-center gap-1 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/60">
+                        <button onclick="switchBottomRightView('tx')" id="btnTabTx" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer">
+                            Tx (Upload)
+                        </button>
+                        <button onclick="switchBottomRightView('disk')" id="btnTabDisk" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                            Disco C: (GB)
+                        </button>
+                        <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                            I/O Disco
+                        </button>
+                        <button onclick="switchBottomRightView('ping')" id="btnTabPing" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                            Lat&ecirc;ncia Ping (ms)
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <div id="wrapperTxChart" class="h-full w-full">
+                        <canvas id="txChart"></canvas>
+                    </div>
+                    <div id="wrapperDiskChart" class="h-full w-full hidden">
+                        <canvas id="diskChart"></canvas>
+                    </div>
+                    <div id="wrapperIoChart" class="h-full w-full hidden">
+                        <canvas id="ioChart"></canvas>
+                    </div>
+                    <div id="wrapperPingChart" class="h-full w-full hidden">
+                        <canvas id="pingChart"></canvas>
+                    </div>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">100%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">67%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">355.8G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">36966.4k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-3_rx">2k</strong>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - COMPACTO E EQUILIBRADO) -->
-    <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
+        </main>
 
-        <!-- 1. CPU CHART -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES -->
+        <aside id="nodesSidebar" class="w-full lg:w-80 xl:w-96 flex flex-col gap-2 shrink-0 overflow-y-auto pr-0.5">
+            <div class="flex items-center justify-between px-1 text-[11px] text-slate-400 font-semibold border-b border-borderbg pb-1 shrink-0">
+                <span class="flex items-center gap-1.5 text-slate-300">
                     <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                    Uso de CPU (%) &larr; Task Manager
+                    N&oacute;s Monitorados (4)
                 </span>
-                <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+                <span class="text-[10px] text-slate-500">Clique no card para filtrar</span>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <canvas id="cpuChart"></canvas>
-            </div>
-        </div>
 
-        <!-- 2. RAM CHART -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                    <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
-                </span>
-                <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+            <!-- Card 1: JFMELGACO-4 (AZUL) -->
+            <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-4" class="h-3 w-3 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase shrink-0">NOTE 4</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all">Linha Azul &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-4" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-4" class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span id="cardStatusText_JFMELGACO-4" class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-4_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
+                        <span id="card_JFMELGACO-4_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: 01/10/2026 12:01)">&#9201; 5h 58m</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_cpu" title="CPU Atual: 6% (M&eacute;dia: 17% | Pico: 65%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">6%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_ram" title="RAM Atual: 90% (M&eacute;dia: 85.1% | Total: 15.4 GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-4_ram">90%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">205.3G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_io" title="I/O Escrita Atual: 2457.6 KB/s (Pico: 53964.8 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-4_io">2457.6k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_tx" title="Rede Tx Atual: 0 KB/s (Pico: 4710.4 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">0k</strong>
+                    </div>
+                </div>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <canvas id="ramChart"></canvas>
-            </div>
-        </div>
 
-        <!-- 3. RX CHART (Download) -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                    Rede: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
-                </span>
-                <span class="text-[10px] text-slate-400">Tempo Real</span>
+            <!-- Card 2: JFMELGACO-1 (VERDE) -->
+            <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-1" class="h-3 w-3 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase shrink-0">LOCAL</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all">Linha Verde &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-1" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-1" class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span id="cardStatusText_JFMELGACO-1" class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-1_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
+                        <span id="card_JFMELGACO-1_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: N/D)">&#9201; N/D</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_cpu" title="CPU Atual: 15% (M&eacute;dia: 24.3% | Pico: 100%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">15%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_ram" title="RAM Atual: 75% (M&eacute;dia: 78.6% | Total: 2 GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">75%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">437.8G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_io" title="I/O Escrita Atual: 0 KB/s (Pico: 29388.8 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">0k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_tx" title="Rede Tx Atual: 0 KB/s (Pico: 50 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-1_tx">0k</strong>
+                    </div>
+                </div>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <canvas id="rxChart"></canvas>
-            </div>
-        </div>
 
-        <!-- 4. TX CHART & DISCO C: COM ABAS RÁPIDAS -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                    <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                    <span id="titleBottomRight">Rede: Transmiss&atilde;o / Upload (Tx)</span>
-                </span>
-                <div class="flex items-center gap-1 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/60">
-                    <button onclick="switchBottomRightView('tx')" id="btnTabTx" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer">
-                        Tx (Upload)
-                    </button>
-                    <button onclick="switchBottomRightView('disk')" id="btnTabDisk" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                        Disco C: (GB)
-                    </button>
-                    <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                        I/O Disco
-                    </button>
-                    <button onclick="switchBottomRightView('ping')" id="btnTabPing" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                        Lat&ecirc;ncia Ping (ms)
-                    </button>
+            <!-- Card 3: JFMELGACO-2 (AMARELO) -->
+            <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-2" class="h-3 w-3 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_6px_rgba(245,158,11,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase shrink-0">NOTE 2</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all">Linha Amarela &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-2" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-2" class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span id="cardStatusText_JFMELGACO-2" class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-2_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
+                        <span id="card_JFMELGACO-2_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: 01/10/2026 14:59)">&#9201; 3h 0m</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_cpu" title="CPU Atual: 1% (M&eacute;dia: 1.3% | Pico: 17%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-2_cpu">1%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_ram" title="RAM Atual: 20% (M&eacute;dia: 20.1% | Total: 7.9 GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">20%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">360.3G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_io" title="I/O Escrita Atual: 0 KB/s (Pico: 767 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-2_io">0k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_tx" title="Rede Tx Atual: 0 KB/s (Pico: 3 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-2_tx">0k</strong>
+                    </div>
                 </div>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <div id="wrapperTxChart" class="h-full w-full">
-                    <canvas id="txChart"></canvas>
-                </div>
-                <div id="wrapperDiskChart" class="h-full w-full hidden">
-                    <canvas id="diskChart"></canvas>
-                </div>
-                <div id="wrapperIoChart" class="h-full w-full hidden">
-                    <canvas id="ioChart"></canvas>
-                </div>
-                <div id="wrapperPingChart" class="h-full w-full hidden">
-                    <canvas id="pingChart"></canvas>
-                </div>
-            </div>
-        </div>
 
-    </main>
+            <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
+            <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-3" class="h-3 w-3 rounded-full bg-red-500 border border-red-300 shadow-[0_0_6px_rgba(239,68,68,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase shrink-0">NOTE 3</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all">Linha Vermelha &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-3" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-3" class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span id="cardStatusText_JFMELGACO-3" class="text-emerald-400 font-medium">Online</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-3_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">0ms</span>
+                        <span id="card_JFMELGACO-3_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: N/D)">&#9201; N/D</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_cpu" title="CPU Atual: 80% (M&eacute;dia: 75.1% | Pico: 100%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">80%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_ram" title="RAM Atual: 63% (M&eacute;dia: 52% | Total: 7.9 GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">63%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">356.1G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_io" title="I/O Escrita Atual: 981 KB/s (Pico: 37683.2 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">981k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_tx" title="Rede Tx Atual: 0 KB/s (Pico: 568 KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-3_tx">0k</strong>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </div>
 
     <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÍSTICO -->
     <div id="summaryModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
@@ -377,56 +398,56 @@
                     </thead>
                     <tbody class="divide-y divide-borderbg text-xs">
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-blue-400">JFMELGACO-4 (Local)</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_cpuAvg">27%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-4_cpuMax">27%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramAvg">92%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramMax">92%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-4_io">0 / 0 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">1 KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">4 KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">205 GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-blue-400">JFMELGACO-4</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_cpuAvg">17%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-4_cpuMax">65%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramAvg">85.1%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramMax">96%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-4_io">211251.2 / 53964.8 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">1536 KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">4710.4 KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">205.3 GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d 0ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; 5h 2m <span class="text-[10px] text-slate-400 font-normal">(01/10/2026 12:01)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; 5h 58m <span class="text-[10px] text-slate-400 font-normal">(01/10/2026 12:01)</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-emerald-400">JFMELGACO-1</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">29%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-1_cpuMax">29%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">80%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">80%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">0 / 0 KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_rx">1 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_tx">0 KB/s</td>
+                            <td class="py-2.5 px-3 font-semibold text-emerald-400">JFMELGACO-1 (Local)</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">24.3%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-1_cpuMax">100%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">78.6%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">95%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">69836.8 / 29388.8 KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_rx">2048 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_tx">50 KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">437.8 GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d 0ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; 10h 7m <span class="text-[10px] text-slate-400 font-normal">(01/10/2026 06:56)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; N/D <span class="text-[10px] text-slate-400 font-normal">(N/D)</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-amber-400">JFMELGACO-2</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">1%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-2_cpuMax">1%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">20%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">20%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">0 / 0 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">0 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_tx">0 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">1.3%</td>
+                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-2_cpuMax">17%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">20.1%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">23%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">754 / 767 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">14 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_tx">3 KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">360.3 GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d 0ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; 2h 4m <span class="text-[10px] text-slate-400 font-normal">(01/10/2026 14:59)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; 3h 0m <span class="text-[10px] text-slate-400 font-normal">(01/10/2026 14:59)</span></td>
                         </tr>
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 font-semibold text-red-400">JFMELGACO-3</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">100%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">75.1%</td>
                             <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">100%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">67%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">52%</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramMax">67%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-3_io">16 / 36966.4 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">2 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_tx">0 KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">355.8 GB</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-3_io">20172.8 / 37683.2 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">2457.6 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_tx">568 KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">356.1 GB</td>
                             <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d 0ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; 1h 41m <span class="text-[10px] text-slate-400 font-normal">(01/10/2026 15:23)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; N/D <span class="text-[10px] text-slate-400 font-normal">(N/D)</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -439,8 +460,8 @@
 
     <!-- SCRIPT CHART.JS -->
     <script>
-        let timestamps = "17:04:01";
-        let rawData = {"JFMELGACO-4":{"cpu":[27],"tx":[4.0],"ioW":[0.0],"rx":[1.0],"ping":[null],"ramUsed":[14.1],"stats":{"ping":0,"avgCpu":27.0,"maxIoW":0,"avgRam":92.0,"maxPing":0,"diskFree":205.0,"uptime":"5h 2m","maxRam":92.0,"avgPing":0,"maxCpu":27.0,"maxTx":4.0,"bootDate":"01/10/2026 12:01","maxIoR":0,"ramTotal":15.4,"maxRx":1.0},"ioR":[0.0],"ramPct":[92]},"JFMELGACO-1":{"cpu":[29],"tx":[0.0],"ioW":[0.0],"rx":[1.0],"ping":[null],"ramUsed":[1.6],"stats":{"ping":0,"avgCpu":29.0,"maxIoW":0,"avgRam":80.0,"maxPing":0,"diskFree":437.8,"uptime":"10h 7m","maxRam":80.0,"avgPing":0,"maxCpu":29.0,"maxTx":0,"bootDate":"01/10/2026 06:56","maxIoR":0,"ramTotal":2.0,"maxRx":1.0},"ioR":[0.0],"ramPct":[80]},"JFMELGACO-2":{"cpu":[1],"tx":[0.0],"ioW":[0.0],"rx":[0.0],"ping":[null],"ramUsed":[1.6],"stats":{"ping":0,"avgCpu":1.0,"maxIoW":0,"avgRam":20.0,"maxPing":0,"diskFree":360.3,"uptime":"2h 4m","maxRam":20.0,"avgPing":0,"maxCpu":1.0,"maxTx":0,"bootDate":"01/10/2026 14:59","maxIoR":0,"ramTotal":7.9,"maxRx":0},"ioR":[0.0],"ramPct":[20]},"JFMELGACO-3":{"cpu":[100],"tx":[0.0],"ioW":[36966.4],"rx":[2.0],"ping":[null],"ramUsed":[5.3],"stats":{"ping":0,"avgCpu":100.0,"maxIoW":36966.4,"avgRam":67.0,"maxPing":0,"diskFree":355.8,"uptime":"1h 41m","maxRam":67.0,"avgPing":0,"maxCpu":100.0,"maxTx":0,"bootDate":"01/10/2026 15:23","maxIoR":16.0,"ramTotal":7.9,"maxRx":2.0},"ioR":[16.0],"ramPct":[67]}};
+        let timestamps = ["15:20:24","15:20:47","15:21:06","15:21:28","15:21:51","15:22:09","15:22:28","15:22:47","15:23:05","15:23:21","15:23:38","15:23:54","15:24:11","15:24:27","15:25:56","15:26:36","15:27:16","15:27:53","15:28:17","15:28:48","15:29:20","15:29:58","15:30:54","15:32:37","15:33:19","15:33:54","15:34:50","15:35:11","15:35:33","15:35:57","15:36:15","15:36:33","15:36:51","15:37:12","15:37:33","15:37:57","15:38:24","15:38:48","15:39:11","15:39:34","15:39:57","15:40:26","15:40:49","15:41:13","15:41:36","15:42:03","15:42:24","15:42:46","15:43:08","15:43:28","15:43:52","15:44:22","15:44:54","15:45:21","15:45:40","15:46:06","15:46:25","15:46:43","15:47:00","15:47:27","15:47:45","15:48:07","15:48:27","15:48:48","15:49:08","15:49:28","15:49:52","15:50:14","15:50:33","15:50:57","15:51:17","15:51:36","15:51:56","15:52:19","15:52:42","15:53:02","15:53:24","15:53:44","15:54:03","15:54:23","16:00:07","16:00:43","16:01:02","16:01:20","16:01:38","16:01:57","16:02:15","16:02:33","16:02:54","16:03:13","16:03:31","16:03:49","16:04:07","16:04:25","16:07:04","16:07:24","16:07:44","16:08:04","16:08:26","16:08:48","16:09:14","16:09:32","16:09:52","16:10:17","16:10:44","16:11:04","16:11:30","16:11:57","16:12:20","16:12:42","16:13:07","16:13:25","16:13:46","16:14:10","16:14:41","16:15:14","16:15:44","16:16:14","16:16:58","16:17:22","16:18:17","16:18:56","16:19:30","16:19:54","16:20:15","16:20:38","16:21:06","16:21:36","16:22:06","16:22:35","16:23:08","16:23:40","16:24:11","16:24:42","16:25:11","16:25:39","16:26:14","16:26:39","16:27:03","16:27:29","16:27:54","16:28:23","16:28:47","16:29:13","16:29:35","16:30:03","16:30:33","16:30:55","16:31:17","16:31:39","16:32:03","16:32:38","16:33:19","16:33:44","16:34:07","16:34:30","16:34:53","16:35:18","16:35:40","16:36:04","16:36:27","16:36:52","16:37:47","16:38:18","16:38:42","16:39:08","16:39:37","16:40:02","16:40:24","16:40:46","16:41:11","16:41:36","16:42:02","16:42:29","16:42:54","16:43:16","16:43:39","16:44:01","16:44:18","16:44:49","16:45:36","16:46:08","16:46:31","16:46:55","16:47:18","16:47:44","16:48:15","16:48:48","16:49:16","16:49:51","16:50:17","16:50:41","16:51:04","16:51:28","16:51:56","16:52:19","16:52:40","16:53:01","16:53:23","16:53:45","16:54:07","16:54:29","16:54:51","16:55:13","16:55:42","16:56:04","16:56:25","16:56:46","16:57:09","16:57:30","16:57:52","16:58:13","16:58:35","16:58:56","16:59:19","16:59:41","17:00:02","17:00:24","17:00:46","17:01:08","17:02:01","17:02:35","17:02:59","17:03:22","17:03:53","17:04:16","17:04:39","17:05:03","17:05:28","17:06:04","17:06:29","17:06:59","17:07:32","17:08:03","17:08:29","17:08:56","17:09:21","17:09:49","17:10:20","17:10:58","17:11:44","17:12:25","17:13:58","17:14:56","17:15:40","17:16:21","17:16:49","17:17:19","17:17:55","17:18:23","17:18:54","17:19:37","17:20:09","17:20:41","17:21:18","17:22:02","17:22:54","17:23:35","17:24:30","17:25:11","17:25:41","17:26:09","17:26:34","17:27:08","17:27:42","17:28:13","17:28:51","17:29:23","17:29:56","17:30:31","17:31:04","17:31:42","17:32:15","17:32:51","17:33:37","17:34:12","17:34:49","17:35:25","17:36:00","17:36:41","17:37:15","17:38:15","17:39:06","17:40:01","17:40:56","17:41:29","17:41:55","17:42:23","17:42:53","17:43:21","17:43:50","17:44:22","17:45:03","17:45:37","17:46:05","17:46:33","17:47:01","17:47:29","17:47:58","17:48:26","17:48:54","17:49:29","17:50:04","17:50:36","17:51:03","17:51:29","17:52:01","17:52:31","17:53:02","17:53:39","17:54:13","17:54:47","17:55:27","17:55:59","17:56:29","17:57:03","17:57:41","17:58:13","17:58:46","17:59:31","18:00:10"];
+        let rawData = {"JFMELGACO-4":{"rx":[0,0,0,0,0,0,10,0,0,3,0,1,6,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,1536,449,102,223,566,258,106,517,87,0,0,0,0,0,0,0,364,19,4,6,11,0,1,0,1,0,0,1,4,14,1,9,0,0,2,0,3,13,6,2,2,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,1,28,4,1,8,0,0,7,0,11,5,1,1,0,0,0,0,0,1,15,6,5,0,21,518,490,0,6,0,0,0,0,3,57,1,2,1,5,0,1,2,120,2,0,1,14,0,0,5,0,6,17,1,0,0,0,0,40,11,0,1,1,1,0,0,0,0,53,0,6,70,1,1,0,0,1126.4,1,16,11,0,0,0,0,0,0,43,12,2,2,3,0,9,0,74,40,1,0,59,1,3,2,17,27,1,2,1,3,6,2,1,0,0,5,5,1,2,4,1,1,1,7,0,1,1,2,511,6,29,7,6,0,36,59,96,1,89,14,0,48,26,1,3,4,40,5,0,16,23,8,4,51,0,37,9,17,66,18,2,5,7,149,42,7,24,13,0,0,6,17,101,27,98,13,9,33,16,4,36,69,10,0,0,0,0,30,15,12,0,77,117,1,0,1,22,0,0,26,14,0,1,15,9,0,0,42,31,17,18,2,22,11,2,165,33,4,25,2,20,9,0,2,1,51,23,0,0,0],"stats":{"maxIoW":53964.8,"latestTx":0,"diskFree":205.3,"maxCpu":65,"latestRx":0,"avgCpu":17,"latestIoW":2457.6,"maxTx":4710.4,"bootDate":"01/10/2026 12:01","uptime":"5h 58m","latestCpu":6,"avgPing":0,"latestIoR":249,"latestRam":90,"maxIoR":211251.2,"statusText":"Online","isOnline":true,"onlineTextClass":"text-emerald-400","maxPing":0,"avgRam":85.1,"onlineDotClass":"bg-emerald-400","ramTotal":15.4,"maxRam":96,"maxRx":1536,"ping":0},"ioW":[8294.4,8192,8704,0,0,0,78,0,157,32,0,349,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,47,0,0,0,0,0,12390.4,575,991,0,57,1126.4,0,0,0,0,0,0,1433.6,1331.2,5427.2,0,0,0,5324.8,0,14643.2,144,1433.6,0,32,0,106,63,0,30,0,1228.8,153,346,556,191,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,92,564,0,0,0,46,0,0,48,0,0,31,0,0,0,0,0,0,0,1638.4,45,0,0,0,42700.8,412,514,607,204,0,0,0,0,0,80,16,5324.8,6860.8,9932.8,0,0,0,527,0,0,16,0,0,0,314,0,31,15,1331.2,0,0,0,0,0,627,0,7680,8806.4,8908.8,53964.8,364,7987.2,15,8294.4,0,0,125,0,0,0,0,1228.8,0,0,0,92,0,0,0,0,0,0,379,144,10547.2,8601.6,7577.6,0,0,0,516,2048,0,62,8601.6,275,10240,1843.2,0,0,495,0,60,47,30,157,39014.4,0,32460.8,0,0,0,0,0,0,0,0,909,0,0,0,0,0,0,326,397,0,1331.2,78,0,0,366,0,0,3788.8,0,0,0,152,0,3993.6,0,6246.4,91,5529.6,6553.6,16384,0,2150.4,2252.8,30515.2,2355.2,3891.2,8294.4,8396.8,9318.4,14028.8,91,31,344,0,0,290,3891.2,0,1843.2,377,16,262,46,1126.4,0,400,0,220,2252.8,0,0,0,0,0,60,77,0,79,0,0,0,9113.6,0,0,0,141,0,0,0,0,223,0,109,22,0,79,0,1331.2,175,0,16,0,510,0,15,312,0,0,0,4915.2,410,0,303,975,0,2457.6],"ping":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"cpu":[11,18,5,null,null,null,11,null,9,18,4,10,10,24,8,null,null,null,null,null,null,null,null,null,null,5,2,6,5,null,null,null,12,9,9,20,6,2,16,13,23,8,17,34,null,null,null,null,null,null,43,14,20,13,10,null,8,null,10,11,28,12,13,11,23,10,4,4,32,9,16,8,14,12,6,13,15,8,8,null,null,null,null,null,null,null,null,null,null,null,null,null,null,12,12,19,5,8,5,10,null,13,8,7,3,0,17,28,14,1,null,null,19,14,4,13,null,16,27,51,17,4,null,null,null,null,2,23,3,28,23,10,9,11,5,13,12,18,6,16,5,null,5,null,4,0,5,null,null,null,6,14,4,1,16,9,11,7,15,13,7,43,12,14,3,17,20,13,9,19,6,10,5,48,null,null,null,null,null,23,26,10,23,16,24,2,14,18,7,26,34,38,29,23,42,27,6,12,7,11,21,2,28,26,17,7,27,12,18,7,33,6,27,15,3,29,4,20,18,20,48,19,29,23,27,29,18,22,8,17,18,null,7,21,19,10,25,20,20,null,18,32,6,21,17,null,14,17,9,65,64,39,12,22,19,5,10,22,23,null,15,11,10,40,19,19,19,23,22,22,15,7,15,45,null,null,null,null,35,17,18,null,56,15,24,17,18,17,null,null,59,11,11,12,19,20,14,12,16,16,47,46,17,4,17,35,16,23,29,34,46,20,24,null,29,46,15,32,6,22,6],"ioR":[0,0,0,0,0,0,0,0,0,0,0,0,0,126,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4096,0,126,0,0,425,0,0,0,0,0,0,497,375,1433.6,0,0,0,0,0,0,0,251,0,0,0,0,0,0,0,0,0,0,0,309,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,125,0,0,528,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8908.8,418,0,61849.6,267,0,0,0,0,0,0,0,0,0,0,0,0,0,7475.2,0,0,0,0,0,0,125,0,0,0,611,0,0,0,77,0,5427.2,0,0,0,0,0,0,2048,0,2969.6,0,0,0,255,0,0,0,29388.8,0,0,0,0,0,0,0,0,0,171,0,0,305,16,0,0,0,1843.2,0,42393.6,0,0,786,488,2048,10649.6,0,122,0,249,0,0,0,0,655,16,0,0,0,0,0,0,0,0,0,62,15,0,0,5017.6,0,0,0,0,0,0,0,0,0,0,0,0,126,0,0,125,194,0,430,0,30412.8,14233.6,15,0,47,0,32358.4,2662.4,231,5939.2,1536,0,0,0,1331.2,487,508,0,0,0,107,0,0,243,63,313,0,46,502,0,0,139,0,12083.2,0,0,0,0,0,0,0,0,0,0,0,0,7884.8,0,0,0,0,0,141,31,0,0,0,0,0,0,0,0,0,0,0,542,0,211251.2,362,10752,0,0,937,0,122,0,0,0,0,0,249],"tx":[0,0,0,0,0,0,5,0,0,3,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,38,15,3,7,13,9,3,13,2,0,0,0,0,0,0,0,13,42,2,5,3,0,1,0,0,0,0,0,3,4,1,12,0,0,0,0,1,3,2,0,2,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,12,11,0,3,0,0,8,0,2,0,0,0,0,0,5,0,0,4,12,0,0,0,16,288,477,0,2,0,0,0,0,2,5,0,0,0,2,0,9,0,75,10,0,1,3,1,0,1,0,1,5,0,0,0,0,1,11,2,0,0,1,1,1,0,0,0,7,1,2,5,6,1,1,0,145,1,2,2,0,0,0,0,0,0,149,437,1,0,1,0,1,0,27,4,0,1,6,1,9,1,9,16,0,1,2,41,0,2,0,0,0,0,0,1,1,2,0,0,0,2,0,14,1,1,523,6,541,2,9,0,2,6,17,0,4710.4,517,0,3,3,0,2,0,3,0,0,1,210,268,8,10,0,11,8,21,71,733,1,9,15,33,473,133,476,619,0,1,4,5,11,5,12,18,10,3,629,4,3,7,12,0,0,0,0,6,5,351,0,60,295,0,0,1,1,0,0,21,4,0,2,1,4,0,1,4,3,5,3,1,11,1,1,9,21,2,615,1,3,2,0,0,0,4,2,0,0,0],"ramPct":[81,80,80,null,null,null,82,null,82,82,81,81,81,82,81,null,null,null,null,null,null,null,null,null,null,82,82,83,82,null,null,null,83,82,82,84,82,82,82,82,82,83,82,82,null,null,null,null,null,null,84,83,84,83,82,null,83,null,83,83,82,83,82,83,82,82,82,82,82,82,82,82,82,81,81,82,81,81,81,null,null,null,null,null,null,null,null,null,null,null,null,null,null,82,82,82,82,82,82,82,null,82,82,82,82,82,82,82,82,82,null,null,82,82,82,82,null,87,64,81,79,82,null,null,null,null,83,83,84,84,68,66,66,66,66,69,69,70,70,69,69,null,67,null,66,66,67,null,null,null,67,67,66,66,66,65,65,65,64,65,64,77,79,79,79,84,84,84,84,85,87,85,86,89,null,null,null,null,null,86,86,86,86,86,88,88,88,88,88,90,92,91,92,92,94,91,92,92,92,92,92,91,92,94,92,91,90,90,89,90,88,88,88,90,90,89,90,90,88,90,92,92,91,92,91,91,91,92,92,91,90,null,92,92,92,92,92,92,92,null,93,93,92,92,92,null,95,95,94,95,96,95,94,94,95,95,95,94,95,null,95,94,95,94,95,94,95,95,94,94,95,95,94,95,null,null,null,null,93,94,93,null,95,87,87,86,87,87,null,null,86,88,89,88,90,88,89,90,88,90,90,89,91,90,90,90,90,90,91,90,90,90,90,null,90,90,89,90,89,90,90],"ramUsed":[12.4,12.3,12.3,null,null,null,12.6,null,12.6,12.6,12.4,12.5,12.4,12.6,12.5,null,null,null,null,null,null,null,null,null,null,12.7,12.6,12.8,12.6,null,null,null,12.8,12.6,12.7,12.9,12.7,12.7,12.7,12.7,12.7,12.8,12.6,12.7,null,null,null,null,null,null,12.9,12.8,12.9,12.8,12.7,null,12.8,null,12.8,12.8,12.6,12.8,12.7,12.8,12.7,12.6,12.7,12.7,12.6,12.6,12.7,12.7,12.6,12.5,12.5,12.7,12.5,12.5,12.5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,12.7,12.6,12.7,12.6,12.6,12.6,12.6,null,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,12.6,null,null,12.7,12.7,12.6,12.7,null,13.4,9.9,12.4,12.1,12.6,null,null,null,null,12.8,12.8,12.9,13,10.5,10.1,10.1,10.1,10.1,10.6,10.7,10.8,10.8,10.6,10.6,null,10.3,null,10.2,10.2,10.3,null,null,null,10.3,10.3,10.2,10.2,10.2,10,10,10,9.8,10,9.9,11.8,12.1,12.2,12.2,13,12.9,12.9,12.9,13.1,13.4,13.1,13.2,13.7,null,null,null,null,null,13.2,13.3,13.3,13.3,13.3,13.5,13.6,13.6,13.6,13.6,13.9,14.2,14,14.1,14.1,14.4,14,14.1,14.1,14.1,14.1,14.1,14,14.1,14.4,14.1,14,13.8,13.8,13.7,13.8,13.6,13.5,13.6,13.8,13.8,13.7,13.8,13.8,13.6,13.8,14.1,14.1,14,14.1,14,14,14,14.1,14.1,14,13.9,null,14.1,14.1,14.1,14.1,14.1,14.1,14.2,null,14.3,14.3,14.1,14.1,14.2,null,14.6,14.7,14.4,14.6,14.8,14.6,14.5,14.5,14.6,14.7,14.7,14.5,14.6,null,14.6,14.5,14.6,14.5,14.7,14.5,14.6,14.7,14.5,14.5,14.7,14.7,14.5,14.6,null,null,null,null,14.3,14.4,14.3,null,14.6,13.4,13.4,13.3,13.4,13.4,null,null,13.3,13.5,13.7,13.6,13.8,13.6,13.7,13.9,13.6,13.8,13.8,13.7,14,13.9,13.8,13.8,13.9,13.8,14,13.9,13.9,13.9,13.9,null,13.9,13.9,13.7,13.9,13.7,13.9,13.8]},"JFMELGACO-1":{"rx":[1,0,1,0,0,0,0,2,1,1,0,0,1,1,0,0,1,1,0,2,1,0,1,2,2,0,0,1,0,0,0,2,0,0,1,0,0,0,0,1,0,0,0,0,3,0,0,1,12,17,0,0,0,0,0,1,0,1,0,1,1,1,1,1,0,1,1,1,2,0,1,0,1,0,1,0,0,0,1,0,1,1,4,0,0,1,0,1,1,1,0,0,0,2,3,1,1,3,1,0,1,1,1,1,1,0,0,2,1,6,0,0,1,1,5,2,0,1,1,2,2,0,1,0,1,0,0,2,0,0,1,0,0,0,0,0,0,2,0,0,2,1,1,0,0,0,0,2,0,1,0,0,0,3,0,2,0,2,0,0,0,1,1,1,0,1,0,1,1,6,0,0,2,1,1,0,1,0,0,0,1,2,0,1,1,3,1,0,0,0,1,0,0,0,0,1,0,0,0,0,1,1,1,2,1,2,0,0,0,1,0,2,0,0,7,0,0,0,1,0,1,0,1,2,1,6,0,0,0,1,1,1,0,0,2,3,1,5,2048,476,984,662,165,505,0,0,1,0,0,0,0,1,0,0,0,0,1,6,0,2,1,1,1,0,0,2,0,0,0,0,0,1,1,0,1,0,0,1,1,0,0,0,1,1,0,0,1,1,1,1,0,0,0,3,0,1,0,2,2,0,0,1,0,0,0,0,3,0,0,0,0,1,1,0,0,0,0,0,2,1,0],"stats":{"maxIoW":29388.8,"latestTx":0,"diskFree":437.8,"maxCpu":100,"latestRx":0,"avgCpu":24.3,"latestIoW":0,"maxTx":50,"bootDate":"N/D","uptime":"N/D","latestCpu":15,"avgPing":0,"latestIoR":0,"latestRam":75,"maxIoR":69836.8,"statusText":"Online","isOnline":true,"onlineTextClass":"text-emerald-400","maxPing":0,"avgRam":78.6,"onlineDotClass":"bg-emerald-400","ramTotal":2,"maxRam":95,"maxRx":2048,"ping":0},"ioW":[0,0,0,0,0,0,0,0,0,0,12185.6,175,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,96,509,0,0,0,0,0,0,0,0,447,29388.8,1638.4,1024,1843.2,2457.6,1228.8,2048,3481.6,6758.4,255,255,0,254,0,47,0,0,0,0,0,0,0,64,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,591,0,0,224,0,0,0,0,0,0,0,0,589,0,64,0,0,0,0,0,0,0,223,0,0,0,0,0,0,0,0,0,0,0,16,0,0,0,0,0,16,255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,508,0,0,16,0,0,0,0,0,0,0,0,143,0,0,0,0,0,0,0,0,0,0,0,0,0,665,0,0,0,0,0,0,0,0,0,0,16,0,0,48,0,0,0,0,0,0,0,251,655,0,0,0,0,0,0,8192,0,0,6246.4,0,0,9523.2,128,0,0,18022.4,15052.8,1126.4,0,1536,0,1126.4,0,0,0,0,909,0,0,0,0,0,0,0,0,160,0,0,0,0,0,0,651,0,0,0,0,0,128,0,271,32,0,0,0,0,0,0,0,725,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,16,0,0,0,0,0,160,0,0,0,0,0,0],"ping":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"cpu":[19,65,19,27,16,22,30,30,29,21,15,15,23,18,18,12,19,24,21,36,26,24,24,23,13,23,24,18,21,24,22,24,24,18,21,24,26,21,22,27,19,16,26,15,24,26,15,21,24,29,32,18,19,26,24,18,18,12,25,19,24,21,22,26,18,22,24,22,26,16,13,30,18,32,24,21,21,15,22,61,19,30,65,24,21,27,29,32,30,29,23,16,29,23,18,15,18,13,21,11,27,18,27,21,18,30,38,19,27,18,49,16,18,22,10,27,23,18,26,30,19,19,18,27,13,26,24,18,27,21,22,24,29,12,18,19,27,23,19,41,29,32,15,21,13,24,24,26,22,19,16,24,30,19,24,15,18,22,22,16,15,19,18,15,10,13,15,33,21,38,35,12,13,21,16,18,23,19,23,22,19,22,24,37,18,24,18,19,21,51,24,22,15,21,18,22,21,30,11,26,15,22,26,30,21,22,15,13,13,22,30,16,15,22,24,19,26,15,24,15,35,18,13,13,13,26,18,19,13,21,15,85,20,27,18,43,40,16,26,29,18,100,19,40,44,27,33,15,22,19,32,29,82,80,54,24,44,18,8,21,33,22,16,22,24,43,27,29,22,21,19,27,21,16,16,100,12,24,15,24,15,15,4,21,19,24,18,18,18,18,19,30,49,52,18,19,19,24,22,18,13,49,13,24,21,12,43,22,18,13,8,49,21,52,21,21,19,37,94,61,15],"ioR":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,480,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,750,17510.4,1433.6,763,1012,1536,1638.4,1011,676,3481.6,2355.2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3174.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0,0,0,0,0,111,0,0,12595.2,5120,358,69836.8,177,14950.4,590,1126.4,3174.4,2048,0,4710.4,1017,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16793.6,3379.2,0,0],"tx":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,2,0,1,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,2,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,1,0,0,0,1,0,1,1,0,0,0,1,0,0,0,1,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,3,0,0,50,0,5,15,19,7,0,0,2,1,0,0,0,1,0,0,1,0,0,1,0,1,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,2,0,0],"ramPct":[75,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,75,80,75,80,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,80,80,75,75,75,75,75,80,75,80,80,75,80,80,75,80,80,75,80,80,75,80,75,75,75,75,75,75,75,80,80,85,85,85,80,85,80,80,85,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,90,95,95,75,75,75,75,75,80,80,80,80,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,75,80,75,80,75,75,75,75,80,75,75,75,80,80,75,75,75,75,75,75,75,75,80,75,75,75,80,75,80,75,75,75,75,75,75,75,75,75,80,75,75,75,75,80,80,80,75,75],"ramUsed":[1.5,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.5,1.6,1.5,1.6,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.6,1.6,1.5,1.5,1.5,1.5,1.5,1.6,1.5,1.6,1.6,1.5,1.6,1.6,1.5,1.6,1.6,1.5,1.6,1.6,1.5,1.6,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.6,1.6,1.7,1.7,1.7,1.6,1.7,1.6,1.6,1.7,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.8,1.9,1.9,1.5,1.5,1.5,1.5,1.5,1.6,1.6,1.6,1.6,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.6,1.5,1.6,1.5,1.5,1.5,1.5,1.6,1.5,1.5,1.5,1.6,1.6,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.6,1.5,1.5,1.5,1.6,1.5,1.6,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.6,1.5,1.5,1.5,1.5,1.6,1.6,1.6,1.5,1.5]},"JFMELGACO-2":{"rx":[0,0,3,0,1,1,0,2,0,1,6,11,0,0,1,0,0,1,1,2,0,5,2,0,1,0,0,1,3,4,1,0,5,1,0,11,0,1,1,0,0,0,0,14,2,0,1,1,14,0,2,1,0,1,0,0,0,0,3,0,0,0,1,11,0,2,0,1,1,0,0,11,11,0,0,0,0,0,0,0,0,0,0,0,1,2,0,1,0,0,1,0,1,0,1,0,0,10,12,0,0,0,0,1,0,3,11,0,1,5,0,0,0,0,1,0,0,1,0,1,1,0,0,2,1,0,0,0,1,0,0,1,0,2,0,0,0,0,0,1,0,2,0,0,0,1,0,1,0,0,2,2,11,0,0,6,0,1,1,1,1,1,0,0,0,1,1,2,0,0,0,1,0,1,2,0,1,1,9,0,0,0,0,1,1,0,1,0,1,0,1,1,0,1,0,0,0,0,0,0,0,2,0,4,0,0,0,1,2,1,0,0,0,3,8,0,0,1,2,0,0,0,1,1,0,1,0,2,0,0,1,1,1,0,1,2,7,0,1,0,0,0,0,0,0,1,0,0,1,0,0,0,2,1,1,1,0,1,1,0,0,0,0,0,0,0,1,2,2,1,1,8,0,1,2,0,0,0,0,2,0,1,2,0,1,6,0,0,1,1,0,3,1,0,1,0,0,2,0,0,0,0,0,0,2,0,0,1,0,0,2,0,1,0,0,0,0,0,0,0,1],"stats":{"maxIoW":767,"latestTx":0,"diskFree":360.3,"maxCpu":17,"latestRx":1,"avgCpu":1.3,"latestIoW":0,"maxTx":3,"bootDate":"01/10/2026 14:59","uptime":"3h 0m","latestCpu":1,"avgPing":0,"latestIoR":0,"latestRam":20,"maxIoR":754,"statusText":"Online","isOnline":true,"onlineTextClass":"text-emerald-400","maxPing":0,"avgRam":20.1,"onlineDotClass":"bg-emerald-400","ramTotal":7.9,"maxRam":23,"maxRx":14,"ping":0},"ioW":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,317,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,45,0,0,0,0,0,0,45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,154,0,0,0,0,0,0,0,0,0,0,0,0,0,605,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,159,0,0,0,0,0,0,0,0,0,0,47,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,198,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,767,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,48,0,0,0,0,0,0,0,0,0,0,0,90,0,0,0,0,0,0,207,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,339,0,0,0,0,265,0,0,48,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,411,0,0,0,0,0,0,0,0,0,0],"ping":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"cpu":[1,1,0,1,5,1,1,0,1,0,1,1,1,2,2,1,1,1,2,0,1,0,1,2,1,1,17,1,1,1,1,1,1,1,1,1,1,0,2,1,1,2,1,1,1,14,1,1,1,1,1,0,1,4,1,0,null,1,1,null,1,1,2,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,2,1,1,1,11,1,1,2,1,1,1,1,1,1,2,1,16,1,1,1,1,1,1,1,1,null,2,1,1,2,1,1,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,0,1,0,1,1,1,2,0,1,1,1,1,1,1,0,1,1,0,1,1,2,1,1,1,2,1,0,2,1,1,1,1,0,1,1,1,1,0,2,1,1,1,1,1,1,1,1,1,1,1,0,1,0,16,1,1,0,1,1,1,1,2,1,1,0,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,5,1,1,1,2,1,1,1,1,1,1,null,2,0,1,1,0,2,1,1,1,1,1,1,1,1,1,16,1,1,1,2,0,1,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,1,1,1,1,4,1,1,0,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1],"ioR":[0,0,0,0,754,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,61,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,64,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,185,0,0,0,0,125,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,253,0,0,0,0,0,0,0,0,0,0],"tx":[0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,2,0,0,0,0,0,0,0,3,0,0,0,0,2,0,0,0,1,1,0,0,0,0,2,0,1,0,0,3,0,0,0,0,1,0,0,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,0,0,0,1,0,0,0,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],"ramPct":[22,22,22,22,22,23,23,22,22,22,22,22,22,22,22,22,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,null,20,20,null,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,null,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,null,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20],"ramUsed":[1.7,1.7,1.7,1.7,1.7,1.8,1.8,1.7,1.7,1.7,1.7,1.7,1.7,1.7,1.7,1.7,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,null,1.6,1.6,null,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,null,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,null,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6,1.6]},"JFMELGACO-3":{"rx":[1,0,1,2,1,1,0,0,0,0,0,0,0,0,30,37,3,0,111,1,28,1,0,0,4,2,0,0,0,0,0,9,10,10,0,0,1,0,1,0,2,0,0,1,0,11,0,0,1,2,4,7,0,0,1,0,11,0,0,1,0,0,0,0,1,1,0,1,0,0,11,13,11,1,1,0,5,0,0,0,0,0,1,0,2,1,0,0,0,0,1,0,0,0,1,0,0,1,0,0,3,0,1,1,0,1,11,0,2,1,0,1,1,0,1,4,0,0,3,2048,0,0,0,0,0,1,0,1,0,1,0,0,1,0,0,0,1126.4,2,1126.4,0,0,6,0,2252.8,0,0,0,1,0,2,5,0,0,1,1,3,1,0,0,0,0,1331.2,1,2252.8,2,0,0,0,1740.8,0,5,9,0,0,1433.6,0,0,0,0,0,429,1,0,1,0,0,699,0,0,0,998,0,5,2457.6,0,0,0,2,1,0,0,2,0,57,2,1,0,0,0,0,2,0,1,1,0,0,2,1,1,1,16,10,1,3,1,7,1,4,0,0,1,2,0,0,1,0,1,1,2,2,0,2,0,0,3,6,1,1,2,7,0,1,13,2,2,0,4,3,1,0,0,2,1,11,31,2,2,0,0,1,1,0,0,0,1,8,7,0,0,0,4,22,1,0,0,0,2,5,3,6,0,0,0,0,2,1,1,6,2,0,12,3,2,3,0,0,0,0,1,2,0,0,2,0,0,0,0,0,0,3,1],"stats":{"maxIoW":37683.2,"latestTx":0,"diskFree":356.1,"maxCpu":100,"latestRx":1,"avgCpu":75.1,"latestIoW":981,"maxTx":568,"bootDate":"N/D","uptime":"N/D","latestCpu":80,"avgPing":0,"latestIoR":16,"latestRam":63,"maxIoR":20172.8,"statusText":"Online","isOnline":true,"onlineTextClass":"text-emerald-400","maxPing":0,"avgRam":52,"onlineDotClass":"bg-emerald-400","ramTotal":7.9,"maxRam":67,"maxRx":2457.6,"ping":0},"ioW":[63,37683.2,666,16,1536,1536,0,0,0,0,0,0,0,0,0,245,31,0,0,0,0,11571.2,240,0,15,0,0,196,0,92,94,0,0,153,30,0,1536,0,3379.2,0,16,0,0,0,0,0,16,0,46,769,0,0,61,0,15,90,734,2355.2,11673.6,0,473,0,756,0,0,397,0,0,0,729,0,0,0,0,0,0,658,0,645,0,0,0,0,0,808,0,0,348,0,0,0,0,0,0,0,614,0,258,61,0,0,567,62,0,0,678,351,0,738,0,0,0,2457.6,652,420,0,0,0,0,140,0,0,0,519,1843.2,0,0,46,0,202,31,0,15,1126.4,8192,79,3276.8,938,0,1433.6,47,0,0,16,1024,62,169,1536,1740.8,1740.8,3276.8,0,1228.8,1331.2,1638.4,604,1126.4,15,46,61,411,658,756,1740.8,47,47,557,975,3993.6,802,2764.8,0,1331.2,449,0,834,607,0,456,92,682,1228.8,285,3993.6,31,16,30,30,0,1945.6,1945.6,0,319,217,1228.8,883,1331.2,1433.6,934,6144,5222.4,1126.4,912,948,1126.4,3993.6,1228.8,62,0,15,1843.2,868,78,47,313,4300.8,1433.6,839,4915.2,15,0,0,3891.2,2764.8,7680,1638.4,3072,3174.4,153,1126.4,269,166,533,5324.8,2048,30,437,289,179,1945.6,589,0,61,567,0,1331.2,15,798,1024,499,76,947,618,0,835,0,0,62,361,60,1433.6,1638.4,821,234,312,576,6656,15,0,15,879,4096,0,0,0,0,1638.4,498,948,1945.6,1740.8,530,1228.8,756,126,3993.6,988,897,61,6963.2,0,2150.4,583,1433.6,1433.6,857,60,612,47,16486.4,92,1024,873,717,852,0,0,2048,19660.8,3174.4,1331.2,0,3072,1126.4,0,1433.6,1433.6,703,609,1536,981],"ping":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"cpu":[100,100,100,100,100,77,null,null,null,null,null,null,null,100,100,100,100,null,100,100,100,100,54,100,100,100,60,37,19,74,54,57,30,30,42,77,64,65,91,96,77,100,73,100,91,51,96,76,82,90,84,85,70,null,96,90,90,62,71,68,40,34,20,null,11,8,20,4,7,14,40,44,4,14,33,10,8,14,37,null,8,19,36,13,12,10,19,10,70,12,7,20,7,43,14,44,10,14,22,34,13,25,13,20,null,8,25,37,22,17,null,80,100,99,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,91,36,96,96,91,80,100,94,99,97,79,74,87,100,64,97,73,85,85,null,100,100,37,99,100,100,100,100,100,100,100,84,100,91,91,100,60,91,77,67,70,68,84,79,71,100,71,80,80,59,59,52,77,71,87,82,85,82,44,91,80,100,100,100,100,100,100,47,57,97,100,99,100,100,99,100,100,100,100,100,100,90,85,91,57,85,56,62,94,100,99,100,91,100,93,93,100,96,84,96,82,91,97,37,36,93,81,85,77,100,99,85,82,100,null,null,88,76,100,100,96,81,88,74,68,85,93,64,28,62,100,42,71,37,57,76,57,82,94,93,82,71,74,74,44,64,74,31,null,87,96,85,93,71,70,85,90,74,57,34,100,47,80],"ioR":[0,4710.4,1843.2,280,706,0,0,0,0,0,0,0,0,3788.8,2252.8,1843.2,2764.8,0,20172.8,3891.2,1843.2,3481.6,255,2560,100,1126.4,5427.2,599,251,622,370,981,556,266,256,338,528,747,1433.6,764,8908.8,610,6,330,0,180,487,290,64,724,155,222,314,0,123,77,129,184,108,70,53,149,91,0,174,69,30,57,118,54,101,75,246,9216,139,123,153,132,54,0,0,453,79,107,44,93,74,68,127,91,107,145,138,157,57,161,763,38,42,88,196,169,68,59,0,105,260,15,79,1228.8,0,251,0,0,0,250,0,0,0,841,0,3174.4,36,0,1945.6,0,137,169,182,124,0,0,0,382,123,16,190,15,0,120,16,126,0,0,316,16,15,15,61,15,15,0,0,31,329,0,0,15,15,15,16,0,0,31,0,16,30,0,15,15,16,0,15,31,0,0,15,0,128,57,15,31,16,750,0,0,15,15,0,16,0,5529.6,15,0,16,15,16,30,0,0,0,16,15,15,15,16,16,16,0,15,0,15,31,16,141,30,16,78,77,0,16,15,1638.4,1331.2,2355.2,696,896,639,77,0,0,75,266,0,15,0,187,0,0,0,15,0,15,0,15,15,15,0,0,0,15,16,0,15,0,0,0,16,16,30,15,0,16,16,31,31,15,15,15,15,0,0,0,0,0,0,0,16,15,15,30,16,518,0,16,30,108,15,15,78,0,747,0,0,0,16,15,15,0,0,15,0,405,16,62,15,0,757,16,16,15,0,30,0,0,157,15,0,0,15,16],"tx":[0,0,0,0,1,0,0,0,0,0,0,0,0,0,2,3,5,0,55,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1,0,0,0,0,0,0,0,0,0,0,0,2,0,0,1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,2,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,1,18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,13,0,0,0,0,24,0,0,10,10,0,1,1,0,0,0,0,0,0,0,0,0,0,10,0,18,0,0,0,0,15,0,0,2,0,0,16,0,0,0,0,0,4,0,0,0,0,0,4,0,0,0,9,0,1,20,0,0,0,0,0,0,0,0,0,28,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,1,2,0,24,8,53,0,38,0,0,0,1,0,0,0,0,0,0,2,2,0,35,0,37,32,0,0,0,0,568,0,0,468,33,31,0,25,0,63,0,0,15,11,1,41,1,0,0,0,0,28,0,0,0,0,2,0,0,0,0,16,47,1,0,0,0,0,0,16,44,0,0,0,0,0,0,0,6,28,16,93,1,26,4,0,0,0,0,0,1,35,0,19,0,0,0,72,0,0,39,0],"ramPct":[59,58,59,59,58,44,null,null,null,null,null,null,null,24,24,28,32,null,37,38,43,39,37,39,39,29,29,29,29,29,29,29,29,29,29,29,32,33,37,37,35,33,33,33,32,33,33,34,34,34,34,34,34,null,35,35,35,35,37,35,35,35,35,null,35,35,34,34,34,34,34,34,34,34,34,34,34,34,34,null,34,35,35,35,35,35,35,35,35,35,35,35,35,35,37,37,37,37,37,37,37,37,37,37,null,37,37,37,37,37,null,35,37,38,39,42,43,46,46,48,48,49,48,49,49,49,51,51,51,52,52,52,52,52,52,52,51,51,51,51,52,52,53,53,53,54,54,54,54,54,56,54,56,56,57,57,57,57,58,57,57,58,59,59,59,59,59,59,59,59,59,59,61,61,61,61,61,null,61,61,62,62,62,62,62,62,63,65,63,63,63,63,63,63,65,65,65,65,65,65,65,63,63,65,65,65,65,65,65,65,65,65,65,63,63,63,63,63,63,63,66,66,66,67,67,65,65,65,65,65,65,65,65,65,65,63,63,63,62,63,63,62,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,62,62,62,62,62,61,61,62,62,62,62,null,null,62,62,62,63,62,62,62,62,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,null,63,63,63,63,63,63,63,63,63,63,63,63,63,63],"ramUsed":[4.7,4.6,4.7,4.7,4.6,3.5,null,null,null,null,null,null,null,1.9,1.9,2.2,2.5,null,2.9,3,3.4,3.1,2.9,3.1,3.1,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.5,2.6,2.9,2.9,2.8,2.6,2.6,2.6,2.5,2.6,2.6,2.7,2.7,2.7,2.7,2.7,2.7,null,2.8,2.8,2.8,2.8,2.9,2.8,2.8,2.8,2.8,null,2.8,2.8,2.7,2.7,2.7,2.7,2.7,2.7,2.7,2.7,2.7,2.7,2.7,2.7,2.7,null,2.7,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.8,2.9,2.9,2.9,2.9,2.9,2.9,2.9,2.9,2.9,2.9,null,2.9,2.9,2.9,2.9,2.9,null,2.8,2.9,3,3.1,3.3,3.4,3.6,3.6,3.8,3.8,3.9,3.8,3.9,3.9,3.9,4,4,4,4.1,4.1,4.1,4.1,4.1,4.1,4.1,4,4,4,4,4.1,4.1,4.2,4.2,4.2,4.3,4.3,4.3,4.3,4.3,4.4,4.3,4.4,4.4,4.5,4.5,4.5,4.5,4.6,4.5,4.5,4.6,4.7,4.7,4.7,4.7,4.7,4.7,4.7,4.7,4.7,4.7,4.8,4.8,4.8,4.8,4.8,null,4.8,4.8,4.9,4.9,4.9,4.9,4.9,4.9,5,5.1,5,5,5,5,5,5,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5,5,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5,5,5,5,5,5,5,5.2,5.2,5.2,5.3,5.3,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5.1,5,5,5,4.9,5,5,4.9,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.8,4.9,4.9,4.9,4.9,4.9,4.8,4.8,4.9,4.9,4.9,4.9,null,null,4.9,4.9,4.9,5,4.9,4.9,4.9,4.9,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,null,5,5,5,5,5,5,5,5,5,5,5,5,5,5]}};
 
         const colors = {
             'JFMELGACO-4': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' },  // Azul
@@ -895,10 +916,14 @@
             const body = document.getElementById('mainBody');
             const btn = document.getElementById('btnScrollMode');
             const chartsMain = document.getElementById('chartsMain');
+            const dashboardContent = document.getElementById('dashboardContent');
             const wrappers = document.querySelectorAll('.chart-wrapper');
 
             if (isSingleScreen) {
                 body.className = "bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs font-sans";
+                if (dashboardContent) {
+                    dashboardContent.className = "flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden";
+                }
                 if (chartsMain) {
                     chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0";
                 }
@@ -912,8 +937,11 @@
                 }
             } else {
                 body.className = "bg-darkbg text-slate-100 min-h-screen p-3 overflow-y-auto text-xs font-sans";
+                if (dashboardContent) {
+                    dashboardContent.className = "flex flex-col lg:flex-row gap-3 pb-8";
+                }
                 if (chartsMain) {
-                    chartsMain.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 pb-8";
+                    chartsMain.className = "grid grid-cols-1 lg:grid-cols-2 gap-3";
                 }
                 wrappers.forEach(w => {
                     w.style.height = "310px";
@@ -954,25 +982,43 @@
                 sampleCountEl.innerText = payload.totalPoints + ' amostras';
             }
 
-            // 2. Atualiza Mini-Cards dos computadores e Modal estatístico
+            // 2. Atualiza Cards laterais dos computadores e Modal estatístico
             const pcs = ['JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3'];
             pcs.forEach(pc => {
                 const s = payload.rawData[pc] ? payload.rawData[pc].stats : null;
                 if (!s) return;
 
-                // Cards do topo
+                // Status Online / Offline dinâmico
+                const sDot = document.getElementById('cardStatusDot_' + pc);
+                const sText = document.getElementById('cardStatusText_' + pc);
+                const cardHost = document.getElementById('cardHost_' + pc);
+                if (sDot && sText) {
+                    if (s.isOnline) {
+                        sDot.className = 'h-2 w-2 rounded-full bg-emerald-400';
+                        sText.className = 'text-emerald-400 font-medium';
+                        sText.innerText = 'Online';
+                        if (cardHost) cardHost.classList.remove('border-red-500/80', 'opacity-70');
+                    } else {
+                        sDot.className = 'h-2 w-2 rounded-full bg-red-500';
+                        sText.className = 'text-red-400 font-medium';
+                        sText.innerText = 'Offline';
+                        if (cardHost) cardHost.classList.add('border-red-500/80');
+                    }
+                }
+
+                // Cards laterais - Métricas Instantâneas (Atual)
                 const cCpu = document.getElementById('card_' + pc + '_cpu');
-                if (cCpu) cCpu.innerText = s.avgCpu + '%';
+                if (cCpu) cCpu.innerText = s.latestCpu + '%';
                 const cRam = document.getElementById('card_' + pc + '_ram');
-                if (cRam) cRam.innerText = s.avgRam + '%';
+                if (cRam) cRam.innerText = s.latestRam + '%';
                 const cDisk = document.getElementById('card_' + pc + '_disk');
                 if (cDisk) cDisk.innerText = s.diskFree + 'G';
                 const cIo = document.getElementById('card_' + pc + '_io');
-                if (cIo) cIo.innerText = s.maxIoW + 'k';
+                if (cIo) cIo.innerText = s.latestIoW + 'k';
                 const cTx = document.getElementById('card_' + pc + '_tx');
-                if (cTx) cTx.innerText = s.maxTx + 'k';
+                if (cTx) cTx.innerText = s.latestTx + 'k';
                 const cRx = document.getElementById('card_' + pc + '_rx');
-                if (cRx) cRx.innerText = s.maxRx + 'k';
+                if (cRx) cRx.innerText = s.latestRx + 'k';
                 const cPing = document.getElementById('card_' + pc + '_ping');
                 if (cPing) cPing.innerText = s.ping + 'ms';
                 const cUptime = document.getElementById('card_' + pc + '_uptime');
@@ -981,7 +1027,17 @@
                     if (s.bootDate) cUptime.title = 'Uptime cont\u00ednuo (\u00daltimo Boot: ' + s.bootDate + ')';
                 }
 
-                // Tabela do Modal de Resumo
+                // Tooltips informativos com médias e picos
+                const bCpu = document.getElementById('box_' + pc + '_cpu');
+                if (bCpu) bCpu.title = 'CPU Atual: ' + s.latestCpu + '% (M\u00e9dia: ' + s.avgCpu + '% | Pico: ' + s.maxCpu + '%)';
+                const bRam = document.getElementById('box_' + pc + '_ram');
+                if (bRam) bRam.title = 'RAM Atual: ' + s.latestRam + '% (M\u00e9dia: ' + s.avgRam + '% | Total: ' + (s.ramTotal || 0) + ' GB)';
+                const bIo = document.getElementById('box_' + pc + '_io');
+                if (bIo) bIo.title = 'I/O Escrita Atual: ' + s.latestIoW + ' KB/s (Pico: ' + s.maxIoW + ' KB/s)';
+                const bTx = document.getElementById('box_' + pc + '_tx');
+                if (bTx) bTx.title = 'Rede Tx Atual: ' + s.latestTx + ' KB/s (Pico: ' + s.maxTx + ' KB/s)';
+
+                // Tabela do Modal de Resumo (Consolidado)
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
                 if (mCpuAvg) mCpuAvg.innerText = s.avgCpu + '%';
                 const mCpuMax = document.getElementById('modal_' + pc + '_cpuMax');

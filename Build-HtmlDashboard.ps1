@@ -212,22 +212,42 @@ foreach ($pc in $pcsList) {
         }
     }
 
+    # Deteccao se a maquina estava online na ultima amostra lida
+    $isOnline = ($machineData[$pc].cpu.Count -gt 0 -and $null -ne $machineData[$pc].cpu[-1])
+    $latestCpu = if ($isOnline) { $machineData[$pc].cpu[-1] } else { 0 }
+    $latestRam = if ($isOnline) { $machineData[$pc].ramPct[-1] } else { 0 }
+    $latestIoW = if ($isOnline) { $machineData[$pc].ioW[-1] } else { 0 }
+    $latestIoR = if ($isOnline) { $machineData[$pc].ioR[-1] } else { 0 }
+    $latestTx  = if ($isOnline) { $machineData[$pc].tx[-1] } else { 0 }
+    $latestRx  = if ($isOnline) { $machineData[$pc].rx[-1] } else { 0 }
+    $latestPing = if ($validPing) { $validPing | Select-Object -Last 1 } else { 0 }
+
     $stats[$pc] = @{
-        avgCpu   = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
-        maxCpu   = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
-        avgRam   = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
-        maxRam   = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
-        ramTotal = $machineData[$pc].ramTotal
-        maxRx    = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
-        maxTx    = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
-        diskFree = if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
-        maxIoR   = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
-        maxIoW   = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
-        ping     = if ($validPing) { ($validPing | Select-Object -Last 1) } else { 0 }
-        avgPing  = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
-        maxPing  = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
-        uptime   = $lastUptime
-        bootDate = $lastBoot
+        isOnline        = $isOnline
+        statusText      = if ($isOnline) { "Online" } else { "Offline" }
+        onlineDotClass  = if ($isOnline) { "bg-emerald-400" } else { "bg-red-500" }
+        onlineTextClass = if ($isOnline) { "text-emerald-400" } else { "text-red-400" }
+        latestCpu       = $latestCpu
+        latestRam       = $latestRam
+        latestIoW       = $latestIoW
+        latestIoR       = $latestIoR
+        latestTx        = $latestTx
+        latestRx        = $latestRx
+        avgCpu          = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
+        maxCpu          = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
+        avgRam          = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
+        maxRam          = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
+        ramTotal        = $machineData[$pc].ramTotal
+        maxRx           = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
+        maxTx           = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
+        diskFree        = if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
+        maxIoR          = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
+        maxIoW          = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
+        ping            = $latestPing
+        avgPing         = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
+        maxPing         = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
+        uptime          = $lastUptime
+        bootDate        = $lastBoot
     }
 }
 
@@ -379,265 +399,286 @@ $html = @"
         </div>
     </header>
 
-    <!-- CARDS DOS COMPUTADORES (AMPLIADOS, ENRIQUECIDOS E COM LEGENDA MESTRE) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 my-2 shrink-0">
-        <!-- Card 1: JFMELGACO-4 (AZUL) -->
-        <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-4" class="h-3.5 w-3.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase">$($pcRole['JFMELGACO-4'])</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 transition-all">Linha Azul &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-4_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-4'].ping)ms</span>
-                        <span id="card_JFMELGACO-4_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-4'].bootDate))">&#9201; $($stats['JFMELGACO-4'].uptime)</span>
+    <!-- CONTAINER PRINCIPAL: GRÁFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
+    <div id="dashboardContent" class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden">
+
+        <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - À ESQUERDA) -->
+        <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
+
+            <!-- 1. CPU CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+                        Uso de CPU (%) &larr; Task Manager
                     </span>
+                    <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <canvas id="cpuChart"></canvas>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">$($stats['JFMELGACO-4'].avgCpu)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-4_ram">$($stats['JFMELGACO-4'].avgRam)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree)G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-4_io">$($stats['JFMELGACO-4'].maxIoW)k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].maxTx)k</strong>
-                </div>
-            </div>
-        </div>
 
-        <!-- Card 2: JFMELGACO-1 (VERDE) -->
-        <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-1" class="h-3.5 w-3.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">$($pcRole['JFMELGACO-1'])</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 transition-all">Linha Verde &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-1_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-1'].ping)ms</span>
-                        <span id="card_JFMELGACO-1_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-1'].bootDate))">&#9201; $($stats['JFMELGACO-1'].uptime)</span>
+            <!-- 2. RAM CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
+                        Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
                     </span>
+                    <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <canvas id="ramChart"></canvas>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].avgCpu)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].avgRam)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoW)k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx)k</strong>
-                </div>
-            </div>
-        </div>
 
-        <!-- Card 3: JFMELGACO-2 (AMARELO) -->
-        <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-2" class="h-3.5 w-3.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">$($pcRole['JFMELGACO-2'])</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition-all">Linha Amarela &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
+            <!-- 3. RX CHART (Download) -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-2_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-2'].ping)ms</span>
-                        <span id="card_JFMELGACO-2_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-2'].bootDate))">&#9201; $($stats['JFMELGACO-2'].uptime)</span>
+                        Rede: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
                     </span>
+                    <span class="text-[10px] text-slate-400">Tempo Real</span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <canvas id="rxChart"></canvas>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].avgCpu)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].avgRam)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoW)k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx)k</strong>
-                </div>
-            </div>
-        </div>
 
-        <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
-        <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col justify-between shadow-lg transition-all relative overflow-hidden cursor-pointer select-none hover:scale-[1.01]">
-            <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
-            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                <div class="flex items-center gap-2">
-                    <span id="cardDot_JFMELGACO-3" class="h-3.5 w-3.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)] inline-block transition-all"></span>
-                    <strong class="text-white text-xs tracking-wide transition-all" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase">$($pcRole['JFMELGACO-3'])</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 transition-all">Linha Vermelha &#10003;</span>
-                    <span class="flex items-center gap-1 text-[10px] text-slate-400">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        <span class="text-emerald-400 font-medium">Online</span>
-                        <span id="card_JFMELGACO-3_ping" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-3'].ping)ms</span>
-                        <span id="card_JFMELGACO-3_uptime" class="ml-1 text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-3'].bootDate))">&#9201; $($stats['JFMELGACO-3'].uptime)</span>
+            <!-- 4. TX CHART & DISCO C: COM ABAS RÁPIDAS -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-amber-400"></span>
+                        <span id="titleBottomRight">Rede: Transmiss&atilde;o / Upload (Tx)</span>
                     </span>
+                    <div class="flex items-center gap-1 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/60">
+                        <button onclick="switchBottomRightView('tx')" id="btnTabTx" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer">
+                            Tx (Upload)
+                        </button>
+                        <button onclick="switchBottomRightView('disk')" id="btnTabDisk" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                            Disco C: (GB)
+                        </button>
+                        <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                            I/O Disco
+                        </button>
+                        <button onclick="switchBottomRightView('ping')" id="btnTabPing" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                            Lat&ecirc;ncia Ping (ms)
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                    <div id="wrapperTxChart" class="h-full w-full">
+                        <canvas id="txChart"></canvas>
+                    </div>
+                    <div id="wrapperDiskChart" class="h-full w-full hidden">
+                        <canvas id="diskChart"></canvas>
+                    </div>
+                    <div id="wrapperIoChart" class="h-full w-full hidden">
+                        <canvas id="ioChart"></canvas>
+                    </div>
+                    <div id="wrapperPingChart" class="h-full w-full hidden">
+                        <canvas id="pingChart"></canvas>
+                    </div>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-1 text-center">
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">CPU</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].avgCpu)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">RAM</span>
-                    <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].avgRam)%</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                    <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                    <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">$($stats['JFMELGACO-3'].maxIoW)k</strong>
-                </div>
-                <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1">
-                    <span class="text-[8.5px] text-slate-400 uppercase block font-semibold">Rede Rx</span>
-                    <strong class="text-xs text-cyan-400" id="card_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx)k</strong>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - COMPACTO E EQUILIBRADO) -->
-    <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
+        </main>
 
-        <!-- 1. CPU CHART -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES -->
+        <aside id="nodesSidebar" class="w-full lg:w-80 xl:w-96 flex flex-col gap-2 shrink-0 overflow-y-auto pr-0.5">
+            <div class="flex items-center justify-between px-1 text-[11px] text-slate-400 font-semibold border-b border-borderbg pb-1 shrink-0">
+                <span class="flex items-center gap-1.5 text-slate-300">
                     <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                    Uso de CPU (%) &larr; Task Manager
+                    N&oacute;s Monitorados (4)
                 </span>
-                <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+                <span class="text-[10px] text-slate-500">Clique no card para filtrar</span>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <canvas id="cpuChart"></canvas>
-            </div>
-        </div>
 
-        <!-- 2. RAM CHART -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                    <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
-                    Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
-                </span>
-                <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
+            <!-- Card 1: JFMELGACO-4 (AZUL) -->
+            <div id="cardHost_JFMELGACO-4" onclick="toggleMachineVisibility('JFMELGACO-4')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-4" class="h-3 w-3 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-4'])</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-4" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all">Linha Azul &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-4" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-4" class="h-2 w-2 rounded-full $($stats['JFMELGACO-4'].onlineDotClass)"></span>
+                        <span id="cardStatusText_JFMELGACO-4" class="$($stats['JFMELGACO-4'].onlineTextClass) font-medium">$($stats['JFMELGACO-4'].statusText)</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-4_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-4'].ping)ms</span>
+                        <span id="card_JFMELGACO-4_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-4'].bootDate))">&#9201; $($stats['JFMELGACO-4'].uptime)</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_cpu" title="CPU Atual: $($stats['JFMELGACO-4'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgCpu)% | Pico: $($stats['JFMELGACO-4'].maxCpu)%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">$($stats['JFMELGACO-4'].latestCpu)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_ram" title="RAM Atual: $($stats['JFMELGACO-4'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgRam)% | Total: $($stats['JFMELGACO-4'].ramTotal) GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-4_ram">$($stats['JFMELGACO-4'].latestRam)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree)G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_io" title="I/O Escrita Atual: $($stats['JFMELGACO-4'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-4'].maxIoW) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-4_io">$($stats['JFMELGACO-4'].latestIoW)k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_tx" title="Rede Tx Atual: $($stats['JFMELGACO-4'].latestTx) KB/s (Pico: $($stats['JFMELGACO-4'].maxTx) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].latestTx)k</strong>
+                    </div>
+                </div>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <canvas id="ramChart"></canvas>
-            </div>
-        </div>
 
-        <!-- 3. RX CHART (Download) -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                    <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                    Rede: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
-                </span>
-                <span class="text-[10px] text-slate-400">Tempo Real</span>
+            <!-- Card 2: JFMELGACO-1 (VERDE) -->
+            <div id="cardHost_JFMELGACO-1" onclick="toggleMachineVisibility('JFMELGACO-1')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-1" class="h-3 w-3 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-1'])</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-1" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all">Linha Verde &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-1" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-1" class="h-2 w-2 rounded-full $($stats['JFMELGACO-1'].onlineDotClass)"></span>
+                        <span id="cardStatusText_JFMELGACO-1" class="$($stats['JFMELGACO-1'].onlineTextClass) font-medium">$($stats['JFMELGACO-1'].statusText)</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-1_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-1'].ping)ms</span>
+                        <span id="card_JFMELGACO-1_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-1'].bootDate))">&#9201; $($stats['JFMELGACO-1'].uptime)</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_cpu" title="CPU Atual: $($stats['JFMELGACO-1'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgCpu)% | Pico: $($stats['JFMELGACO-1'].maxCpu)%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].latestCpu)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_ram" title="RAM Atual: $($stats['JFMELGACO-1'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgRam)% | Total: $($stats['JFMELGACO-1'].ramTotal) GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].latestRam)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_io" title="I/O Escrita Atual: $($stats['JFMELGACO-1'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-1'].maxIoW) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">$($stats['JFMELGACO-1'].latestIoW)k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_tx" title="Rede Tx Atual: $($stats['JFMELGACO-1'].latestTx) KB/s (Pico: $($stats['JFMELGACO-1'].maxTx) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].latestTx)k</strong>
+                    </div>
+                </div>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <canvas id="rxChart"></canvas>
-            </div>
-        </div>
 
-        <!-- 4. TX CHART & DISCO C: COM ABAS RÁPIDAS -->
-        <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
-            <div class="flex items-center justify-between mb-1 px-1">
-                <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                    <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                    <span id="titleBottomRight">Rede: Transmiss&atilde;o / Upload (Tx)</span>
-                </span>
-                <div class="flex items-center gap-1 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/60">
-                    <button onclick="switchBottomRightView('tx')" id="btnTabTx" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer">
-                        Tx (Upload)
-                    </button>
-                    <button onclick="switchBottomRightView('disk')" id="btnTabDisk" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                        Disco C: (GB)
-                    </button>
-                    <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                        I/O Disco
-                    </button>
-                    <button onclick="switchBottomRightView('ping')" id="btnTabPing" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                        Lat&ecirc;ncia Ping (ms)
-                    </button>
+            <!-- Card 3: JFMELGACO-2 (AMARELO) -->
+            <div id="cardHost_JFMELGACO-2" onclick="toggleMachineVisibility('JFMELGACO-2')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-2" class="h-3 w-3 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_6px_rgba(245,158,11,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-2'])</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-2" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all">Linha Amarela &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-2" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-2" class="h-2 w-2 rounded-full $($stats['JFMELGACO-2'].onlineDotClass)"></span>
+                        <span id="cardStatusText_JFMELGACO-2" class="$($stats['JFMELGACO-2'].onlineTextClass) font-medium">$($stats['JFMELGACO-2'].statusText)</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-2_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-2'].ping)ms</span>
+                        <span id="card_JFMELGACO-2_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-2'].bootDate))">&#9201; $($stats['JFMELGACO-2'].uptime)</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_cpu" title="CPU Atual: $($stats['JFMELGACO-2'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgCpu)% | Pico: $($stats['JFMELGACO-2'].maxCpu)%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].latestCpu)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_ram" title="RAM Atual: $($stats['JFMELGACO-2'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgRam)% | Total: $($stats['JFMELGACO-2'].ramTotal) GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].latestRam)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_io" title="I/O Escrita Atual: $($stats['JFMELGACO-2'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-2'].maxIoW) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-2_io">$($stats['JFMELGACO-2'].latestIoW)k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_tx" title="Rede Tx Atual: $($stats['JFMELGACO-2'].latestTx) KB/s (Pico: $($stats['JFMELGACO-2'].maxTx) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].latestTx)k</strong>
+                    </div>
                 </div>
             </div>
-            <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-[205px]">
-                <div id="wrapperTxChart" class="h-full w-full">
-                    <canvas id="txChart"></canvas>
-                </div>
-                <div id="wrapperDiskChart" class="h-full w-full hidden">
-                    <canvas id="diskChart"></canvas>
-                </div>
-                <div id="wrapperIoChart" class="h-full w-full hidden">
-                    <canvas id="ioChart"></canvas>
-                </div>
-                <div id="wrapperPingChart" class="h-full w-full hidden">
-                    <canvas id="pingChart"></canvas>
-                </div>
-            </div>
-        </div>
 
-    </main>
+            <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
+            <div id="cardHost_JFMELGACO-3" onclick="toggleMachineVisibility('JFMELGACO-3')" title="Clique para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none">
+                <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span id="cardDot_JFMELGACO-3" class="h-3 w-3 rounded-full bg-red-500 border border-red-300 shadow-[0_0_6px_rgba(239,68,68,0.8)] inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
+                        <span class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase shrink-0">$($pcRole['JFMELGACO-3'])</span>
+                    </div>
+                    <span id="visBadge_JFMELGACO-3" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all">Linha Vermelha &#10003;</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
+                    <span id="cardStatus_JFMELGACO-3" class="flex items-center gap-1">
+                        <span id="cardStatusDot_JFMELGACO-3" class="h-2 w-2 rounded-full $($stats['JFMELGACO-3'].onlineDotClass)"></span>
+                        <span id="cardStatusText_JFMELGACO-3" class="$($stats['JFMELGACO-3'].onlineTextClass) font-medium">$($stats['JFMELGACO-3'].statusText)</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span id="card_JFMELGACO-3_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-3'].ping)ms</span>
+                        <span id="card_JFMELGACO-3_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-3'].bootDate))">&#9201; $($stats['JFMELGACO-3'].uptime)</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_cpu" title="CPU Atual: $($stats['JFMELGACO-3'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgCpu)% | Pico: $($stats['JFMELGACO-3'].maxCpu)%)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].latestCpu)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_ram" title="RAM Atual: $($stats['JFMELGACO-3'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgRam)% | Total: $($stats['JFMELGACO-3'].ramTotal) GB)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].latestRam)%</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" title="Espa&ccedil;o Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_io" title="I/O Escrita Atual: $($stats['JFMELGACO-3'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-3'].maxIoW) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">$($stats['JFMELGACO-3'].latestIoW)k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_tx" title="Rede Tx Atual: $($stats['JFMELGACO-3'].latestTx) KB/s (Pico: $($stats['JFMELGACO-3'].maxTx) KB/s)">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-3_tx">$($stats['JFMELGACO-3'].latestTx)k</strong>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+    </div>
 
     <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÍSTICO -->
     <div id="summaryModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
@@ -1188,10 +1229,14 @@ $html = @"
             const body = document.getElementById('mainBody');
             const btn = document.getElementById('btnScrollMode');
             const chartsMain = document.getElementById('chartsMain');
+            const dashboardContent = document.getElementById('dashboardContent');
             const wrappers = document.querySelectorAll('.chart-wrapper');
 
             if (isSingleScreen) {
                 body.className = "bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs font-sans";
+                if (dashboardContent) {
+                    dashboardContent.className = "flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden";
+                }
                 if (chartsMain) {
                     chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0";
                 }
@@ -1205,8 +1250,11 @@ $html = @"
                 }
             } else {
                 body.className = "bg-darkbg text-slate-100 min-h-screen p-3 overflow-y-auto text-xs font-sans";
+                if (dashboardContent) {
+                    dashboardContent.className = "flex flex-col lg:flex-row gap-3 pb-8";
+                }
                 if (chartsMain) {
-                    chartsMain.className = "grid grid-cols-1 lg:grid-cols-2 gap-3 pb-8";
+                    chartsMain.className = "grid grid-cols-1 lg:grid-cols-2 gap-3";
                 }
                 wrappers.forEach(w => {
                     w.style.height = "310px";
@@ -1247,25 +1295,43 @@ $html = @"
                 sampleCountEl.innerText = payload.totalPoints + ' amostras';
             }
 
-            // 2. Atualiza Mini-Cards dos computadores e Modal estatístico
+            // 2. Atualiza Cards laterais dos computadores e Modal estatístico
             const pcs = ['JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3'];
             pcs.forEach(pc => {
                 const s = payload.rawData[pc] ? payload.rawData[pc].stats : null;
                 if (!s) return;
 
-                // Cards do topo
+                // Status Online / Offline dinâmico
+                const sDot = document.getElementById('cardStatusDot_' + pc);
+                const sText = document.getElementById('cardStatusText_' + pc);
+                const cardHost = document.getElementById('cardHost_' + pc);
+                if (sDot && sText) {
+                    if (s.isOnline) {
+                        sDot.className = 'h-2 w-2 rounded-full bg-emerald-400';
+                        sText.className = 'text-emerald-400 font-medium';
+                        sText.innerText = 'Online';
+                        if (cardHost) cardHost.classList.remove('border-red-500/80', 'opacity-70');
+                    } else {
+                        sDot.className = 'h-2 w-2 rounded-full bg-red-500';
+                        sText.className = 'text-red-400 font-medium';
+                        sText.innerText = 'Offline';
+                        if (cardHost) cardHost.classList.add('border-red-500/80');
+                    }
+                }
+
+                // Cards laterais - Métricas Instantâneas (Atual)
                 const cCpu = document.getElementById('card_' + pc + '_cpu');
-                if (cCpu) cCpu.innerText = s.avgCpu + '%';
+                if (cCpu) cCpu.innerText = s.latestCpu + '%';
                 const cRam = document.getElementById('card_' + pc + '_ram');
-                if (cRam) cRam.innerText = s.avgRam + '%';
+                if (cRam) cRam.innerText = s.latestRam + '%';
                 const cDisk = document.getElementById('card_' + pc + '_disk');
                 if (cDisk) cDisk.innerText = s.diskFree + 'G';
                 const cIo = document.getElementById('card_' + pc + '_io');
-                if (cIo) cIo.innerText = s.maxIoW + 'k';
+                if (cIo) cIo.innerText = s.latestIoW + 'k';
                 const cTx = document.getElementById('card_' + pc + '_tx');
-                if (cTx) cTx.innerText = s.maxTx + 'k';
+                if (cTx) cTx.innerText = s.latestTx + 'k';
                 const cRx = document.getElementById('card_' + pc + '_rx');
-                if (cRx) cRx.innerText = s.maxRx + 'k';
+                if (cRx) cRx.innerText = s.latestRx + 'k';
                 const cPing = document.getElementById('card_' + pc + '_ping');
                 if (cPing) cPing.innerText = s.ping + 'ms';
                 const cUptime = document.getElementById('card_' + pc + '_uptime');
@@ -1274,7 +1340,17 @@ $html = @"
                     if (s.bootDate) cUptime.title = 'Uptime cont\u00ednuo (\u00daltimo Boot: ' + s.bootDate + ')';
                 }
 
-                // Tabela do Modal de Resumo
+                // Tooltips informativos com médias e picos
+                const bCpu = document.getElementById('box_' + pc + '_cpu');
+                if (bCpu) bCpu.title = 'CPU Atual: ' + s.latestCpu + '% (M\u00e9dia: ' + s.avgCpu + '% | Pico: ' + s.maxCpu + '%)';
+                const bRam = document.getElementById('box_' + pc + '_ram');
+                if (bRam) bRam.title = 'RAM Atual: ' + s.latestRam + '% (M\u00e9dia: ' + s.avgRam + '% | Total: ' + (s.ramTotal || 0) + ' GB)';
+                const bIo = document.getElementById('box_' + pc + '_io');
+                if (bIo) bIo.title = 'I/O Escrita Atual: ' + s.latestIoW + ' KB/s (Pico: ' + s.maxIoW + ' KB/s)';
+                const bTx = document.getElementById('box_' + pc + '_tx');
+                if (bTx) bTx.title = 'Rede Tx Atual: ' + s.latestTx + ' KB/s (Pico: ' + s.maxTx + ' KB/s)';
+
+                // Tabela do Modal de Resumo (Consolidado)
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
                 if (mCpuAvg) mCpuAvg.innerText = s.avgCpu + '%';
                 const mCpuMax = document.getElementById('modal_' + pc + '_cpuMax');
