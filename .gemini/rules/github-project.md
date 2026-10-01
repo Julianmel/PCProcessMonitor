@@ -28,6 +28,7 @@ Esta regra é obrigatória para a criação e manutenção de projetos no GitHub
 - Preencher o campo **Start Date** com a data atual (`AAAA-MM-DD`).
 - Preencher o campo **Start Time** com o horário de início (`HH:MM`).
 - **MUDANÇA IMEDIATA DE STATUS:** Alterar o status da issue no projeto para **`In progress`** (`PVTSSF_...` -> Option `In progress`).
+- **REABASTECIMENTO AUTOMÁTICO DA FILA ("Ready"):** Imediatamente após mover a issue para `In progress`, identificar a próxima issue prioritária em **`Backlog`** e movê-la para o status **`Ready`** (Option `Ready`), deixando-a preparada como a próxima da esteira a ser executada.
 
 ### Ao Concluir a Atividade (Done):
 - Preencher **End Date** com a data de conclusão.

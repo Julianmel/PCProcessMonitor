@@ -21,6 +21,7 @@ Este repositório adota as regras de governança de projetos, automação de cal
   8. `Total Time`
   9. `Closed`
 * **Transição Automática para "In progress":** Sempre que for atribuída a data e hora de início (`Start Date` / `Start Time`), alterar **IMEDIATAMENTE** o status da issue no projeto para **`In progress`**.
+* **Reabastecimento Automático da Fila ("Ready"):** Sempre que uma issue for movida para **`In progress`**, identificar imediatamente a próxima issue prioritária em **`Backlog`** e movê-la para o status **`Ready`**, sinalizando que será a próxima a ser executada na sequência da esteira.
 * **Fechamento em "Done":**
   * Registrar `End Date`, `End Time` e o tempo real decorrido em `Total Time` (no GitHub o tempo não necessita ser múltiplo de 10 min).
   * Alterar o status para **`Done`**.
