@@ -5,7 +5,7 @@
 )
 
 # ============================================================
-# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.1.0)
+# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.2.0)
 # ============================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -22,17 +22,22 @@ $cRed      = "$esc[91m"  # OFFLINE
 $cOnline   = "$esc[92m"  # ONLINE
 $cNoAccess = "$esc[95m"  # SEM ACESSO (Rosa/Magenta: computador ligado, mas consulta WMI bloqueada)
 
-# Lista canônica de todas as máquinas da rede
-$Computadores = @(
-    'JFMELGACO-4',
-    'JFMELGACO-1',
-    'JFMELGACO-2',
-    'JFMELGACO-3'
-)
-
 # Resolução dinâmica da pasta de logs (suporta execução em qualquer computador e pasta 'Data' se existir)
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $ScriptDir) { $ScriptDir = $pwd.Path }
+
+# Lista canônica de todas as máquinas da rede (carregada de machines.json com ordenação alfabética estrita)
+$machinesJsonPath = Join-Path $ScriptDir "machines.json"
+if (-not (Test-Path $machinesJsonPath)) { $machinesJsonPath = Join-Path $ScriptDir "Data\machines.json" }
+$Computadores = @('JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3', 'JFMELGACO-4')
+if (Test-Path $machinesJsonPath) {
+    try {
+        $loadedComputers = Get-Content -Raw $machinesJsonPath -Encoding UTF8 | ConvertFrom-Json
+        if ($loadedComputers -and $loadedComputers.Count -gt 0) {
+            $Computadores = @($loadedComputers | Sort-Object)
+        }
+    } catch {}
+}
 
 $dataSubDir = Join-Path $ScriptDir "Data"
 $LogDir = if (Test-Path $dataSubDir) { $dataSubDir } else { $ScriptDir }
@@ -208,8 +213,19 @@ function Get-MachineMetrics {
         }
 
         # 6. Top 10 Processos com maior consumo (Win32_PerfFormattedData_PerfProc_Process)
+        # Normalização de CPU por número de núcleos lógicos para evitar aberrações > 100%
         $topProcs = [System.Collections.Generic.List[hashtable]]::new()
         try {
+            $numCores = if ($isLocal) {
+                [System.Environment]::ProcessorCount
+            } else {
+                try {
+                    $cs = Get-CimInstance Win32_ComputerSystem @sessionArgs -ErrorAction SilentlyContinue
+                    if ($cs -and $cs.NumberOfLogicalProcessors -gt 0) { $cs.NumberOfLogicalProcessors } else { 1 }
+                } catch { 1 }
+            }
+            if (-not $numCores -or $numCores -lt 1) { $numCores = 1 }
+
             $procPerf = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process @sessionArgs |
                 Where-Object { $_.Name -notin '_Total', 'Idle' } |
                 Sort-Object -Property PercentProcessorTime, WorkingSetPrivate -Descending |
@@ -219,20 +235,38 @@ function Get-MachineMetrics {
                 if (-not $pClean.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase) -and $pClean -ne 'System') {
                     $pClean = "$pClean.exe"
                 }
+                $calcCpu = [math]::Round([double]$pr.PercentProcessorTime / $numCores, 1)
                 $topProcs.Add(@{
                     Name  = $pClean
                     Pid   = [int]$pr.IDProcess
-                    Cpu   = [int]$pr.PercentProcessorTime
+                    Cpu   = $calcCpu
                     MemMB = [math]::Round($pr.WorkingSetPrivate / 1MB, 1)
                 })
             }
         } catch {}
+
+        # 7. Temperatura do Hardware (°C)
+        $tempVal = $null
+        try {
+            $tz = Get-CimInstance -Namespace "root/wmi" -ClassName "MSAcpi_ThermalZoneTemperature" @sessionArgs -ErrorAction SilentlyContinue
+            if ($tz -and $tz.CurrentTemperature -gt 0) {
+                $tempVal = [math]::Round(($tz.CurrentTemperature - 2732) / 10, 0)
+            }
+        } catch {}
+        if ($null -eq $tempVal) {
+            try {
+                $tp = Get-CimInstance -ClassName Win32_TemperatureProbe @sessionArgs -ErrorAction SilentlyContinue |
+                      Where-Object { $_.CurrentReading -gt 0 } | Select-Object -First 1
+                if ($tp) { $tempVal = [math]::Round($tp.CurrentReading, 0) }
+            } catch {}
+        }
 
         return @{
             Success        = $true
             Status         = 'ONLINE'
             Computer       = $ComputerName
             Display        = $nomeDisplay
+            Temp           = $tempVal
             Cpu            = $cpu
             TotalRam       = $totalRam
             UsedRam        = $usedRam
@@ -397,9 +431,26 @@ while ($true) {
     try {
         $builder = Join-Path $ScriptDir "Build-HtmlDashboard.ps1"
         if (Test-Path $builder) {
-            & $builder -LogFile $logFilePath -OutputFile (Join-Path $ScriptDir "dashboard_desempenho.html") *>$null
+            $dashHtml = Join-Path $ScriptDir "dashboard_desempenho.html"
+            & $builder -LogFile $logFilePath -OutputFile $dashHtml *>$null
+            if ($sampleCount -eq 1 -and (Test-Path $dashHtml)) {
+                try {
+                    Start-Process $dashHtml
+                    Write-Host "Dashboard aberto automaticamente no navegador padrão: $dashHtml" -ForegroundColor Green
+                } catch {}
+            }
         }
     } catch {}
+
+    # 3.1 Recarrega dinamicamente machines.json a cada 5 amostras caso alterado pelo usuário
+    if ($sampleCount % 5 -eq 0 -and (Test-Path $machinesJsonPath)) {
+        try {
+            $dynamicComputers = Get-Content -Raw $machinesJsonPath -Encoding UTF8 | ConvertFrom-Json
+            if ($dynamicComputers -and $dynamicComputers.Count -gt 0) {
+                $Computadores = @($dynamicComputers | Sort-Object)
+            }
+        } catch {}
+    }
 
     # 4. Renderização no terminal "na mesma linha"
     if ($null -eq $startTop) {

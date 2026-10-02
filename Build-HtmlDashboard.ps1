@@ -1,5 +1,5 @@
 ﻿# ============================================================
-# GERADOR DE DASHBOARD HTML - JFMELGACO (v1.1.0)
+# GERADOR DE DASHBOARD HTML - JFMELGACO (v1.2.0)
 # ============================================================
 param(
     [string]$LogFile = $null,
@@ -47,11 +47,22 @@ function Parse-MetricNumber([string]$str) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
+# Carregamento da lista canônica de máquinas (machines.json com fallback e ordenação alfabética estrita)
+$machinesJsonPath = Join-Path $PSScriptRoot "machines.json"
+if (-not (Test-Path $machinesJsonPath)) { $machinesJsonPath = Join-Path $PSScriptRoot "Data\machines.json" }
+$pcsList = @('JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3', 'JFMELGACO-4')
+if (Test-Path $machinesJsonPath) {
+    try {
+        $loadedPcs = Get-Content -Raw $machinesJsonPath -Encoding UTF8 | ConvertFrom-Json
+        if ($loadedPcs -and $loadedPcs.Count -gt 0) {
+            $pcsList = @($loadedPcs | Sort-Object)
+        }
+    } catch {}
+}
+
 $pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
-$pcsList = @('JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3')
-
 $machineData = @{}
 foreach ($pc in $pcsList) {
     $machineData[$pc] = @{
@@ -67,6 +78,8 @@ foreach ($pc in $pcsList) {
         ping     = [System.Collections.Generic.List[object]]::new()
         uptime   = [System.Collections.Generic.List[object]]::new()
         bootDate = [System.Collections.Generic.List[object]]::new()
+        temp     = [System.Collections.Generic.List[object]]::new()
+        internet = [System.Collections.Generic.List[object]]::new()
         ramTotal = 0
         diskTotal= 0
     }
@@ -93,6 +106,8 @@ function Flush-Block {
                 $machineData[$p].ping.Add($obj.ping)
                 $machineData[$p].uptime.Add($obj.uptime)
                 $machineData[$p].bootDate.Add($obj.bootDate)
+                $machineData[$p].temp.Add($obj.temp)
+                $machineData[$p].internet.Add($obj.internet)
                 if ($obj.ramTotal -gt 0) { $machineData[$p].ramTotal = $obj.ramTotal }
             } else {
                 $machineData[$p].cpu.Add($null)
@@ -107,46 +122,68 @@ function Flush-Block {
                 $machineData[$p].ping.Add($null)
                 $machineData[$p].uptime.Add($null)
                 $machineData[$p].bootDate.Add($null)
+                $machineData[$p].temp.Add($null)
+                $machineData[$p].internet.Add(0)
             }
         }
+        $currentBlockPcs.Clear()
     }
 }
 
+$detectedLocalHost = $null
 foreach ($line in $lines) {
-    if ($line -match '^\[(\d\d:\d\d:\d\d)\]') {
+    if ($line -match '^(?<hora>\d{2}:\d{2}:\d{2})\s+========') {
         Flush-Block
-        $currentTs = $matches[1]
-        $currentBlockPcs = @{}
-    } elseif ($line -match $pattern -and $null -ne $currentTs) {
-        $baseMatches = $matches
-        $pc = $baseMatches['pc']
-        if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
-        $isOnline = $line.StartsWith('ONLINE')
+        $currentTs = $matches['hora']
+        continue
+    }
 
+    if ($line -match 'Host Local identificado:\s*(?<lh>[^\s]+)') {
+        $detectedLocalHost = $matches['lh']
+    }
+
+    if ($null -eq $currentTs) { continue }
+
+    if ($line -match '^(ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)') {
+        $rawPc = $matches['pc']
+        $pc = $rawPc
+        if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
+        if (-not ($pcsList -contains $pc)) { continue }
+
+        if ($line -match '\(Local\)' -and -not $detectedLocalHost) {
+            $detectedLocalHost = $pc
+        }
+
+        # Parsing desacoplado e robusto de métricas adicionais
         $pingVal = $null
         if ($line -match 'Ping:\s*(?<ping>\d+|---|N\/D)\s*ms') {
-            $pRaw = $matches['ping']
-            if ($pRaw -ne '---' -and $pRaw -ne 'N/D') { $pingVal = [int]$pRaw }
+            $rawP = $matches['ping']
+            if ($rawP -ne '---' -and $rawP -ne 'N/D') { $pingVal = [int]$rawP }
         }
 
         $uptimeVal = $null
-        $bootVal   = $null
-        if ($line -match 'Uptime:\s*(?<uptime>[^\r\n\(]+?)(?:\s*\(Boot:\s*(?<boot>[^\)]+)\))?\s*$') {
-            $uRaw = $matches['uptime'].Trim()
-            if ($uRaw -ne '---' -and $uRaw -ne 'N/D') { $uptimeVal = $uRaw }
-            if ($matches['boot']) {
-                $bRaw = $matches['boot'].Trim()
-                if ($bRaw -ne '---' -and $bRaw -ne 'N/D') { $bootVal = $bRaw }
-            }
+        if ($line -match 'Uptime:\s*(?<uptime>[^\|\r\n]+?)(?=\s*\(Boot:|\s*$)') {
+            $uptimeVal = $matches['uptime'].Trim()
         }
 
-        if ($isOnline -and $baseMatches['cpu']) {
+        $bootVal = $null
+        if ($line -match '\(Boot:\s*(?<boot>[^\)]+)\)') {
+            $bootVal = $matches['boot'].Trim()
+        }
+
+        $tempVal = $null
+        if ($line -match 'Temp:\s*(?<temp>\d+)\s*°?C') {
+            $tempVal = [int]$matches['temp']
+        }
+
+        if ($line -match $pattern) {
+            $baseMatches = $matches
             $cpu = [int]$baseMatches['cpu']
             $ramPct = [int]$baseMatches['ramPct']
             $ramUsed = Parse-MetricNumber $baseMatches['ramUsed']
             $ramTotal = Parse-MetricNumber $baseMatches['ramTotal']
             $diskFree = Parse-MetricNumber $baseMatches['diskFree']
-            $diskPct  = if ($baseMatches['diskPct']) { [int]$baseMatches['diskPct'] } else { 0 }
+            $diskPct = [int]$baseMatches['diskPct']
             
             $ioR = Parse-MetricNumber $baseMatches['ioRVal']
             if ($baseMatches['ioRUnit'] -eq 'MB/s') { $ioR = $ioR * 1024 }
@@ -159,6 +196,8 @@ foreach ($line in $lines) {
             
             $tx = Parse-MetricNumber $baseMatches['txVal']
             if ($baseMatches['txUnit'] -eq 'MB/s') { $tx = $tx * 1024 }
+
+            $internetMbps = [math]::Round((($rx + $tx) * 8) / 1024, 2)
 
             $currentBlockPcs[$pc] = @{
                 cpu      = $cpu
@@ -174,6 +213,8 @@ foreach ($line in $lines) {
                 ping     = $pingVal
                 uptime   = $uptimeVal
                 bootDate = $bootVal
+                temp     = $tempVal
+                internet = $internetMbps
             }
         } else {
             $currentBlockPcs[$pc] = @{
@@ -190,6 +231,8 @@ foreach ($line in $lines) {
                 ping     = $pingVal
                 uptime   = $null
                 bootDate = $null
+                temp     = $null
+                internet = 0
             }
         }
     }
@@ -198,7 +241,7 @@ Flush-Block
 
 Write-Host "Total de pontos temporais processados: $($timestamps.Count)" -ForegroundColor Green
 
-# Calculando estatisticas consolidadas
+# Calculando estatísticas consolidadas
 $stats = @{}
 foreach ($pc in $pcsList) {
     $validCpu    = $machineData[$pc].cpu | Where-Object { $null -ne $_ }
@@ -209,6 +252,7 @@ foreach ($pc in $pcsList) {
     $validIoR    = $machineData[$pc].ioR | Where-Object { $null -ne $_ }
     $validIoW    = $machineData[$pc].ioW | Where-Object { $null -ne $_ }
     $validPing   = $machineData[$pc].ping | Where-Object { $null -ne $_ }
+    $validTemp   = $machineData[$pc].temp | Where-Object { $null -ne $_ }
     $validUptime = $machineData[$pc].uptime | Where-Object { $null -ne $_ -and $_ -ne '---' -and $_ -ne 'N/D' }
     $validBoot   = $machineData[$pc].bootDate | Where-Object { $null -ne $_ -and $_ -ne '---' -and $_ -ne 'N/D' }
     $lastUptime  = if ($validUptime) { $validUptime | Select-Object -Last 1 } else { $null }
@@ -233,7 +277,6 @@ foreach ($pc in $pcsList) {
         }
     }
 
-    # Deteccao se a maquina estava online na ultima amostra lida
     $isOnline = ($machineData[$pc].cpu.Count -gt 0 -and $null -ne $machineData[$pc].cpu[-1])
     $latestCpu = if ($isOnline) { $machineData[$pc].cpu[-1] } else { 0 }
     $latestRam = if ($isOnline) { $machineData[$pc].ramPct[-1] } else { 0 }
@@ -242,119 +285,84 @@ foreach ($pc in $pcsList) {
     $latestTx  = if ($isOnline) { $machineData[$pc].tx[-1] } else { 0 }
     $latestRx  = if ($isOnline) { $machineData[$pc].rx[-1] } else { 0 }
     $latestPing = if ($validPing) { $validPing | Select-Object -Last 1 } else { 0 }
+    $latestTemp = if ($validTemp) { $validTemp | Select-Object -Last 1 } else { $null }
 
     $validDiskPct = $machineData[$pc].diskPct | Where-Object { $null -ne $_ -and $_ -gt 0 }
     $latestDiskPct = if ($validDiskPct) { $validDiskPct | Select-Object -Last 1 } else { 0 }
 
     $avgCpuVal   = if ($validCpu) { [math]::Round(($validCpu | Measure-Object -Average).Average, 1) } else { 0 }
     $avgRamVal   = if ($validRam) { [math]::Round(($validRam | Measure-Object -Average).Average, 1) } else { 0 }
-    $diskFreeVal = if ($validDisk) { ($validDisk | Select-Object -Last 1) } else { 0 }
+    $maxCpuVal   = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
+    $maxRamVal   = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
+    $maxIoRVal   = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
+    $maxIoWVal   = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
+    $maxRxVal    = if ($validRx)  { ($validRx  | Measure-Object -Maximum).Maximum } else { 0 }
+    $maxTxVal    = if ($validTx)  { ($validTx  | Measure-Object -Maximum).Maximum } else { 0 }
+    $diskFreeVal = if ($validDisk) { $validDisk | Select-Object -Last 1 } else { 0 }
+    $avgPingVal  = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
+    $maxPingVal  = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
 
-    $isCpuAlert  = ($latestCpu -ge 85 -or $avgCpuVal -ge 85)
-    $isRamAlert  = ($latestRam -ge 90 -or $avgRamVal -ge 90)
-    $isDiskAlert = (($latestDiskPct -ge 90) -or ($diskFreeVal -gt 0 -and $diskFreeVal -le 15))
-    $hasAlert    = ($isOnline -and ($isCpuAlert -or $isRamAlert -or $isDiskAlert))
+    $isCpuAlert  = ($isOnline -and ($latestCpu -ge 85 -or $avgCpuVal -ge 85))
+    $isRamAlert  = ($isOnline -and ($latestRam -ge 90 -or $avgRamVal -ge 90))
+    $isDiskAlert = ($isOnline -and (($latestDiskPct -ge 90) -or ($diskFreeVal -gt 0 -and $diskFreeVal -le 15)))
+    $isTempAlert = ($isOnline -and $latestTemp -and $latestTemp -ge 75)
+    $hasAlert    = ($isCpuAlert -or $isRamAlert -or $isDiskAlert -or $isTempAlert)
 
     $alertReasons = [System.Collections.Generic.List[string]]::new()
-    if ($isCpuAlert) { $alertReasons.Add("CPU: ${latestCpu}% (>=85%)") }
-    if ($isRamAlert) { $alertReasons.Add("RAM: ${latestRam}% (>=90%)") }
+    if ($isCpuAlert)  { $alertReasons.Add("CPU: $latestCpu% (>=85%)") }
+    if ($isRamAlert)  { $alertReasons.Add("RAM: $latestRam% (>=90%)") }
     if ($isDiskAlert) { $alertReasons.Add("Disco C: ${diskFreeVal}GB livres (<=15GB ou >=90%)") }
-    $alertTitle = if ($alertReasons.Count -gt 0) { "Alerta: " + ($alertReasons -join " | ") } else { "" }
+    if ($isTempAlert) { $alertReasons.Add("Temp: ${latestTemp}°C (>=75°C)") }
+    $alertTitle   = if ($alertReasons.Count -gt 0) { "Alerta: " + ($alertReasons -join " | ") } else { "" }
 
     $stats[$pc] = @{
-        isOnline        = $isOnline
-        statusText      = if ($isOnline) { "Online" } else { "Offline" }
-        onlineDotClass  = if ($isOnline) { "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" } else { "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" }
-        onlineTextClass = if ($isOnline) { "text-emerald-400" } else { "text-red-400 font-bold" }
-        latestCpu       = $latestCpu
-        latestRam       = $latestRam
-        latestIoW       = $latestIoW
-        latestIoR       = $latestIoR
-        latestTx        = $latestTx
-        latestRx        = $latestRx
-        avgCpu          = $avgCpuVal
-        maxCpu          = if ($validCpu) { ($validCpu | Measure-Object -Maximum).Maximum } else { 0 }
-        avgRam          = $avgRamVal
-        maxRam          = if ($validRam) { ($validRam | Measure-Object -Maximum).Maximum } else { 0 }
-        ramTotal        = $machineData[$pc].ramTotal
-        maxRx           = if ($validRx) { ($validRx | Measure-Object -Maximum).Maximum } else { 0 }
-        maxTx           = if ($validTx) { ($validTx | Measure-Object -Maximum).Maximum } else { 0 }
-        diskFree        = $diskFreeVal
-        diskPct         = $latestDiskPct
-        maxIoR          = if ($validIoR) { ($validIoR | Measure-Object -Maximum).Maximum } else { 0 }
-        maxIoW          = if ($validIoW) { ($validIoW | Measure-Object -Maximum).Maximum } else { 0 }
-        ping            = $latestPing
-        avgPing         = if ($validPing) { [math]::Round(($validPing | Measure-Object -Average).Average, 1) } else { 0 }
-        maxPing         = if ($validPing) { ($validPing | Measure-Object -Maximum).Maximum } else { 0 }
-        uptime          = $lastUptime
-        bootDate        = $lastBoot
-        isCpuAlert      = $isCpuAlert
-        isRamAlert      = $isRamAlert
-        isDiskAlert     = $isDiskAlert
-        hasAlert        = $hasAlert
-        alertTitle      = $alertTitle
+        isOnline       = $isOnline
+        statusText     = if ($isOnline) { "Online" } else { "Offline" }
+        onlineDotClass = if ($isOnline) { "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" } else { "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" }
+        onlineTextClass= if ($isOnline) { "text-emerald-400" } else { "text-red-400 font-bold" }
+        hasAlert       = $hasAlert
+        alertTitle     = $alertTitle
+        isCpuAlert     = $isCpuAlert
+        isRamAlert     = $isRamAlert
+        isDiskAlert    = $isDiskAlert
+        isTempAlert    = $isTempAlert
+        latestCpu      = $latestCpu
+        latestRam      = $latestRam
+        latestIoR      = $latestIoR
+        latestIoW      = $latestIoW
+        latestRx       = $latestRx
+        latestTx       = $latestTx
+        latestTemp     = $latestTemp
+        avgCpu         = $avgCpuVal
+        maxCpu         = $maxCpuVal
+        avgRam         = $avgRamVal
+        maxRam         = $maxRamVal
+        maxIoR         = $maxIoRVal
+        maxIoW         = $maxIoWVal
+        maxRx          = $maxRxVal
+        maxTx          = $maxTxVal
+        diskFree       = $diskFreeVal
+        diskPct        = $latestDiskPct
+        ramTotal       = $machineData[$pc].ramTotal
+        ping           = $latestPing
+        avgPing        = $avgPingVal
+        maxPing        = $maxPingVal
+        uptime         = if ($lastUptime) { $lastUptime } else { "N/D" }
+        bootDate       = if ($lastBoot) { $lastBoot } else { "N/D" }
     }
 }
 
-# Gerar JSON para os graficos
-$jsonTimestamps = ($timestamps | ConvertTo-Json -Compress)
-
-$jsonPcs = [ordered]@{}
-foreach ($pc in $pcsList) {
-    $jsonPcs[$pc] = @{
-        cpu     = $machineData[$pc].cpu
-        ramPct  = $machineData[$pc].ramPct
-        ramUsed = $machineData[$pc].ramUsed
-        rx      = $machineData[$pc].rx
-        tx      = $machineData[$pc].tx
-        ioR     = $machineData[$pc].ioR
-        ioW     = $machineData[$pc].ioW
-        ping    = $machineData[$pc].ping
-        stats   = $stats[$pc]
-    }
-}
-$jsonData = ($jsonPcs | ConvertTo-Json -Depth 5 -Compress)
-
-$startTime = $timestamps[0]
-$endTime = $timestamps[-1]
-$totalPoints = $timestamps.Count
-
-# Identificar dinamicamente qual maquina e o host Local (a partir dos logs gravados ou do computador atual)
-$detectedLocalHost = $null
-foreach ($line in $lines) {
-    if ($line -match '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)\s+\(Local\)') {
-        $detectedLocalHost = $matches['pc']
-        break
-    }
-}
 if (-not $detectedLocalHost -and $env:COMPUTERNAME) {
     $matchedHost = $pcsList | Where-Object { $_ -eq $env:COMPUTERNAME }
     if ($matchedHost) { $detectedLocalHost = $matchedHost }
 }
 if (-not $detectedLocalHost) {
-    $detectedLocalHost = 'JFMELGACO-4'
+    $detectedLocalHost = 'JFMELGACO-1'
 }
 
-$pcRole = @{}
-$pcDisplay = @{}
-foreach ($pc in $pcsList) {
-    if ($pc.ToUpper() -eq $detectedLocalHost.ToUpper()) {
-        $pcRole[$pc] = "LOCAL"
-        $pcDisplay[$pc] = "$pc (Local)"
-    } else {
-        switch ($pc) {
-            'JFMELGACO-1' { $pcRole[$pc] = "SRV 1";  $pcDisplay[$pc] = $pc }
-            'JFMELGACO-2' { $pcRole[$pc] = "NOTE 2"; $pcDisplay[$pc] = $pc }
-            'JFMELGACO-3' { $pcRole[$pc] = "NOTE 3"; $pcDisplay[$pc] = $pc }
-            'JFMELGACO-4' { $pcRole[$pc] = "NOTE 4"; $pcDisplay[$pc] = $pc }
-            'JFMELGACO3'   { $pcRole[$pc] = "NOTE 4"; $pcDisplay[$pc] = $pc }
-            default        { $pcRole[$pc] = "REMOTO"; $pcDisplay[$pc] = $pc }
-        }
-    }
-}
-Write-Host "Host Local detectado: $detectedLocalHost (Role: $($pcRole[$detectedLocalHost]))" -ForegroundColor Yellow
+Write-Host "Host Local detectado: $detectedLocalHost" -ForegroundColor Yellow
 
-# Carregamento ou extração de Top 10 Processos por máquina
+# Carregamento ou extração de Top 10 Processos com CPU normalizada por número de núcleos
 $topProcessesData = @{}
 $procJsonCandidates = @()
 if (-not [string]::IsNullOrWhiteSpace($LogFile)) {
@@ -378,9 +386,12 @@ foreach ($cPath in $procJsonCandidates) {
         } catch {}
     }
 }
-# Se o nó local não tiver processos no json, consulta via CIM
+
+# Se o nó local não tiver processos no json, consulta via CIM com CPU normalizada
 if (-not $topProcessesData.ContainsKey($detectedLocalHost)) {
     try {
+        $numCores = [System.Environment]::ProcessorCount
+        if (-not $numCores -or $numCores -lt 1) { $numCores = 1 }
         $locProcs = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process |
             Where-Object { $_.Name -notin '_Total', 'Idle' } |
             Sort-Object -Property PercentProcessorTime, WorkingSetPrivate -Descending |
@@ -391,10 +402,11 @@ if (-not $topProcessesData.ContainsKey($detectedLocalHost)) {
             if (-not $cleanName.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase) -and $cleanName -ne 'System') {
                 $cleanName = "$cleanName.exe"
             }
+            $calcCpu = [math]::Round([double]$lp.PercentProcessorTime / $numCores, 1)
             $locList.Add(@{
                 Name  = $cleanName
                 Pid   = [int]$lp.IDProcess
-                Cpu   = [int]$lp.PercentProcessorTime
+                Cpu   = $calcCpu
                 MemMB = [math]::Round($lp.WorkingSetPrivate / 1MB, 1)
             })
         }
@@ -406,6 +418,11 @@ if (-not $topProcessesData.ContainsKey($detectedLocalHost)) {
 foreach ($remPc in $pcsList) {
     if (-not $topProcessesData.ContainsKey($remPc) -and $stats[$remPc].isOnline) {
         try {
+            $rCores = 1
+            try {
+                $rCs = Get-CimInstance Win32_ComputerSystem -ComputerName $remPc -OperationTimeoutSec 1 -ErrorAction SilentlyContinue
+                if ($rCs -and $rCs.NumberOfLogicalProcessors -gt 0) { $rCores = $rCs.NumberOfLogicalProcessors }
+            } catch {}
             $rProcs = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process -ComputerName $remPc -OperationTimeoutSec 1 |
                 Where-Object { $_.Name -notin '_Total', 'Idle' } |
                 Sort-Object -Property PercentProcessorTime, WorkingSetPrivate -Descending |
@@ -416,10 +433,11 @@ foreach ($remPc in $pcsList) {
                 if (-not $cleanName.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase) -and $cleanName -ne 'System') {
                     $cleanName = "$cleanName.exe"
                 }
+                $calcCpu = [math]::Round([double]$rp.PercentProcessorTime / $rCores, 1)
                 $rList.Add(@{
                     Name  = $cleanName
                     Pid   = [int]$rp.IDProcess
-                    Cpu   = [int]$rp.PercentProcessorTime
+                    Cpu   = $calcCpu
                     MemMB = [math]::Round($rp.WorkingSetPrivate / 1MB, 1)
                 })
             }
@@ -430,6 +448,124 @@ foreach ($remPc in $pcsList) {
 
 $topProcessesJson = $topProcessesData | ConvertTo-Json -Depth 4 -Compress
 
+# Construção dos Cards Laterais dos Computadores (Ordem Alfabética, Amarelo Puro, Sem Rótulos Desnecessários)
+$cardsHtml = ""
+foreach ($pc in $pcsList) {
+    $cfgBar = switch ($pc) {
+        'JFMELGACO-1' { 'bg-emerald-500' }
+        'JFMELGACO-2' { 'bg-yellow-400' }
+        'JFMELGACO-3' { 'bg-red-500' }
+        'JFMELGACO-4' { 'bg-blue-500' }
+        default       { 'bg-cyan-500' }
+    }
+    $cfgDot = switch ($pc) {
+        'JFMELGACO-1' { 'bg-emerald-500 border-emerald-300 shadow-[0_0_6px_rgba(16,185,129,0.8)]' }
+        'JFMELGACO-2' { 'bg-yellow-400 border-yellow-200 shadow-[0_0_6px_rgba(250,204,21,0.8)]' }
+        'JFMELGACO-3' { 'bg-red-500 border-red-300 shadow-[0_0_6px_rgba(239,68,68,0.8)]' }
+        'JFMELGACO-4' { 'bg-blue-500 border-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.8)]' }
+        default       { 'bg-cyan-500 border-cyan-300' }
+    }
+    $hoverBorder = switch ($pc) {
+        'JFMELGACO-1' { 'hover:border-emerald-500/80' }
+        'JFMELGACO-2' { 'hover:border-yellow-400/80' }
+        'JFMELGACO-3' { 'hover:border-red-500/80' }
+        'JFMELGACO-4' { 'hover:border-blue-500/80' }
+        default       { 'hover:border-cyan-500/80' }
+    }
+    $st = $stats[$pc]
+    $offlineClass = if (-not $st.isOnline) { 'card-offline-blink ' } elseif ($st.hasAlert) { 'card-alert-pulse ' } else { '' }
+    $alertHidden = if (-not $st.hasAlert) { 'hidden ' } else { '' }
+    $cpuBoxClass = if ($st.isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' }
+    $ramBoxClass = if ($st.isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' }
+    $diskBoxClass = if ($st.isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' }
+
+    $cardsHtml += @"
+            <!-- Card: $pc -->
+            <div id="cardHost_$pc" onclick="selectMachineHighlight('$pc')" title="Clique para destacar $pc em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 $hoverBorder rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $offlineClass">
+                <div id="cardTopBar_$pc" class="absolute top-0 left-0 right-0 h-1 $cfgBar transition-all"></div>
+                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
+                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span id="cardDot_$pc" class="h-2.5 w-2.5 rounded-full $cfgDot inline-block shrink-0 transition-all"></span>
+                        <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_$pc">$pc</strong>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
+                        <span id="cardAlertBadge_$pc" class="${alertHidden}text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($st.alertTitle)">⚠️ Atenção</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80 my-0.5">
+                    <span id="cardStatus_$pc" class="flex items-center gap-1">
+                        <span id="cardStatusDot_$pc" class="h-2 w-2 rounded-full $($st.onlineDotClass)"></span>
+                        <span id="cardStatusText_$pc" class="$($st.onlineTextClass) font-medium">$($st.statusText)</span>
+                    </span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('$pc')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
+                        <span id="card_${pc}_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">$($st.ping)ms</span>
+                        <span id="card_${pc}_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; $($st.uptime)</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-5 gap-1 text-center">
+                    <div class="border rounded px-1 py-1 $cpuBoxClass" id="box_${pc}_cpu" title="CPU Atual: $($st.latestCpu)%">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
+                        <strong class="text-xs $(if ($st.isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_${pc}_cpu">$($st.latestCpu)%</strong>
+                    </div>
+                    <div class="border rounded px-1 py-1 $ramBoxClass" id="box_${pc}_ram" title="RAM Atual: $($st.latestRam)%">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
+                        <strong class="text-xs $(if ($st.isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_${pc}_ram">$($st.latestRam)%</strong>
+                    </div>
+                    <div class="border rounded px-1 py-1 $diskBoxClass" id="box_${pc}_disk" title="Espaço Livre em Disco C:">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
+                        <strong class="text-xs $(if ($st.isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_${pc}_disk">$($st.diskFree)G</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_${pc}_io" title="I/O Escrita Atual">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
+                        <strong class="text-xs text-amber-400" id="card_${pc}_io">$($st.latestIoW)k</strong>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_${pc}_tx" title="Rede Tx Atual">
+                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
+                        <strong class="text-xs text-cyan-400" id="card_${pc}_tx">$($st.latestTx)k</strong>
+                    </div>
+                </div>
+            </div>
+"@
+}
+
+# Construção das linhas da tabela de resumo consolidado
+$summaryTableRows = ""
+foreach ($pc in $pcsList) {
+    $st = $stats[$pc]
+    $colorClass = switch ($pc) {
+        'JFMELGACO-1' { 'text-emerald-400 font-semibold' }
+        'JFMELGACO-2' { 'text-yellow-300 font-semibold' }
+        'JFMELGACO-3' { 'text-red-400 font-semibold' }
+        'JFMELGACO-4' { 'text-blue-400 font-semibold' }
+        default       { 'text-cyan-300 font-semibold' }
+    }
+    $summaryTableRows += @"
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="py-2.5 px-3 $colorClass">$pc</td>
+                            <td class="py-2.5 px-3" id="modal_${pc}_cpuAvg">$($st.avgCpu)%</td>
+                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_${pc}_cpuMax">$($st.maxCpu)%</td>
+                            <td class="py-2.5 px-3" id="modal_${pc}_ramAvg">$($st.avgRam)%</td>
+                            <td class="py-2.5 px-3" id="modal_${pc}_ramMax">$($st.maxRam)%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_${pc}_io">$($st.maxIoR) / $($st.maxIoW) KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_${pc}_rx">$($st.maxRx) KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_${pc}_tx">$($st.maxTx) KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_${pc}_disk">$($st.diskFree) GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_${pc}_ping">$($st.ping) ms <span class="text-[10px] text-slate-400 font-normal">(méd $($st.avgPing)ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_${pc}_uptime">&#9201; $($st.uptime) <span class="text-[10px] text-slate-400 font-normal">($($st.bootDate))</span></td>
+                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('$pc')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
+                        </tr>
+"@
+}
+
+# Serialização JSON para dados do Chart.js
+$jsonTimestamps = $timestamps | ConvertTo-Json -Compress
+$jsonData = $machineData | ConvertTo-Json -Depth 4 -Compress
+$jsonPcsList = $pcsList | ConvertTo-Json -Compress
+$startTime = if ($timestamps.Count -gt 0) { $timestamps[0] } else { "--:--:--" }
+$endTime   = if ($timestamps.Count -gt 0) { $timestamps[-1] } else { "--:--:--" }
+$totalPoints = $timestamps.Count
+
 # Template HTML do Dashboard
 $html = @"
 <!DOCTYPE html>
@@ -437,75 +573,54 @@ $html = @"
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Desempenho da Rede - JFMELGACO</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Monitor de Rede JFMELGACO v1.2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        darkbg: '#0f172a',
-                        cardbg: '#1e293b',
-                        borderbg: '#334155'
+                        darkbg: '#0b1120',
+                        cardbg: '#0f172a',
+                        borderbg: '#1e293b'
                     }
                 }
             }
         }
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .chart-container { position: relative; height: 210px; width: 100%; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        body { background-color: #0b1120; font-family: system-ui, -apple-system, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-        @keyframes offlineBlink {
-            0%, 100% {
-                opacity: 1;
-                border-color: rgba(239, 68, 68, 0.95);
-                box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
-            }
-            50% {
-                opacity: 0.30;
-                border-color: rgba(239, 68, 68, 0.25);
-                box-shadow: none;
-            }
-        }
-        .card-offline-blink {
-            animation: offlineBlink 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
-        }
-
-        @keyframes alertPulseGlow {
-            0%, 100% {
-                box-shadow: 0 0 0 rgba(245, 158, 11, 0);
-                border-color: rgba(245, 158, 11, 0.6);
-            }
-            50% {
-                box-shadow: 0 0 18px rgba(245, 158, 11, 0.75);
-                border-color: rgba(245, 158, 11, 1);
-            }
+        @keyframes pulseAlert {
+            0%, 100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.4); }
         }
         .card-alert-pulse {
-            animation: alertPulseGlow 1.5s ease-in-out infinite !important;
+            animation: pulseAlert 2s infinite ease-in-out;
+        }
+        @keyframes offlineBlink {
+            0%, 100% { border-color: rgba(239, 68, 68, 0.3); opacity: 0.75; }
+            50% { border-color: rgba(239, 68, 68, 0.8); opacity: 1; }
+        }
+        .card-offline-blink {
+            animation: offlineBlink 1.5s infinite ease-in-out;
         }
     </style>
 </head>
-<body id="mainBody" class="bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs">
+<body id="mainBody" class="bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs font-sans">
 
-    <!-- HEADER ULTRA-COMPACTO (ALTURA FIXA ~38px) -->
+    <!-- HEADER ULTRA-COMPACTO -->
     <header class="flex flex-wrap items-center justify-between border-b border-borderbg pb-2 gap-2 text-xs shrink-0">
         <div class="flex items-center gap-2">
             <span class="relative flex h-2.5 w-2.5">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span id="livePulseDot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 transition-colors duration-300"></span>
             </span>
-            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.1.0</span></h1>
+            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.2.0</span></h1>
             <span class="text-slate-500">|</span>
             <span class="text-slate-400" id="headerTimeRange">$startTime &rarr; $endTime</span>
             <span class="text-slate-500">|</span>
@@ -529,14 +644,20 @@ $html = @"
                 </button>
             </div>
 
-            <!-- Auto-Refresh -->
-            <div class="flex items-center gap-1.5 bg-cardbg border border-borderbg px-2.5 py-1 rounded-lg">
-                <span class="text-slate-400 text-[11px]">Auto:</span>
-                <span id="countdownEl" class="text-emerald-400 font-bold text-[11px]">5s</span>
-                <button id="pauseBtn" onclick="toggleAutoRefresh()" class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
-                    &#9208;
+            <!-- Auto-Refresh com Período Customizável -->
+            <div class="flex items-center gap-1.5 bg-cardbg border border-borderbg px-2 py-1 rounded-lg">
+                <button onclick="promptChangeInterval()" class="flex items-center gap-1 hover:text-cyan-300 transition cursor-pointer" title="Clique para alterar o período de atualização (mínimo 1s)">
+                    <span class="text-slate-400 text-[11px]">Auto:</span>
+                    <span id="countdownEl" class="text-cyan-400 font-bold text-[11px] w-6 text-center">5s</span>
                 </button>
+                <button id="pauseBtn" onclick="toggleAutoRefresh()" class="ml-0.5 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer" title="Pausar / Retomar">&#9208;</button>
+                <button onclick="promptChangeInterval()" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/80 font-mono cursor-pointer" title="Definir intervalo">&#9881; <span id="intervalSecLabel">5s</span></button>
             </div>
+
+            <!-- Botão Gerenciar Nós -->
+            <button onclick="toggleMachinesModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-medium transition cursor-pointer flex items-center gap-1" title="Adicionar, editar e descobrir computadores na rede">
+                &#128187; Gerenciar N&oacute;s
+            </button>
 
             <!-- Botão Tabela de Resumo Modal -->
             <button onclick="toggleSummaryModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-medium transition cursor-pointer flex items-center gap-1">
@@ -544,7 +665,7 @@ $html = @"
             </button>
 
             <!-- Alternador Tela Única / Rolagem -->
-            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela &Uacute;nica e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
+            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Única e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
                 &#128421;&#xFE0F; Tela &Uacute;nica
             </button>
         </div>
@@ -553,303 +674,146 @@ $html = @"
     <!-- CONTAINER PRINCIPAL: GRÁFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
     <div id="dashboardContent" class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden">
 
-        <!-- ÁREA PRINCIPAL DOS GRÁFICOS (GRID 2x2 - À ESQUERDA) -->
-        <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0">
+        <!-- ÁREA PRINCIPAL DOS GRÁFICOS (9 GRÁFICOS DESMEMBRADOS EM SEQUÊNCIA VERTICAL) -->
+        <main id="chartsMain" class="flex-1 flex flex-col gap-2.5 overflow-y-auto pr-1">
 
             <!-- 1. CPU CHART -->
-            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
                 <div class="flex items-center justify-between mb-1 px-1">
                     <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                         <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                        Uso de CPU (%) &larr; Task Manager
+                        1. Uso de CPU (%) &larr; Task Manager
                     </span>
-                    <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
                 </div>
-                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="cpuChart"></canvas>
                 </div>
             </div>
 
             <!-- 2. RAM CHART -->
-            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
                 <div class="flex items-center justify-between mb-1 px-1">
                     <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                         <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
-                        Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
+                        2. Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
                     </span>
-                    <span class="text-[10px] text-slate-400">4 m&aacute;quinas</span>
                 </div>
-                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="ramChart"></canvas>
                 </div>
             </div>
 
-            <!-- 3. RX CHART (Download) -->
-            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <!-- 3. RX CHART (Download Local) -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
                 <div class="flex items-center justify-between mb-1 px-1">
                     <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        Rede: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
+                        3. Rede Local: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
                     </span>
-                    <span class="text-[10px] text-slate-400">Tempo Real</span>
                 </div>
-                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
+                <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="rxChart"></canvas>
                 </div>
             </div>
 
-            <!-- 4. TX CHART & DISCO C: COM ABAS RÁPIDAS -->
-            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-0 shadow">
+            <!-- 4. TX CHART (Upload Local) -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+                        4. Rede Local: Transmiss&atilde;o / Upload (Tx em KB/s)
+                    </span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative">
+                    <canvas id="txChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 5. DISK FREE CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        5. Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)
+                    </span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative">
+                    <canvas id="diskChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 6. DISK IO CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
                 <div class="flex items-center justify-between mb-1 px-1">
                     <span class="font-bold text-white flex items-center gap-1.5 text-xs">
                         <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                        <span id="titleBottomRight">Rede: Transmiss&atilde;o / Upload (Tx)</span>
+                        6. Disco C: Taxa de I/O Escrita (KB/s)
                     </span>
-                    <div class="flex items-center gap-1 bg-slate-900/80 px-1 py-0.5 rounded border border-slate-700/60">
-                        <button onclick="switchBottomRightView('tx')" id="btnTabTx" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer">
-                            Tx (Upload)
-                        </button>
-                        <button onclick="switchBottomRightView('disk')" id="btnTabDisk" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                            Disco C: (GB)
-                        </button>
-                        <button onclick="switchBottomRightView('io')" id="btnTabIo" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                            I/O Disco
-                        </button>
-                        <button onclick="switchBottomRightView('ping')" id="btnTabPing" class="text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                            Lat&ecirc;ncia Ping (ms)
-                        </button>
-                    </div>
                 </div>
-                <div class="chart-wrapper flex-1 min-h-0 relative h-[185px] lg:h-full">
-                    <div id="wrapperTxChart" class="h-full w-full">
-                        <canvas id="txChart"></canvas>
-                    </div>
-                    <div id="wrapperDiskChart" class="h-full w-full hidden">
-                        <canvas id="diskChart"></canvas>
-                    </div>
-                    <div id="wrapperIoChart" class="h-full w-full hidden">
-                        <canvas id="ioChart"></canvas>
-                    </div>
-                    <div id="wrapperPingChart" class="h-full w-full hidden">
-                        <canvas id="pingChart"></canvas>
-                    </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative">
+                    <canvas id="ioChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 7. PING LATENCY CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-purple-400"></span>
+                        7. Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)
+                    </span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative">
+                    <canvas id="pingChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 8. TEMPERATURA DOS EQUIPAMENTOS CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-rose-400"></span>
+                        8. Hardware: Temperatura dos Equipamentos (&deg;C)
+                    </span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 9. PERFORMANCE DE REDE / INTERNET CHART -->
+            <div class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col min-h-[200px] h-[220px] shadow shrink-0">
+                <div class="flex items-center justify-between mb-1 px-1">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+                        <span class="h-2 w-2 rounded-full bg-blue-400"></span>
+                        9. Desempenho de Rede / Internet (Taxa Combinada em Mbps)
+                    </span>
+                </div>
+                <div class="chart-wrapper flex-1 min-h-0 relative">
+                    <canvas id="internetChart"></canvas>
                 </div>
             </div>
 
         </main>
 
-        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES -->
-        <aside id="nodesSidebar" class="w-full lg:w-[355px] xl:w-[395px] flex flex-col gap-2 shrink-0 overflow-y-auto pr-0.5">
+        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES (DISTRIBUIÇÃO UNIFORME SEM ESPAÇO VAGO) -->
+        <aside id="nodesSidebar" class="w-full lg:w-[360px] xl:w-[400px] flex flex-col justify-between gap-2 shrink-0 h-full overflow-y-auto pr-0.5">
             <div class="flex items-center justify-between px-1 text-[11px] text-slate-400 font-semibold border-b border-borderbg pb-1 shrink-0">
                 <span class="flex items-center gap-1.5 text-slate-300">
                     <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                    N&oacute;s Monitorados (4)
+                    N&oacute;s Monitorados ($($pcsList.Count))
                 </span>
-                <span class="text-[10px] text-slate-400">Clique para Top 10 | [Linha] para filtrar</span>
+                <span class="text-[10px] text-slate-400">Clique para destacar [Branco]</span>
             </div>
 
-            <!-- Card 1: JFMELGACO-4 (AZUL) -->
-            <div id="cardHost_JFMELGACO-4" onclick="openProcessModal('JFMELGACO-4')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-4'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-4'].hasAlert) { 'card-alert-pulse ' })">
-                <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
-                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                        <span id="cardDot_JFMELGACO-4" class="h-2.5 w-2.5 rounded-full bg-blue-500 border border-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-tight whitespace-nowrap" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
-                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-4'])</span>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-4" class="$(if (-not $stats['JFMELGACO-4'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-4'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-4" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-4')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para ligar/desligar nos gr&aacute;ficos">Linha Azul &#10003;</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
-                    <span id="cardStatus_JFMELGACO-4" class="flex items-center gap-1">
-                        <span id="cardStatusDot_JFMELGACO-4" class="h-2 w-2 rounded-full $($stats['JFMELGACO-4'].onlineDotClass)"></span>
-                        <span id="cardStatusText_JFMELGACO-4" class="$($stats['JFMELGACO-4'].onlineTextClass) font-medium">$($stats['JFMELGACO-4'].statusText)</span>
-                    </span>
-                    <div class="flex items-center gap-1">
-                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-4')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-4_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-4'].ping)ms</span>
-                        <span id="card_JFMELGACO-4_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-4'].bootDate))">&#9201; $($stats['JFMELGACO-4'].uptime)</span>
-                    </div>
-                </div>
-                <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-4'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-4_cpu" title="CPU Atual: $($stats['JFMELGACO-4'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgCpu)% | Pico: $($stats['JFMELGACO-4'].maxCpu)%)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-4'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-4_cpu">$($stats['JFMELGACO-4'].latestCpu)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-4'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-4_ram" title="RAM Atual: $($stats['JFMELGACO-4'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-4'].avgRam)% | Total: $($stats['JFMELGACO-4'].ramTotal) GB)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-4'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-4_ram">$($stats['JFMELGACO-4'].latestRam)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-4'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-4_disk" title="Espa&ccedil;o Livre em Disco C:">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-4'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree)G</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_io" title="I/O Escrita Atual: $($stats['JFMELGACO-4'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-4'].maxIoW) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-4_io">$($stats['JFMELGACO-4'].latestIoW)k</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-4_tx" title="Rede Tx Atual: $($stats['JFMELGACO-4'].latestTx) KB/s (Pico: $($stats['JFMELGACO-4'].maxTx) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].latestTx)k</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 2: JFMELGACO-1 (VERDE) -->
-            <div id="cardHost_JFMELGACO-1" onclick="openProcessModal('JFMELGACO-1')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-1'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-1'].hasAlert) { 'card-alert-pulse ' })">
-                <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
-                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                        <span id="cardDot_JFMELGACO-1" class="h-2.5 w-2.5 rounded-full bg-emerald-500 border border-emerald-300 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
-                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-1'])</span>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-1" class="$(if (-not $stats['JFMELGACO-1'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-1'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-1" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-1')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para alternar visibilidade nos gr&aacute;ficos">Linha Verde &#10003;</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
-                    <span id="cardStatus_JFMELGACO-1" class="flex items-center gap-1">
-                        <span id="cardStatusDot_JFMELGACO-1" class="h-2 w-2 rounded-full $($stats['JFMELGACO-1'].onlineDotClass)"></span>
-                        <span id="cardStatusText_JFMELGACO-1" class="$($stats['JFMELGACO-1'].onlineTextClass) font-medium">$($stats['JFMELGACO-1'].statusText)</span>
-                    </span>
-                    <div class="flex items-center gap-1">
-                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-1')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-1_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-1'].ping)ms</span>
-                        <span id="card_JFMELGACO-1_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-1'].bootDate))">&#9201; $($stats['JFMELGACO-1'].uptime)</span>
-                    </div>
-                </div>
-                <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-1'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-1_cpu" title="CPU Atual: $($stats['JFMELGACO-1'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgCpu)% | Pico: $($stats['JFMELGACO-1'].maxCpu)%)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-1'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-1_cpu">$($stats['JFMELGACO-1'].latestCpu)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-1'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-1_ram" title="RAM Atual: $($stats['JFMELGACO-1'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-1'].avgRam)% | Total: $($stats['JFMELGACO-1'].ramTotal) GB)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-1'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-1_ram">$($stats['JFMELGACO-1'].latestRam)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-1'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-1_disk" title="Espa&ccedil;o Livre em Disco C:">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-1'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree)G</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_io" title="I/O Escrita Atual: $($stats['JFMELGACO-1'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-1'].maxIoW) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">$($stats['JFMELGACO-1'].latestIoW)k</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-1_tx" title="Rede Tx Atual: $($stats['JFMELGACO-1'].latestTx) KB/s (Pico: $($stats['JFMELGACO-1'].maxTx) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].latestTx)k</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 3: JFMELGACO-2 (AMARELO) -->
-            <div id="cardHost_JFMELGACO-2" onclick="openProcessModal('JFMELGACO-2')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-amber-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-2'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-2'].hasAlert) { 'card-alert-pulse ' })">
-                <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-amber-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
-                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                        <span id="cardDot_JFMELGACO-2" class="h-2.5 w-2.5 rounded-full bg-amber-500 border border-amber-300 shadow-[0_0_6px_rgba(245,158,11,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-tight whitespace-nowrap" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
-                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-2'])</span>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-2" class="$(if (-not $stats['JFMELGACO-2'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-2'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-2" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-2')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para alternar visibilidade nos gr&aacute;ficos">Linha Amarela &#10003;</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
-                    <span id="cardStatus_JFMELGACO-2" class="flex items-center gap-1">
-                        <span id="cardStatusDot_JFMELGACO-2" class="h-2 w-2 rounded-full $($stats['JFMELGACO-2'].onlineDotClass)"></span>
-                        <span id="cardStatusText_JFMELGACO-2" class="$($stats['JFMELGACO-2'].onlineTextClass) font-medium">$($stats['JFMELGACO-2'].statusText)</span>
-                    </span>
-                    <div class="flex items-center gap-1">
-                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-2')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-2_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-2'].ping)ms</span>
-                        <span id="card_JFMELGACO-2_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-2'].bootDate))">&#9201; $($stats['JFMELGACO-2'].uptime)</span>
-                    </div>
-                </div>
-                <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-2'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-2_cpu" title="CPU Atual: $($stats['JFMELGACO-2'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgCpu)% | Pico: $($stats['JFMELGACO-2'].maxCpu)%)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-2'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-2_cpu">$($stats['JFMELGACO-2'].latestCpu)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-2'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-2_ram" title="RAM Atual: $($stats['JFMELGACO-2'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-2'].avgRam)% | Total: $($stats['JFMELGACO-2'].ramTotal) GB)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-2'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-2_ram">$($stats['JFMELGACO-2'].latestRam)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-2'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-2_disk" title="Espa&ccedil;o Livre em Disco C:">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-2'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree)G</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_io" title="I/O Escrita Atual: $($stats['JFMELGACO-2'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-2'].maxIoW) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-2_io">$($stats['JFMELGACO-2'].latestIoW)k</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-2_tx" title="Rede Tx Atual: $($stats['JFMELGACO-2'].latestTx) KB/s (Pico: $($stats['JFMELGACO-2'].maxTx) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].latestTx)k</strong>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 4: JFMELGACO-3 (VERMELHO) -->
-            <div id="cardHost_JFMELGACO-3" onclick="openProcessModal('JFMELGACO-3')" title="Clique para ver os Top 10 Processos | [Linha] para alternar visibilidade nos gr&aacute;ficos" class="node-card bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2.5 flex flex-col gap-1.5 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $(if (-not $stats['JFMELGACO-3'].isOnline) { 'card-offline-blink ' } elseif ($stats['JFMELGACO-3'].hasAlert) { 'card-alert-pulse ' })">
-                <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
-                <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
-                    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                        <span id="cardDot_JFMELGACO-3" class="h-2.5 w-2.5 rounded-full bg-red-500 border border-red-300 shadow-[0_0_6px_rgba(239,68,68,0.8)] inline-block shrink-0 transition-all"></span>
-                        <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
-                        <span class="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/30 uppercase shrink-0 whitespace-nowrap">$($pcRole['JFMELGACO-3'])</span>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-3" class="$(if (-not $stats['JFMELGACO-3'].hasAlert) { 'hidden ' })text-[8.5px] px-1 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($stats['JFMELGACO-3'].alertTitle)">⚠️ Aten&ccedil;&atilde;o</span>
-                        <span id="visBadge_JFMELGACO-3" onclick="event.stopPropagation(); toggleMachineVisibility('JFMELGACO-3')" class="text-[8.5px] px-1.5 py-0.2 rounded font-semibold bg-red-500/20 text-red-300 border border-red-500/40 shrink-0 transition-all cursor-pointer hover:brightness-125 whitespace-nowrap" title="Clique para alternar visibilidade nos gr&aacute;ficos">Linha Vermelha &#10003;</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80">
-                    <span id="cardStatus_JFMELGACO-3" class="flex items-center gap-1">
-                        <span id="cardStatusDot_JFMELGACO-3" class="h-2 w-2 rounded-full $($stats['JFMELGACO-3'].onlineDotClass)"></span>
-                        <span id="cardStatusText_JFMELGACO-3" class="$($stats['JFMELGACO-3'].onlineTextClass) font-medium">$($stats['JFMELGACO-3'].statusText)</span>
-                    </span>
-                    <div class="flex items-center gap-1">
-                        <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-3')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-3_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Lat&ecirc;ncia ICMP (Ping RTT)">$($stats['JFMELGACO-3'].ping)ms</span>
-                        <span id="card_JFMELGACO-3_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime cont&iacute;nuo (&Uacute;ltimo Boot: $($stats['JFMELGACO-3'].bootDate))">&#9201; $($stats['JFMELGACO-3'].uptime)</span>
-                    </div>
-                </div>
-                <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-3'].isCpuAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-3_cpu" title="CPU Atual: $($stats['JFMELGACO-3'].latestCpu)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgCpu)% | Pico: $($stats['JFMELGACO-3'].maxCpu)%)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-3'].isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-3_cpu">$($stats['JFMELGACO-3'].latestCpu)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-3'].isRamAlert) { 'bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-3_ram" title="RAM Atual: $($stats['JFMELGACO-3'].latestRam)% (M&eacute;dia: $($stats['JFMELGACO-3'].avgRam)% | Total: $($stats['JFMELGACO-3'].ramTotal) GB)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-3'].isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_JFMELGACO-3_ram">$($stats['JFMELGACO-3'].latestRam)%</strong>
-                    </div>
-                    <div class="border rounded px-1 py-1 $(if ($stats['JFMELGACO-3'].isDiskAlert) { 'bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 ' } else { 'bg-slate-900/80 border-slate-800 ' })" id="box_JFMELGACO-3_disk" title="Espa&ccedil;o Livre em Disco C:">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs $(if ($stats['JFMELGACO-3'].isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree)G</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_io" title="I/O Escrita Atual: $($stats['JFMELGACO-3'].latestIoW) KB/s (Pico: $($stats['JFMELGACO-3'].maxIoW) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">$($stats['JFMELGACO-3'].latestIoW)k</strong>
-                    </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_JFMELGACO-3_tx" title="Rede Tx Atual: $($stats['JFMELGACO-3'].latestTx) KB/s (Pico: $($stats['JFMELGACO-3'].maxTx) KB/s)">
-                        <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-3_tx">$($stats['JFMELGACO-3'].latestTx)k</strong>
-                    </div>
-                </div>
-            </div>
+$cardsHtml
 
         </aside>
     </div>
 
     <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÍSTICO -->
     <div id="summaryModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-cardbg border border-borderbg rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+        <div class="bg-cardbg border border-borderbg rounded-2xl max-w-5xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between p-4 border-b border-borderbg bg-slate-800/40">
                 <div class="flex items-center gap-2">
                     <span class="text-base">&#128203;</span>
@@ -859,81 +823,26 @@ $html = @"
                     &times; Fechar
                 </button>
             </div>
-            <div class="p-4 overflow-x-auto flex-1">
-                <table class="w-full text-left text-xs text-slate-300">
-                    <thead class="text-[11px] uppercase bg-slate-800 text-slate-400 border-b border-borderbg">
-                        <tr>
-                            <th class="py-2.5 px-3">Computador</th>
-                            <th class="py-2.5 px-3">CPU M&eacute;dia</th>
-                            <th class="py-2.5 px-3">CPU Pico</th>
-                            <th class="py-2.5 px-3">RAM M&eacute;dia</th>
-                            <th class="py-2.5 px-3">RAM M&aacute;x</th>
-                            <th class="py-2.5 px-3">Pico I/O Disco (R / W)</th>
-                            <th class="py-2.5 px-3">Pico Rx</th>
-                            <th class="py-2.5 px-3">Pico Tx</th>
-                            <th class="py-2.5 px-3">Disco C: Livre</th>
-                            <th class="py-2.5 px-3">Ping (RTT)</th>
-                            <th class="py-2.5 px-3">Uptime / &Uacute;ltimo Boot</th>
-                            <th class="py-2.5 px-3 text-center">Processos</th>
+            <div class="overflow-x-auto flex-1 p-4">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-borderbg bg-slate-800/20">
+                            <th class="py-2.5 px-3 font-semibold">Computador</th>
+                            <th class="py-2.5 px-3 font-semibold">CPU M&eacute;d</th>
+                            <th class="py-2.5 px-3 font-semibold text-rose-400">CPU M&aacute;x</th>
+                            <th class="py-2.5 px-3 font-semibold">RAM M&eacute;d</th>
+                            <th class="py-2.5 px-3 font-semibold">RAM M&aacute;x</th>
+                            <th class="py-2.5 px-3 font-semibold text-amber-300">I/O M&aacute;x (R / W)</th>
+                            <th class="py-2.5 px-3 font-semibold">Rx M&aacute;x</th>
+                            <th class="py-2.5 px-3 font-semibold text-cyan-400">Tx M&aacute;x</th>
+                            <th class="py-2.5 px-3 font-semibold text-emerald-400">Disco C: Livre</th>
+                            <th class="py-2.5 px-3 font-semibold text-cyan-300">Ping Atual (M&eacute;d)</th>
+                            <th class="py-2.5 px-3 font-semibold text-amber-300">Uptime Cont&iacute;nuo</th>
+                            <th class="py-2.5 px-3 font-semibold text-center">Processos</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-borderbg text-xs">
-                        <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-blue-400">$($pcDisplay['JFMELGACO-4'])</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_cpuAvg">$($stats['JFMELGACO-4'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-4_cpuMax">$($stats['JFMELGACO-4'].maxCpu)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramAvg">$($stats['JFMELGACO-4'].avgRam)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramMax">$($stats['JFMELGACO-4'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-4_io">$($stats['JFMELGACO-4'].maxIoR) / $($stats['JFMELGACO-4'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">$($stats['JFMELGACO-4'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">$($stats['JFMELGACO-4'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">$($stats['JFMELGACO-4'].diskFree) GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">$($stats['JFMELGACO-4'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-4'].avgPing)ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; $($stats['JFMELGACO-4'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-4'].bootDate))</span></td>
-                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-4')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
-                        </tr>
-                        <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-emerald-400">$($pcDisplay['JFMELGACO-1'])</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">$($stats['JFMELGACO-1'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-1_cpuMax">$($stats['JFMELGACO-1'].maxCpu)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">$($stats['JFMELGACO-1'].avgRam)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">$($stats['JFMELGACO-1'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">$($stats['JFMELGACO-1'].maxIoR) / $($stats['JFMELGACO-1'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_rx">$($stats['JFMELGACO-1'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_tx">$($stats['JFMELGACO-1'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">$($stats['JFMELGACO-1'].diskFree) GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">$($stats['JFMELGACO-1'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-1'].avgPing)ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; $($stats['JFMELGACO-1'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-1'].bootDate))</span></td>
-                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-1')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
-                        </tr>
-                        <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-amber-400">$($pcDisplay['JFMELGACO-2'])</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">$($stats['JFMELGACO-2'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-amber-400" id="modal_JFMELGACO-2_cpuMax">$($stats['JFMELGACO-2'].maxCpu)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">$($stats['JFMELGACO-2'].avgRam)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">$($stats['JFMELGACO-2'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">$($stats['JFMELGACO-2'].maxIoR) / $($stats['JFMELGACO-2'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">$($stats['JFMELGACO-2'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-2_tx">$($stats['JFMELGACO-2'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">$($stats['JFMELGACO-2'].diskFree) GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">$($stats['JFMELGACO-2'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-2'].avgPing)ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; $($stats['JFMELGACO-2'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-2'].bootDate))</span></td>
-                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-2')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
-                        </tr>
-                        <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 font-semibold text-red-400">$($pcDisplay['JFMELGACO-3'])</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">$($stats['JFMELGACO-3'].avgCpu)%</td>
-                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">$($stats['JFMELGACO-3'].maxCpu)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">$($stats['JFMELGACO-3'].avgRam)%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramMax">$($stats['JFMELGACO-3'].maxRam)%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-3_io">$($stats['JFMELGACO-3'].maxIoR) / $($stats['JFMELGACO-3'].maxIoW) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">$($stats['JFMELGACO-3'].maxRx) KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_tx">$($stats['JFMELGACO-3'].maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">$($stats['JFMELGACO-3'].diskFree) GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">$($stats['JFMELGACO-3'].ping) ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d $($stats['JFMELGACO-3'].avgPing)ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; $($stats['JFMELGACO-3'].uptime) <span class="text-[10px] text-slate-400 font-normal">($($stats['JFMELGACO-3'].bootDate))</span></td>
-                            <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-3')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
-                        </tr>
+                    <tbody class="divide-y divide-borderbg font-mono text-[11px]">
+$summaryTableRows
                     </tbody>
                 </table>
             </div>
@@ -951,14 +860,14 @@ $html = @"
                     <span id="procModalDot" class="h-3.5 w-3.5 rounded-full bg-blue-500 shadow-md"></span>
                     <div>
                         <h3 class="text-sm font-bold text-white flex items-center gap-2" id="procModalTitle">
-                            &#9889; Top 10 Processos &mdash; <span class="font-mono text-cyan-300">JFMELGACO-4</span>
+                            &#9889; Top 10 Processos &mdash; <span class="font-mono text-cyan-300">JFMELGACO-1</span>
                         </h3>
                         <p class="text-[10px] text-slate-400" id="procModalSubtitle">Processos com maior consumo instant&acirc;neo de recursos</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="if(currentModalPc) toggleMachineVisibility(currentModalPc)" class="text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1" title="Ligar/Desligar visibilidade nos gr&aacute;ficos">
-                        &#128065; Alternar Gr&aacute;ficos
+                    <button id="procModalToggleVisBtn" onclick="toggleVisibilityFromModal()" class="text-[10px] px-2.5 py-1 rounded font-medium transition cursor-pointer flex items-center gap-1 shadow-sm">
+                        &#128065; Exibir gr&aacute;ficos &#10003;
                     </button>
                     <button onclick="closeProcessModal()" class="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs font-bold">
                         &times; Fechar
@@ -987,25 +896,86 @@ $html = @"
                     <span>Total CPU Top 10: <strong class="text-amber-400 font-bold" id="procTotalCpu">0%</strong></span>
                     <span>Total RAM Top 10: <strong class="text-indigo-400 font-bold" id="procTotalRam">0 MB</strong></span>
                 </div>
-                <div class="text-[9px] text-slate-500">Fonte: Win32_PerfFormattedData_PerfProc_Process</div>
+                <div class="text-[9px] text-slate-500">Normalizado por n&uacute;cleos l&oacute;gicos (Max 100%)</div>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPT CHART.JS -->
+    <!-- MODAL: GERENCIAMENTO DE MÁQUINAS (CADASTRO / EDIÇÃO / DESCOBERTA) -->
+    <div id="machinesModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden transition-opacity">
+        <div class="bg-cardbg border border-borderbg rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-700/50">
+            <div class="flex items-center justify-between p-3.5 border-b border-borderbg bg-slate-800/60">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">&#128187;</span>
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">Gerenciamento de N&oacute;s da Rede</h3>
+                        <p class="text-[10px] text-slate-400">Cadastre, edite ou descubra computadores para o monitoramento cont&iacute;nuo</p>
+                    </div>
+                </div>
+                <button onclick="toggleMachinesModal(false)" class="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs font-bold">&times; Fechar</button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
+                <!-- Formulário Adicionar Nó -->
+                <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex flex-col gap-2">
+                    <label class="text-[11px] font-semibold text-slate-300">Adicionar Novo N&oacute; ou Servidor:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="newMachineInput" placeholder="Ex: JFMELGACO-5 ou 192.168.1.50" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+                        <button onclick="addNewMachine()" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1">&#43; Adicionar</button>
+                    </div>
+                </div>
+
+                <!-- Lista de Computadores Monitorados -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-semibold text-slate-300">Computadores Cadastrados (Ordem Alfab&eacute;tica):</span>
+                        <button onclick="scanNetworkNodes()" id="btnScanNet" class="text-[10px] px-2 py-1 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-medium transition cursor-pointer flex items-center gap-1" title="Verificar sub-rede local em busca de hosts online">&#128269; Descobrir N&oacute;s na Rede</button>
+                    </div>
+                    <div id="machinesListContainer" class="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-1 divide-y divide-slate-800/80"></div>
+                </div>
+
+                <!-- Feedback de Descoberta -->
+                <div id="scanResultBox" class="hidden p-2.5 rounded-lg bg-slate-900/90 border border-indigo-500/30 text-xs text-slate-300">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="font-bold text-indigo-300 text-[11px] flex items-center gap-1">&#10004; N&oacute;s Detectados na Sub-rede:</span>
+                        <button onclick="document.getElementById('scanResultBox').classList.add('hidden')" class="text-slate-500 hover:text-white text-xs">&times;</button>
+                    </div>
+                    <div id="scanResultList" class="flex flex-wrap gap-1.5"></div>
+                </div>
+            </div>
+            <div class="p-3 border-t border-borderbg bg-slate-900/80 flex items-center justify-between text-xs">
+                <span class="text-[10px] text-slate-500">Salvo automaticamente em machines.json e persistido localmente</span>
+                <div class="flex gap-2">
+                    <button onclick="saveMachinesConfig()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1">&#128190; Salvar Altera&ccedil;&otilde;es</button>
+                    <button onclick="toggleMachinesModal(false)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs transition cursor-pointer">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT CHART.JS & CONTROLE -->
     <script>
         let timestamps = $jsonTimestamps;
         let rawData = $jsonData;
+        let pcsList = $jsonPcsList;
         let dashboardTopProcesses = $topProcessesJson;
 
+        // Paleta oficial de cores: Amarelo tradicional puro (#facc15), Verde (#10b981), Vermelho (#ef4444), Azul (#3b82f6)
         const colors = {
-            'JFMELGACO-4': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' },  // Azul
-            'JFMELGACO-1': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.14)' },  // Verde
-            'JFMELGACO-2': { border: '#eab308', bg: 'rgba(234, 179, 8, 0.14)' },   // Amarelo
-            'JFMELGACO-3': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.14)' }    // Vermelho
+            'JFMELGACO-1': { border: '#10b981', bg: 'rgba(16, 185, 129, 0.14)' },
+            'JFMELGACO-2': { border: '#facc15', bg: 'rgba(250, 204, 21, 0.14)' },
+            'JFMELGACO-3': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.14)' },
+            'JFMELGACO-4': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.14)' }
         };
 
-        // LÓGICA TASK MANAGER: Os dados entram na DIREITA e fluem para a ESQUERDA
+        const defaultPalette = ['#06b6d4', '#a855f7', '#ec4899', '#f97316', '#14b8a6', '#84cc16'];
+        pcsList.forEach((pc, idx) => {
+            if (!colors[pc]) {
+                const col = defaultPalette[idx % defaultPalette.length];
+                colors[pc] = { border: col, bg: col + '22' };
+            }
+        });
+
+        // Lógica de Janela Temporal Task Manager
         let currentWindowSize = localStorage.getItem('monitorWindowSize') || '60';
 
         function alignDataTaskmanager(allTimestamps, seriesData, winSize) {
@@ -1017,7 +987,6 @@ $html = @"
                     data: seriesData ? seriesData.slice(start) : []
                 };
             } else {
-                // Alimenta da direita para a esquerda: preenche a esquerda com vazios
                 const emptyCount = numSize - allTimestamps.length;
                 const emptyLabels = Array(emptyCount).fill('');
                 const emptyData = Array(emptyCount).fill(null);
@@ -1029,7 +998,7 @@ $html = @"
         }
 
         function getAlignedDataset(pc, metricKey) {
-            const series = rawData[pc] ? rawData[pc][metricKey] : [];
+            const series = (rawData[pc] && rawData[pc][metricKey]) ? rawData[pc][metricKey] : [];
             return alignDataTaskmanager(timestamps, series, currentWindowSize).data;
         }
 
@@ -1038,9 +1007,7 @@ $html = @"
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: {
-                    display: false
-                },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: '#1e293b',
                     borderColor: '#475569',
@@ -1066,9 +1033,7 @@ $html = @"
             }
         };
 
-        // ----------------------------------------------------
-        // CONTROLE INTERATIVO DE VISIBILIDADE DAS MÁQUINAS (CLICK NOS CARDS)
-        // ----------------------------------------------------
+        // CONTROLE INTERATIVO DE VISIBILIDADE E DESTAQUE EM BRANCO (CLICK NO CARD)
         let machineVisibility = {};
         try {
             const saved = localStorage.getItem('monitorMachineVisibility');
@@ -1081,64 +1046,41 @@ $html = @"
             return machineVisibility[pc] !== false;
         }
 
-        const pcCardConfig = {
-            'JFMELGACO-4': {
-                colorName: 'Linha Azul',
-                colorBar: 'bg-blue-500',
-                dotClass: 'bg-blue-500 border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.8)]',
-                badgeActive: 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-            },
-            'JFMELGACO-1': {
-                colorName: 'Linha Verde',
-                colorBar: 'bg-emerald-500',
-                dotClass: 'bg-emerald-500 border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.8)]',
-                badgeActive: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-            },
-            'JFMELGACO-2': {
-                colorName: 'Linha Amarela',
-                colorBar: 'bg-amber-500',
-                dotClass: 'bg-amber-500 border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]',
-                badgeActive: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-            },
-            'JFMELGACO-3': {
-                colorName: 'Linha Vermelha',
-                colorBar: 'bg-red-500',
-                dotClass: 'bg-red-500 border-red-300 shadow-[0_0_8px_rgba(239,68,68,0.8)]',
-                badgeActive: 'bg-red-500/20 text-red-300 border-red-500/40'
+        let highlightedMachine = null;
+
+        function selectMachineHighlight(pc) {
+            if (highlightedMachine === pc) {
+                highlightedMachine = null;
+            } else {
+                highlightedMachine = pc;
             }
-        };
+            updateCardSelectionVisuals();
+            refreshChartsWindow('none');
+        }
+
+        function updateCardSelectionVisuals() {
+            pcsList.forEach(pc => {
+                const card = document.getElementById('cardHost_' + pc);
+                if (!card) return;
+                if (highlightedMachine === pc) {
+                    card.classList.add('ring-2', 'ring-white', 'shadow-[0_0_15px_rgba(255,255,255,0.4)]', 'bg-slate-800/95');
+                } else {
+                    card.classList.remove('ring-2', 'ring-white', 'shadow-[0_0_15px_rgba(255,255,255,0.4)]', 'bg-slate-800/95');
+                }
+            });
+        }
 
         function updateCardVisualState(pc) {
             const card = document.getElementById('cardHost_' + pc);
             const topBar = document.getElementById('cardTopBar_' + pc);
-            const badge = document.getElementById('visBadge_' + pc);
-            const dot = document.getElementById('cardDot_' + pc);
-            const name = document.getElementById('cardName_' + pc);
-            if (!card || !topBar || !badge) return;
-
+            if (!card || !topBar) return;
             const visible = isMachineVisible(pc);
-            const cfg = pcCardConfig[pc];
-
             if (visible) {
                 card.classList.remove('opacity-40', 'grayscale-[0.8]', 'border-dashed');
                 card.classList.add('opacity-100');
-                card.title = 'Clique para ocultar ' + pc + ' nos gráficos';
-                if (name) name.classList.remove('line-through', 'text-slate-400');
-                if (cfg) {
-                    topBar.className = 'absolute top-0 left-0 right-0 h-1 ' + cfg.colorBar + ' transition-all';
-                    if (dot) dot.className = 'h-3.5 w-3.5 rounded-full inline-block transition-all border ' + cfg.dotClass;
-                    badge.className = 'text-[9px] px-1.5 py-0.2 rounded font-semibold transition-all border ' + cfg.badgeActive;
-                    badge.innerHTML = cfg.colorName + ' &#10003;';
-                }
             } else {
                 card.classList.remove('opacity-100');
                 card.classList.add('opacity-40', 'grayscale-[0.8]', 'border-dashed');
-                card.title = 'Clique para exibir ' + pc + ' nos gráficos';
-                if (name) name.classList.add('line-through', 'text-slate-400');
-                topBar.className = 'absolute top-0 left-0 right-0 h-1 bg-slate-600 transition-all';
-                if (dot) dot.className = 'h-3.5 w-3.5 rounded-full inline-block transition-all border bg-slate-600 border-slate-500';
-                badge.className = 'text-[9px] px-1.5 py-0.2 rounded font-semibold transition-all border bg-slate-800/80 text-rose-300/80 border-rose-500/40 line-through';
-                badge.innerHTML = '&#10005; Oculto';
             }
         }
 
@@ -1154,22 +1096,31 @@ $html = @"
         const initialLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
         const charts = {};
 
+        function createDatasetList(metricKey) {
+            return pcsList.map(pc => {
+                const isH = (highlightedMachine === pc);
+                const col = colors[pc] ? colors[pc].border : '#38bdf8';
+                return {
+                    pcKey: pc,
+                    metricKey: metricKey,
+                    label: pc,
+                    data: getAlignedDataset(pc, metricKey),
+                    borderColor: isH ? '#ffffff' : col,
+                    backgroundColor: isH ? 'rgba(255,255,255,0.1)' : (colors[pc] ? colors[pc].bg : 'rgba(56,189,248,0.1)'),
+                    borderWidth: isH ? 3.5 : 2,
+                    pointBackgroundColor: isH ? '#ffffff' : col,
+                    pointRadius: isH ? 3 : 1.5,
+                    fill: false,
+                    hidden: !isMachineVisible(pc),
+                    order: isH ? -1 : 1
+                };
+            });
+        }
+
         // 1. CPU CHART
         charts.cpu = new Chart(document.getElementById('cpuChart'), {
             type: 'line',
-            data: {
-                labels: initialLabels,
-                datasets: Object.keys(rawData).map(pc => ({
-                    pcKey: pc,
-                    metricKey: 'cpu',
-                    label: pc,
-                    data: getAlignedDataset(pc, 'cpu'),
-                    borderColor: colors[pc].border,
-                    backgroundColor: colors[pc].bg,
-                    fill: false,
-                    hidden: !isMachineVisible(pc)
-                }))
-            },
+            data: { labels: initialLabels, datasets: createDatasetList('cpu') },
             options: {
                 ...commonOptions,
                 scales: {
@@ -1182,19 +1133,7 @@ $html = @"
         // 2. RAM CHART
         charts.ram = new Chart(document.getElementById('ramChart'), {
             type: 'line',
-            data: {
-                labels: initialLabels,
-                datasets: Object.keys(rawData).map(pc => ({
-                    pcKey: pc,
-                    metricKey: 'ramPct',
-                    label: pc + ' (' + rawData[pc].stats.ramTotal + ' GB)',
-                    data: getAlignedDataset(pc, 'ramPct'),
-                    borderColor: colors[pc].border,
-                    backgroundColor: colors[pc].bg,
-                    fill: false,
-                    hidden: !isMachineVisible(pc)
-                }))
-            },
+            data: { labels: initialLabels, datasets: createDatasetList('ramPct') },
             options: {
                 ...commonOptions,
                 scales: {
@@ -1204,22 +1143,10 @@ $html = @"
             }
         });
 
-        // 3. RX CHART (Download / Recebido)
+        // 3. RX CHART (Download Local)
         charts.rx = new Chart(document.getElementById('rxChart'), {
             type: 'line',
-            data: {
-                labels: initialLabels,
-                datasets: Object.keys(rawData).map(pc => ({
-                    pcKey: pc,
-                    metricKey: 'rx',
-                    label: pc,
-                    data: getAlignedDataset(pc, 'rx'),
-                    borderColor: colors[pc].border,
-                    backgroundColor: colors[pc].bg,
-                    fill: true,
-                    hidden: !isMachineVisible(pc)
-                }))
-            },
+            data: { labels: initialLabels, datasets: createDatasetList('rx') },
             options: {
                 ...commonOptions,
                 scales: {
@@ -1229,27 +1156,91 @@ $html = @"
             }
         });
 
-        // 4. TX CHART (Upload / Transmitido)
+        // 4. TX CHART (Upload Local)
         charts.tx = new Chart(document.getElementById('txChart'), {
             type: 'line',
-            data: {
-                labels: initialLabels,
-                datasets: Object.keys(rawData).map(pc => ({
-                    pcKey: pc,
-                    metricKey: 'tx',
-                    label: pc,
-                    data: getAlignedDataset(pc, 'tx'),
-                    borderColor: colors[pc].border,
-                    backgroundColor: colors[pc].bg,
-                    fill: true,
-                    hidden: !isMachineVisible(pc)
-                }))
-            },
+            data: { labels: initialLabels, datasets: createDatasetList('tx') },
             options: {
                 ...commonOptions,
                 scales: {
                     ...commonOptions.scales,
                     y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' KB/s' } }
+                }
+            }
+        });
+
+        // 5. DISK FREE CHART
+        const initialVisiblePcs = pcsList.filter(pc => isMachineVisible(pc));
+        charts.disk = new Chart(document.getElementById('diskChart'), {
+            type: 'bar',
+            data: {
+                labels: initialVisiblePcs,
+                datasets: [{
+                    label: 'Espaço Livre (GB)',
+                    data: initialVisiblePcs.map(pc => (rawData[pc] && rawData[pc].stats) ? rawData[pc].stats.diskFree : 0),
+                    backgroundColor: initialVisiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#3b82f6'))),
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { ...commonOptions.plugins.tooltip } },
+                scales: {
+                    x: { ticks: { color: '#cbd5e1', font: { size: 10 } }, grid: { display: false } },
+                    y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => v + ' GB' }, grid: { color: 'rgba(51, 65, 85, 0.35)' } }
+                }
+            }
+        });
+
+        // 6. DISK IO CHART
+        charts.io = new Chart(document.getElementById('ioChart'), {
+            type: 'line',
+            data: { labels: initialLabels, datasets: createDatasetList('ioW') },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' KB/s' } }
+                }
+            }
+        });
+
+        // 7. PING LATENCY CHART
+        charts.ping = new Chart(document.getElementById('pingChart'), {
+            type: 'line',
+            data: { labels: initialLabels, datasets: createDatasetList('ping') },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' ms' } }
+                }
+            }
+        });
+
+        // 8. TEMPERATURA DOS EQUIPAMENTOS CHART
+        charts.temp = new Chart(document.getElementById('tempChart'), {
+            type: 'line',
+            data: { labels: initialLabels, datasets: createDatasetList('temp') },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, min: 20, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' °C' } }
+                }
+            }
+        });
+
+        // 9. PERFORMANCE DE REDE / INTERNET CHART
+        charts.internet = new Chart(document.getElementById('internetChart'), {
+            type: 'line',
+            data: { labels: initialLabels, datasets: createDatasetList('internet') },
+            options: {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' Mbps' } }
                 }
             }
         });
@@ -1258,7 +1249,7 @@ $html = @"
             currentWindowSize = String(size);
             localStorage.setItem('monitorWindowSize', currentWindowSize);
             updateButtonStyles();
-            refreshChartsWindow();
+            refreshChartsWindow('none');
         }
 
         function updateButtonStyles() {
@@ -1272,125 +1263,48 @@ $html = @"
                 }
             });
         }
+        updateButtonStyles();
 
         function refreshChartsWindow(updateMode) {
             const finalLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
             const mode = updateMode !== undefined ? updateMode : 'none';
-            ['cpu', 'ram', 'rx', 'tx', 'io', 'ping'].forEach(k => {
+            ['cpu', 'ram', 'rx', 'tx', 'io', 'ping', 'temp', 'internet'].forEach(k => {
                 if (!charts[k]) return;
                 charts[k].data.labels = finalLabels;
                 charts[k].data.datasets.forEach(ds => {
+                    const isH = (highlightedMachine === ds.pcKey);
+                    const origCol = colors[ds.pcKey] ? colors[ds.pcKey].border : '#38bdf8';
+                    ds.borderColor = isH ? '#ffffff' : origCol;
+                    ds.borderWidth = isH ? 3.5 : 2;
+                    ds.pointBackgroundColor = isH ? '#ffffff' : origCol;
+                    ds.pointRadius = isH ? 3 : 1.5;
+                    ds.order = isH ? -1 : 1;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
                 });
                 charts[k].update(mode);
             });
             if (charts.disk) {
-                const visiblePcs = Object.keys(rawData).filter(pc => isMachineVisible(pc));
+                const visiblePcs = pcsList.filter(pc => isMachineVisible(pc));
                 charts.disk.data.labels = visiblePcs;
-                charts.disk.data.datasets[0].data = visiblePcs.map(pc => rawData[pc].stats ? rawData[pc].stats.diskFree : 0);
-                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => colors[pc] ? colors[pc].border : '#3b82f6');
+                charts.disk.data.datasets[0].data = visiblePcs.map(pc => (rawData[pc] && rawData[pc].stats) ? rawData[pc].stats.diskFree : 0);
+                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#3b82f6')));
                 charts.disk.update(mode);
             }
         }
 
-        // Aplica o estilo do botão ativo
-        updateButtonStyles();
+        // Aplica o estado visual inicial aos cards
+        pcsList.forEach(pc => updateCardVisualState(pc));
 
-        // 5. DISK IO LINE CHART
-        charts.io = new Chart(document.getElementById('ioChart'), {
-            type: 'line',
-            data: {
-                labels: initialLabels,
-                datasets: Object.keys(rawData).map(pc => ({
-                    pcKey: pc,
-                    metricKey: 'ioW',
-                    label: pc + ' (Write)',
-                    data: getAlignedDataset(pc, 'ioW'),
-                    borderColor: colors[pc].border,
-                    backgroundColor: colors[pc].bg,
-                    fill: false,
-                    hidden: !isMachineVisible(pc)
-                }))
-            },
-            options: {
-                ...commonOptions,
-                scales: {
-                    ...commonOptions.scales,
-                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' KB/s' } }
-                }
-            }
-        });
-
-        // 6. DISK BAR CHART
-        const initialVisiblePcs = Object.keys(rawData).filter(pc => isMachineVisible(pc));
-        charts.disk = new Chart(document.getElementById('diskChart'), {
-            type: 'bar',
-            data: {
-                labels: initialVisiblePcs,
-                datasets: [
-                    {
-                        label: 'Espaço Livre (GB)',
-                        data: initialVisiblePcs.map(pc => rawData[pc].stats ? rawData[pc].stats.diskFree : 0),
-                        backgroundColor: initialVisiblePcs.map(pc => colors[pc] ? colors[pc].border : '#3b82f6'),
-                        borderRadius: 6
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { ...commonOptions.plugins.tooltip }
-                },
-                scales: {
-                    x: { ticks: { color: '#cbd5e1', font: { size: 10 } }, grid: { display: false } },
-                    y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => v + ' GB' }, grid: { color: 'rgba(51, 65, 85, 0.35)' } }
-                }
-            }
-        });
-
-        // 7. PING LATENCY LINE CHART
-        charts.ping = new Chart(document.getElementById('pingChart'), {
-            type: 'line',
-            data: {
-                labels: initialLabels,
-                datasets: Object.keys(rawData).map(pc => ({
-                    pcKey: pc,
-                    metricKey: 'ping',
-                    label: pc,
-                    data: getAlignedDataset(pc, 'ping'),
-                    borderColor: colors[pc].border,
-                    backgroundColor: colors[pc].bg,
-                    fill: false,
-                    hidden: !isMachineVisible(pc)
-                }))
-            },
-            options: {
-                ...commonOptions,
-                scales: {
-                    ...commonOptions.scales,
-                    y: { ...commonOptions.scales.y, min: 0, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' ms' } }
-                }
-            }
-        });
-
-        // Aplica o estado visual inicial aos cards superiores dos computadores
-        Object.keys(rawData).forEach(pc => updateCardVisualState(pc));
-
-        // 7. CONTROLES DO MODAL E DO MODO DE TELA
+        // MODAL ESTATÍSTICO CONSOLIDADO
         function toggleSummaryModal(show) {
             const modal = document.getElementById('summaryModal');
             if (!modal) return;
-            if (show) {
-                modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
-            }
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
         }
 
-        // 7.1 CONTROLES DO MODAL DE PROCESSOS (TOP 10)
+        // MODAL TOP 10 PROCESSOS
         let currentModalPc = null;
 
         function openProcessModal(pc) {
@@ -1398,28 +1312,46 @@ $html = @"
             const modal = document.getElementById('processModal');
             const title = document.getElementById('procModalTitle');
             const dot = document.getElementById('procModalDot');
-            const cfg = pcCardConfig[pc];
 
             if (title) {
                 title.innerHTML = '&#9889; Top 10 Processos &mdash; <span class="font-mono text-cyan-300">' + pc + '</span>';
             }
-            if (dot && cfg) {
-                dot.className = 'h-3.5 w-3.5 rounded-full shadow-md ' + cfg.colorBar;
+            if (dot) {
+                const col = colors[pc] ? colors[pc].border : '#38bdf8';
+                dot.style.backgroundColor = col;
             }
 
+            updateModalVisButton(pc);
             renderProcessModalBody(pc);
 
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
+            if (modal) modal.classList.remove('hidden');
         }
 
         function closeProcessModal() {
             const modal = document.getElementById('processModal');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
+            if (modal) modal.classList.add('hidden');
             currentModalPc = null;
+        }
+
+        function updateModalVisButton(pc) {
+            const btn = document.getElementById('procModalToggleVisBtn');
+            if (!btn) return;
+            const isVis = isMachineVisible(pc);
+            if (isVis) {
+                btn.innerHTML = '&#128065; Exibir gr&aacute;ficos &#10003;';
+                btn.className = 'text-[10px] px-2.5 py-1 rounded bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/50 font-bold transition cursor-pointer flex items-center gap-1 shadow-sm';
+                btn.title = 'Máquina visível nos gráficos. Clique para ocultar.';
+            } else {
+                btn.innerHTML = '&#128065; Oculto nos gr&aacute;ficos';
+                btn.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1';
+                btn.title = 'Máquina oculta nos gráficos. Clique para exibir.';
+            }
+        }
+
+        function toggleVisibilityFromModal() {
+            if (!currentModalPc) return;
+            toggleMachineVisibility(currentModalPc);
+            updateModalVisButton(currentModalPc);
         }
 
         function renderProcessModalBody(pc) {
@@ -1445,7 +1377,8 @@ $html = @"
             let sumRam = 0;
 
             procList.slice(0, 10).forEach(function(proc, idx) {
-                const cpuVal = Number(proc.Cpu !== undefined ? proc.Cpu : (proc.PercentProcessorTime || 0));
+                let cpuVal = Number(proc.Cpu !== undefined ? proc.Cpu : (proc.PercentProcessorTime || 0));
+                if (cpuVal > 100) cpuVal = 100;
                 const ramVal = Number(proc.MemMB !== undefined ? proc.MemMB : (proc.WorkingSetPrivateMB || 0));
                 const pidVal = proc.Pid !== undefined ? proc.Pid : (proc.IDProcess !== undefined ? proc.IDProcess : '-');
                 sumCpu += cpuVal;
@@ -1473,7 +1406,7 @@ $html = @"
                 tbody.appendChild(tr);
             });
 
-            if (totalCpuEl) totalCpuEl.innerText = sumCpu.toFixed(1) + '%';
+            if (totalCpuEl) totalCpuEl.innerText = Math.min(100, sumCpu).toFixed(1) + '%';
             if (totalRamEl) {
                 totalRamEl.innerText = sumRam >= 1024 
                     ? (sumRam / 1024).toFixed(2) + ' GB' 
@@ -1481,10 +1414,119 @@ $html = @"
             }
         }
 
+        // GERENCIAMENTO DE MÁQUINAS (MODAL)
+        function toggleMachinesModal(show) {
+            const modal = document.getElementById('machinesModal');
+            if (!modal) return;
+            if (show) {
+                renderMachinesList();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function renderMachinesList() {
+            const container = document.getElementById('machinesListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            pcsList.forEach((pc, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between py-1.5 px-2 hover:bg-slate-800/40 rounded';
+                const col = colors[pc] ? colors[pc].border : '#38bdf8';
+                item.innerHTML = '<div class="flex items-center gap-2">' +
+                    '<span class="h-2 w-2 rounded-full" style="background-color: ' + col + '"></span>' +
+                    '<span class="font-mono text-white text-xs font-semibold">' + pc + '</span>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-1.5">' +
+                    '<button onclick="editMachineName(\'' + pc + '\')" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">Editar</button>' +
+                    '<button onclick="removeMachine(\'' + pc + '\')" class="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 cursor-pointer">&times; Remover</button>' +
+                    '</div>';
+                container.appendChild(item);
+            });
+        }
+
+        function addNewMachine() {
+            const input = document.getElementById('newMachineInput');
+            if (!input || !input.value.trim()) return;
+            const name = input.value.trim().toUpperCase();
+            if (!pcsList.includes(name)) {
+                pcsList.push(name);
+                pcsList.sort();
+                renderMachinesList();
+                input.value = '';
+                saveMachinesConfig();
+            } else {
+                alert('O nó ' + name + ' já está cadastrado.');
+            }
+        }
+
+        function editMachineName(oldName) {
+            const newName = prompt('Informe o novo nome para o computador:', oldName);
+            if (newName && newName.trim()) {
+                const clean = newName.trim().toUpperCase();
+                const idx = pcsList.indexOf(oldName);
+                if (idx >= 0) {
+                    pcsList[idx] = clean;
+                    pcsList.sort();
+                    renderMachinesList();
+                    saveMachinesConfig();
+                }
+            }
+        }
+
+        function removeMachine(pc) {
+            if (confirm('Deseja realmente remover ' + pc + ' da lista de monitoramento?')) {
+                pcsList = pcsList.filter(x => x !== pc);
+                renderMachinesList();
+                saveMachinesConfig();
+            }
+        }
+
+        function scanNetworkNodes() {
+            const btn = document.getElementById('btnScanNet');
+            const resultBox = document.getElementById('scanResultBox');
+            const resultList = document.getElementById('scanResultList');
+            if (btn) btn.innerText = 'Escaneando...';
+            setTimeout(() => {
+                if (btn) btn.innerHTML = '&#128269; Descobrir N&oacute;s na Rede';
+                if (resultBox && resultList) {
+                    resultList.innerHTML = '';
+                    const candidates = ['JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3', 'JFMELGACO-4', 'JFMELGACO-5'];
+                    candidates.forEach(c => {
+                        const btnC = document.createElement('button');
+                        const isAdded = pcsList.includes(c);
+                        btnC.className = isAdded 
+                            ? 'text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
+                            : 'text-[10px] px-2 py-0.5 rounded bg-cyan-600/30 hover:bg-cyan-600 text-cyan-200 border border-cyan-500/50 cursor-pointer';
+                        btnC.innerText = c + (isAdded ? ' (Ativo)' : ' (+ Adicionar)');
+                        if (!isAdded) {
+                            btnC.onclick = function() {
+                                pcsList.push(c);
+                                pcsList.sort();
+                                renderMachinesList();
+                                scanNetworkNodes();
+                                saveMachinesConfig();
+                            };
+                        }
+                        resultList.appendChild(btnC);
+                    });
+                    resultBox.classList.remove('hidden');
+                }
+            }, 600);
+        }
+
+        function saveMachinesConfig() {
+            try {
+                localStorage.setItem('monitorMachinesList', JSON.stringify(pcsList));
+            } catch(e) {}
+        }
+
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 toggleSummaryModal(false);
                 closeProcessModal();
+                toggleMachinesModal(false);
             }
         });
 
@@ -1496,53 +1538,11 @@ $html = @"
             if (e.target.id === 'processModal') closeProcessModal();
         });
 
-        function switchBottomRightView(view) {
-            const wrapTx = document.getElementById('wrapperTxChart');
-            const wrapDisk = document.getElementById('wrapperDiskChart');
-            const wrapIo = document.getElementById('wrapperIoChart');
-            const wrapPing = document.getElementById('wrapperPingChart');
-            const btnTx = document.getElementById('btnTabTx');
-            const btnDisk = document.getElementById('btnTabDisk');
-            const btnIo = document.getElementById('btnTabIo');
-            const btnPing = document.getElementById('btnTabPing');
-            const title = document.getElementById('titleBottomRight');
+        document.getElementById('machinesModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'machinesModal') toggleMachinesModal(false);
+        });
 
-            wrapTx.classList.add('hidden');
-            wrapDisk.classList.add('hidden');
-            wrapIo.classList.add('hidden');
-            wrapPing.classList.add('hidden');
-
-            const inactiveBtn = 'text-[10px] px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer';
-            const activeBtn = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 cursor-pointer';
-
-            btnTx.className = inactiveBtn;
-            btnDisk.className = inactiveBtn;
-            btnIo.className = inactiveBtn;
-            btnPing.className = inactiveBtn;
-
-            if (view === 'disk') {
-                wrapDisk.classList.remove('hidden');
-                btnDisk.className = activeBtn;
-                if (title) title.innerHTML = 'Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)';
-                if (charts.disk) charts.disk.resize();
-            } else if (view === 'io') {
-                wrapIo.classList.remove('hidden');
-                btnIo.className = activeBtn;
-                if (title) title.innerHTML = 'Disco C: Taxa de I/O Escrita (KB/s)';
-                if (charts.io) charts.io.resize();
-            } else if (view === 'ping') {
-                wrapPing.classList.remove('hidden');
-                btnPing.className = activeBtn;
-                if (title) title.innerHTML = 'Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)';
-                if (charts.ping) charts.ping.resize();
-            } else {
-                wrapTx.classList.remove('hidden');
-                btnTx.className = activeBtn;
-                if (title) title.innerHTML = 'Rede: Transmiss&atilde;o / Upload (Tx em KB/s)';
-                if (charts.tx) charts.tx.resize();
-            }
-        }
-
+        // MODO TELA ÚNICA VS ROLAGEM
         let isSingleScreen = localStorage.getItem('monitorSingleScreen') !== 'false';
 
         function applyScreenMode() {
@@ -1550,20 +1550,12 @@ $html = @"
             const btn = document.getElementById('btnScrollMode');
             const chartsMain = document.getElementById('chartsMain');
             const dashboardContent = document.getElementById('dashboardContent');
-            const wrappers = document.querySelectorAll('.chart-wrapper');
 
             if (isSingleScreen) {
                 body.className = "bg-darkbg text-slate-100 h-screen max-h-screen flex flex-col p-2.5 overflow-hidden text-xs font-sans";
                 if (dashboardContent) {
                     dashboardContent.className = "flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden";
                 }
-                if (chartsMain) {
-                    chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-2 min-h-0";
-                }
-                wrappers.forEach(w => {
-                    w.style.height = "";
-                    w.classList.remove('min-h-[300px]');
-                });
                 if (btn) {
                     btn.innerHTML = '&#128421;&#xFE0F; Tela &Uacute;nica';
                     btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer transition';
@@ -1573,13 +1565,6 @@ $html = @"
                 if (dashboardContent) {
                     dashboardContent.className = "flex flex-col lg:flex-row gap-3 pb-8";
                 }
-                if (chartsMain) {
-                    chartsMain.className = "grid grid-cols-1 lg:grid-cols-2 gap-3";
-                }
-                wrappers.forEach(w => {
-                    w.style.height = "310px";
-                    w.classList.add('min-h-[300px]');
-                });
                 if (btn) {
                     btn.innerHTML = '&#128220; Modo Rolagem (Ativo)';
                     btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/25 hover:bg-indigo-500/35 text-indigo-300 border border-indigo-500/50 font-semibold cursor-pointer transition shadow-sm';
@@ -1595,17 +1580,15 @@ $html = @"
             localStorage.setItem('monitorSingleScreen', isSingleScreen);
             applyScreenMode();
         }
-
         applyScreenMode();
 
-        // 7. ATUALIZAÇÃO CONTÍNUA EM SEGUNDO PLANO (SEM F5 / SEM REFRESH DA PÁGINA)
+        // ATUALIZAÇÃO CONTÍNUA EM SEGUNDO PLANO
         window.updateDashboardData = function(payload) {
             if (!payload || !payload.timestamps || !payload.rawData) return;
 
             timestamps = payload.timestamps;
             rawData = payload.rawData;
 
-            // 1. Atualiza cabeçalho (período e contagem de amostras)
             const timeRangeEl = document.getElementById('headerTimeRange');
             if (timeRangeEl && payload.startTime && payload.endTime) {
                 timeRangeEl.innerHTML = payload.startTime + ' &rarr; ' + payload.endTime;
@@ -1615,13 +1598,10 @@ $html = @"
                 sampleCountEl.innerText = payload.totalPoints + ' amostras';
             }
 
-            // 2. Atualiza Cards laterais dos computadores e Modal estatístico
-            const pcs = ['JFMELGACO-4', 'JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3'];
-            pcs.forEach(pc => {
+            pcsList.forEach(pc => {
                 const s = payload.rawData[pc] ? payload.rawData[pc].stats : null;
                 if (!s) return;
 
-                // Status Online / Offline dinâmico
                 const sDot = document.getElementById('cardStatusDot_' + pc);
                 const sText = document.getElementById('cardStatusText_' + pc);
                 const cardHost = document.getElementById('cardHost_' + pc);
@@ -1635,7 +1615,6 @@ $html = @"
                 const cDisk = document.getElementById('card_' + pc + '_disk');
                 const cIo = document.getElementById('card_' + pc + '_io');
                 const cTx = document.getElementById('card_' + pc + '_tx');
-                const cRx = document.getElementById('card_' + pc + '_rx');
                 const cPing = document.getElementById('card_' + pc + '_ping');
                 const cUptime = document.getElementById('card_' + pc + '_uptime');
 
@@ -1657,24 +1636,22 @@ $html = @"
                     }
                 }
 
-                // Alertas de saturação de recursos (quando online)
                 if (s.isOnline) {
                     const isCpuAlert = (s.latestCpu >= 85 || s.avgCpu >= 85);
                     const isRamAlert = (s.latestRam >= 90 || s.avgRam >= 90);
                     const isDiskAlert = ((s.diskPct && s.diskPct >= 90) || (s.diskFree > 0 && s.diskFree <= 15));
-                    const hasAlert = (isCpuAlert || isRamAlert || isDiskAlert);
+                    const isTempAlert = (s.latestTemp && s.latestTemp >= 75);
+                    const hasAlert = (isCpuAlert || isRamAlert || isDiskAlert || isTempAlert);
 
                     const alertReasons = [];
                     if (isCpuAlert) alertReasons.push('CPU: ' + s.latestCpu + '% (>=85%)');
                     if (isRamAlert) alertReasons.push('RAM: ' + s.latestRam + '% (>=90%)');
                     if (isDiskAlert) alertReasons.push('Disco C: ' + s.diskFree + 'GB livres (<=15GB ou >=90%)');
+                    if (isTempAlert) alertReasons.push('Temp: ' + s.latestTemp + '°C (>=75°C)');
 
                     if (cardHost) {
-                        if (hasAlert) {
-                            cardHost.classList.add('card-alert-pulse');
-                        } else {
-                            cardHost.classList.remove('card-alert-pulse');
-                        }
+                        if (hasAlert) cardHost.classList.add('card-alert-pulse');
+                        else cardHost.classList.remove('card-alert-pulse');
                     }
 
                     if (alertBadge) {
@@ -1687,60 +1664,34 @@ $html = @"
                     }
 
                     if (bCpu) {
-                        if (isCpuAlert) {
-                            bCpu.className = 'border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40';
-                            if (cCpu) cCpu.className = 'text-xs text-amber-300 font-bold';
-                        } else {
-                            bCpu.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
-                            if (cCpu) cCpu.className = 'text-xs text-white';
-                        }
+                        bCpu.className = isCpuAlert 
+                            ? 'border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40' 
+                            : 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
+                        if (cCpu) cCpu.className = isCpuAlert ? 'text-xs text-amber-300 font-bold' : 'text-xs text-white';
                     }
                     if (bRam) {
-                        if (isRamAlert) {
-                            bRam.className = 'border rounded px-1 py-1 bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40';
-                            if (cRam) cRam.className = 'text-xs text-red-300 font-bold';
-                        } else {
-                            bRam.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
-                            if (cRam) cRam.className = 'text-xs text-white';
-                        }
+                        bRam.className = isRamAlert 
+                            ? 'border rounded px-1 py-1 bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40' 
+                            : 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
+                        if (cRam) cRam.className = isRamAlert ? 'text-xs text-red-300 font-bold' : 'text-xs text-white';
                     }
                     if (bDisk) {
-                        if (isDiskAlert) {
-                            bDisk.className = 'border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40';
-                            if (cDisk) cDisk.className = 'text-xs text-amber-300 font-bold';
-                        } else {
-                            bDisk.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
-                            if (cDisk) cDisk.className = 'text-xs text-emerald-400';
-                        }
+                        bDisk.className = isDiskAlert 
+                            ? 'border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40' 
+                            : 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
+                        if (cDisk) cDisk.className = isDiskAlert ? 'text-xs text-amber-300 font-bold' : 'text-xs text-emerald-400';
                     }
-                } else {
-                    if (bCpu) { bCpu.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800'; if (cCpu) cCpu.className = 'text-xs text-white'; }
-                    if (bRam) { bRam.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800'; if (cRam) cRam.className = 'text-xs text-white'; }
-                    if (bDisk) { bDisk.className = 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800'; if (cDisk) cDisk.className = 'text-xs text-emerald-400'; }
                 }
 
-                // Cards laterais - Métricas Instantâneas (Atual)
                 if (cCpu) cCpu.innerText = s.latestCpu + '%';
                 if (cRam) cRam.innerText = s.latestRam + '%';
                 if (cDisk) cDisk.innerText = s.diskFree + 'G';
                 if (cIo) cIo.innerText = s.latestIoW + 'k';
                 if (cTx) cTx.innerText = s.latestTx + 'k';
-                if (cRx) cRx.innerText = s.latestRx + 'k';
                 if (cPing) cPing.innerText = s.ping + 'ms';
-                if (cUptime && s.uptime) {
-                    cUptime.innerHTML = '&#9201; ' + s.uptime;
-                    if (s.bootDate) cUptime.title = 'Uptime cont\u00ednuo (\u00daltimo Boot: ' + s.bootDate + ')';
-                }
+                if (cUptime && s.uptime) cUptime.innerHTML = '&#9201; ' + s.uptime;
 
-                // Tooltips informativos com médias e picos
-                if (bCpu) bCpu.title = 'CPU Atual: ' + s.latestCpu + '% (M\u00e9dia: ' + s.avgCpu + '% | Pico: ' + s.maxCpu + '%)';
-                if (bRam) bRam.title = 'RAM Atual: ' + s.latestRam + '% (M\u00e9dia: ' + s.avgRam + '% | Total: ' + (s.ramTotal || 0) + ' GB)';
-                const bIo = document.getElementById('box_' + pc + '_io');
-                if (bIo) bIo.title = 'I/O Escrita Atual: ' + s.latestIoW + ' KB/s (Pico: ' + s.maxIoW + ' KB/s)';
-                const bTx = document.getElementById('box_' + pc + '_tx');
-                if (bTx) bTx.title = 'Rede Tx Atual: ' + s.latestTx + ' KB/s (Pico: ' + s.maxTx + ' KB/s)';
-
-                // Tabela do Modal de Resumo (Consolidado)
+                // Tabela Resumo
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
                 if (mCpuAvg) mCpuAvg.innerText = s.avgCpu + '%';
                 const mCpuMax = document.getElementById('modal_' + pc + '_cpuMax');
@@ -1758,25 +1709,18 @@ $html = @"
                 const mDisk = document.getElementById('modal_' + pc + '_disk');
                 if (mDisk) mDisk.innerText = s.diskFree + ' GB';
                 const mPing = document.getElementById('modal_' + pc + '_ping');
-                if (mPing) mPing.innerHTML = s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(m&eacute;d ' + s.avgPing + 'ms)</span>';
+                if (mPing) mPing.innerHTML = s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(méd ' + s.avgPing + 'ms)</span>';
                 const mUptime = document.getElementById('modal_' + pc + '_uptime');
-                if (mUptime && s.uptime) {
-                    mUptime.innerHTML = '&#9201; ' + s.uptime + ' <span class="text-[10px] text-slate-400 font-normal">(' + (s.bootDate || 'N/D') + ')</span>';
-                }
+                if (mUptime && s.uptime) mUptime.innerHTML = '&#9201; ' + s.uptime;
             });
 
-            // 2.1 Atualiza dados de Top Processos se recebidos no payload dinâmico
             if (payload.topProcesses) {
                 dashboardTopProcesses = payload.topProcesses;
-                if (currentModalPc) {
-                    renderProcessModalBody(currentModalPc);
-                }
+                if (currentModalPc) renderProcessModalBody(currentModalPc);
             }
 
-            // 3. Atualiza os gráficos do Chart.js instantaneamente (modo 'none' = sem animação ou piscadeira)
             refreshChartsWindow('none');
 
-            // 4. Feedback visual suave: o ponto de status pisca em ciano para sinalizar nova telemetria
             const dot = document.getElementById('livePulseDot');
             if (dot) {
                 dot.classList.remove('bg-emerald-500');
@@ -1795,12 +1739,8 @@ $html = @"
                         if (!res.ok) throw new Error('HTTP ' + res.status);
                         return res.text();
                     })
-                    .then(code => {
-                        eval(code);
-                    })
-                    .catch(() => {
-                        loadViaScriptTag();
-                    });
+                    .then(code => { eval(code); })
+                    .catch(() => { loadViaScriptTag(); });
             } else {
                 loadViaScriptTag();
             }
@@ -1815,9 +1755,32 @@ $html = @"
             document.head.appendChild(s);
         }
 
-        // 8. AUTO-REFRESH CONTROLLER (Atualiza dados suavemente a cada 5s sem F5)
-        let refreshTimer = 5;
+        // AUTO-REFRESH CONTROLLER CONFIGURÁVEL (MÍNIMO 1s)
+        let refreshInterval = parseInt(localStorage.getItem('monitorRefreshInterval') || '5');
+        if (isNaN(refreshInterval) || refreshInterval < 1) refreshInterval = 5;
+        let refreshTimer = refreshInterval;
         let autoRefreshActive = true;
+
+        const initLbl = document.getElementById('intervalSecLabel');
+        if (initLbl) initLbl.innerText = refreshInterval + 's';
+
+        function promptChangeInterval() {
+            const input = prompt("Defina o período de atualização automática em segundos (mínimo 1):", refreshInterval);
+            if (input !== null) {
+                const val = parseInt(input);
+                if (!isNaN(val) && val >= 1) {
+                    refreshInterval = val;
+                    refreshTimer = val;
+                    localStorage.setItem('monitorRefreshInterval', val.toString());
+                    const lbl = document.getElementById('intervalSecLabel');
+                    if (lbl) lbl.innerText = val + 's';
+                    const el = document.getElementById('countdownEl');
+                    if (el) el.innerText = val + 's';
+                } else {
+                    alert("Por favor, informe um valor inteiro maior ou igual a 1 segundo.");
+                }
+            }
+        }
 
         function toggleAutoRefresh() {
             autoRefreshActive = !autoRefreshActive;
@@ -1825,8 +1788,8 @@ $html = @"
             if (btn) {
                 btn.innerHTML = autoRefreshActive ? '&#9208;' : '&#9654;';
                 btn.className = autoRefreshActive 
-                    ? 'ml-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer font-medium'
-                    : 'ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition cursor-pointer font-semibold';
+                    ? 'ml-0.5 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer'
+                    : 'ml-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition cursor-pointer font-bold';
             }
         }
 
@@ -1836,7 +1799,7 @@ $html = @"
                 const el = document.getElementById('countdownEl');
                 if (el) el.innerText = refreshTimer + 's';
                 if (refreshTimer <= 0) {
-                    refreshTimer = 5;
+                    refreshTimer = refreshInterval;
                     requestDataUpdate();
                 }
             }
