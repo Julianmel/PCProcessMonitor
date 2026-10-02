@@ -60,7 +60,7 @@ if (Test-Path $machinesJsonPath) {
     } catch {}
 }
 
-$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>\S+?)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>[A-Za-z0-9_-]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $machineData = @{}
@@ -144,7 +144,7 @@ foreach ($line in $lines) {
 
     if ($null -eq $currentTs) { continue }
 
-    if ($line -match '^(ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>\S+?)(?:\s+\(Local\))?(?:\s+|$)') {
+    if ($line -match '^(ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>[A-Za-z0-9_-]+)(?:\s+\(Local\))?(?:\s+|$)') {
         $rawPc = $matches['pc']
         $pc = $rawPc
         if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
@@ -380,7 +380,14 @@ foreach ($cPath in $procJsonCandidates) {
             $loaded = Get-Content -Raw $cPath -Encoding UTF8 | ConvertFrom-Json
             foreach ($prop in $loaded.PSObject.Properties) {
                 if (-not $topProcessesData.ContainsKey($prop.Name)) {
-                    $topProcessesData[$prop.Name] = $prop.Value
+                    $procs = [System.Collections.Generic.List[object]]::new()
+                    foreach ($item in $prop.Value) {
+                        $cpuVal = [double]($item.Cpu)
+                        if ($cpuVal -gt 100) { $cpuVal = [math]::Round($cpuVal / 12, 1); if ($cpuVal -gt 100) { $cpuVal = 100 } }
+                        $item.Cpu = $cpuVal
+                        $procs.Add($item)
+                    }
+                    $topProcessesData[$prop.Name] = $procs
                 }
             }
         } catch {}
