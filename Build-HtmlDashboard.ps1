@@ -60,7 +60,7 @@ if (Test-Path $machinesJsonPath) {
     } catch {}
 }
 
-$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
+$pattern = '^(?:ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>\S+?)(?:\s+\(Local\))?(?:\s+\[[^\]]+\]\s+(?<cpu>\d+)%\s+\[[^\]]+\]\s+(?<ramUsed>[\d\.,]+)\s*\/\s*(?<ramTotal>[\d\.,]+)\s*GB\s*\((?<ramPct>\d+)%\)\s+(?<diskFree>[\d\.,]+)\s*GB\s*liv\s*\(\s*(?<diskPct>\d+)%\s*us\)\s+(?:R:\s*(?<ioRVal>[\d\.,]+|N\/D)(?:\s*(?<ioRUnit>KB\/s|MB\/s))?\s*\|\s*W:\s*(?<ioWVal>[\d\.,]+|N\/D)(?:\s*(?<ioWUnit>KB\/s|MB\/s))?\s+)?Rx:\s*(?<rxVal>[\d\.,]+|N\/D)(?:\s*(?<rxUnit>KB\/s|MB\/s))?\s*\|\s*Tx:\s*(?<txVal>[\d\.,]+|N\/D)(?:\s*(?<txUnit>KB\/s|MB\/s))?)?'
 
 $timestamps = [System.Collections.Generic.List[string]]::new()
 $machineData = @{}
@@ -132,7 +132,7 @@ function Flush-Block {
 
 $detectedLocalHost = $null
 foreach ($line in $lines) {
-    if ($line -match '^(?<hora>\d{2}:\d{2}:\d{2})\s+========') {
+    if ($line -match '^(?:\[)?(?<hora>\d{2}:\d{2}:\d{2})(?:\])?\s+========') {
         Flush-Block
         $currentTs = $matches['hora']
         continue
@@ -144,7 +144,7 @@ foreach ($line in $lines) {
 
     if ($null -eq $currentTs) { continue }
 
-    if ($line -match '^(ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>JFMELGACO[^\s\(]+)') {
+    if ($line -match '^(ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>\S+?)(?:\s+\(Local\))?(?:\s+|$)') {
         $rawPc = $matches['pc']
         $pc = $rawPc
         if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
