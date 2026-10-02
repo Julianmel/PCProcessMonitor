@@ -172,7 +172,7 @@ foreach ($line in $lines) {
         }
 
         $tempVal = $null
-        if ($line -match 'Temp:\s*(?<temp>\d+)\s*°?C') {
+        if ($line -match 'Temp:\s*(?<temp>\d+)') {
             $tempVal = [int]$matches['temp']
         }
 
@@ -570,6 +570,7 @@ foreach ($pc in $pcsList) {
 $jsonTimestamps = $timestamps | ConvertTo-Json -Compress
 $jsonData = $machineData | ConvertTo-Json -Depth 4 -Compress
 $jsonPcsList = $pcsList | ConvertTo-Json -Compress
+$jsonStats = $stats | ConvertTo-Json -Depth 4 -Compress
 $startTime = if ($timestamps.Count -gt 0) { $timestamps[0] } else { "--:--:--" }
 $endTime   = if ($timestamps.Count -gt 0) { $timestamps[-1] } else { "--:--:--" }
 $totalPoints = $timestamps.Count
@@ -1128,6 +1129,7 @@ $summaryTableRows
                     pointRadius: 0,
                     pointHoverRadius: 5,
                     fill: false,
+                    spanGaps: true,
                     hidden: !isMachineVisible(pc),
                     order: isH ? -1 : 1
                 };
@@ -1685,7 +1687,27 @@ $summaryTableRows
             }
 
             pcsList.forEach(pc => {
-                const s = payload.rawData[pc] ? payload.rawData[pc].stats : null;
+                let s = (payload.stats && payload.stats[pc]) ? payload.stats[pc] : (payload.rawData[pc] ? payload.rawData[pc].stats : null);
+                if (!s && payload.rawData && payload.rawData[pc]) {
+                    const d = payload.rawData[pc];
+                    const validCpu = (d.cpu || []).filter(v => v !== null);
+                    const validRam = (d.ramPct || []).filter(v => v !== null);
+                    const validTemp = (d.temp || []).filter(v => v !== null);
+                    const isOnline = validCpu.length > 0 && d.cpu[d.cpu.length - 1] !== null;
+                    s = {
+                        isOnline: isOnline,
+                        latestCpu: isOnline ? d.cpu[d.cpu.length - 1] : 0,
+                        latestRam: isOnline ? d.ramPct[d.ramPct.length - 1] : 0,
+                        latestTemp: validTemp.length > 0 ? validTemp[validTemp.length - 1] : null,
+                        latestTx: (d.tx && d.tx.length > 0) ? d.tx[d.tx.length - 1] : 0,
+                        latestIoW: (d.ioW && d.ioW.length > 0) ? d.ioW[d.ioW.length - 1] : 0,
+                        diskFree: (d.diskFree && d.diskFree.length > 0) ? d.diskFree[d.diskFree.length - 1] : 0,
+                        ping: (d.ping && d.ping.length > 0) ? d.ping[d.ping.length - 1] : 0,
+                        uptime: (d.uptime && d.uptime.length > 0) ? d.uptime[d.uptime.length - 1] : 'N/D',
+                        avgCpu: validCpu.length > 0 ? Math.round(validCpu.reduce((a,b)=>a+b,0)/validCpu.length) : 0,
+                        avgRam: validRam.length > 0 ? Math.round(validRam.reduce((a,b)=>a+b,0)/validRam.length) : 0
+                    };
+                }
                 if (!s) return;
 
                 const sDot = document.getElementById('cardStatusDot_' + pc);
@@ -1904,6 +1926,7 @@ window.updateDashboardData({
     totalPoints: $totalPoints,
     timestamps: $jsonTimestamps,
     rawData: $jsonData,
+    stats: $jsonStats,
     topProcesses: $topProcessesJson
 });
 "@
