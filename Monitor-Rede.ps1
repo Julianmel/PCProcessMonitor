@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$MaxIterations = 0,
     [int]$IntervalSeconds = 5,
     [pscredential]$Credential = $null
@@ -9,6 +9,26 @@ param(
 # ============================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding  = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+# Ajusta a largura da janela e do buffer do console para acomodar o painel sem quebras
+try {
+    $rawUI = $Host.UI.RawUI
+    $maxWidth = [math]::Max($rawUI.WindowSize.Width, $rawUI.MaxPhysicalWindowSize.Width)
+    $targetWidth = [math]::Min(215, $maxWidth)
+    if ($targetWidth -gt $rawUI.WindowSize.Width) {
+        $rawUI.BufferSize = [System.Management.Automation.Host.Size]::new($targetWidth, [math]::Max(500, $rawUI.BufferSize.Height))
+        $rawUI.WindowSize = [System.Management.Automation.Host.Size]::new($targetWidth, [math]::Min(35, $rawUI.MaxPhysicalWindowSize.Height))
+    }
+} catch {}
+
+# Credencial padronizada de telemetria para a rede JFMELGACO (Workgroup)
+$script:defaultTelemetryCred = $null
+try {
+    $secPass = ConvertTo-SecureString "Monitor2026@" -AsPlainText -Force
+    $script:defaultTelemetryCred = New-Object System.Management.Automation.PSCredential("Monitor", $secPass)
+} catch {}
 
 # Cores ANSI para formatação dinâmica
 $esc = [char]27
@@ -120,31 +140,43 @@ function Get-MachineMetrics {
     try {
         $sessionArgs = @{ ErrorAction = 'Stop' }
         if (-not $isLocal) {
-            # Tenta primeiro WinRM padrão; se falhar, faz fallback para DCOM (RPC)
-            try {
-                $testArgs = @{
-                    ComputerName = $ComputerName
-                    OperationTimeoutSec = 2
-                    ErrorAction = 'Stop'
+            $effectiveCred = if ($Cred) { $Cred } else { $script:defaultTelemetryCred }
+            $optDcom = New-CimSessionOption -Protocol Dcom
+
+            # 1. Tenta DCOM com a credencial de telemetria da rede (protocolo mais confiável e rápido em Workgroup)
+            $connected = $false
+            if ($effectiveCred) {
+                try {
+                    $cimSession = New-CimSession -ComputerName $ComputerName -Credential $effectiveCred -SessionOption $optDcom -OperationTimeoutSec 3 -ErrorAction Stop
+                    $null = Get-CimInstance Win32_OperatingSystem -CimSession $cimSession -ErrorAction Stop
+                    $sessionArgs['CimSession'] = $cimSession
+                    $needCleanup = $true
+                    $connected = $true
+                } catch {
+                    if ($cimSession) { Remove-CimSession $cimSession -ErrorAction SilentlyContinue; $cimSession = $null }
                 }
-                if ($Cred) { $testArgs['Credential'] = $Cred }
-                $null = Get-CimInstance Win32_OperatingSystem @testArgs
-                $sessionArgs['ComputerName'] = $ComputerName
-                $sessionArgs['OperationTimeoutSec'] = 3
-                if ($Cred) { $sessionArgs['Credential'] = $Cred }
-            } catch {
-                # Fallback para DCOM (resiliente a perfis de rede públicos e restrições de porta WinRM)
-                $opt = New-CimSessionOption -Protocol Dcom
-                $cimSessionArgs = @{
-                    ComputerName = $ComputerName
-                    SessionOption = $opt
-                    OperationTimeoutSec = 3
-                    ErrorAction = 'Stop'
+            }
+
+            # 2. Se falhar, tenta WinRM sem credencial (autenticação integrada da sessão local)
+            if (-not $connected) {
+                try {
+                    $optWsman = New-CimSessionOption -Protocol Wsman
+                    $cimSession = New-CimSession -ComputerName $ComputerName -SessionOption $optWsman -OperationTimeoutSec 2 -ErrorAction Stop
+                    $null = Get-CimInstance Win32_OperatingSystem -CimSession $cimSession -ErrorAction Stop
+                    $sessionArgs['CimSession'] = $cimSession
+                    $needCleanup = $true
+                    $connected = $true
+                } catch {
+                    if ($cimSession) { Remove-CimSession $cimSession -ErrorAction SilentlyContinue; $cimSession = $null }
                 }
-                if ($Cred) { $cimSessionArgs['Credential'] = $Cred }
-                $cimSession = New-CimSession @cimSessionArgs
-                $needCleanup = $true
+            }
+
+            # 3. Se falhar, tenta DCOM sem credencial (fallback de sessão local)
+            if (-not $connected) {
+                $cimSession = New-CimSession -ComputerName $ComputerName -SessionOption $optDcom -OperationTimeoutSec 3 -ErrorAction Stop
+                $null = Get-CimInstance Win32_OperatingSystem -CimSession $cimSession -ErrorAction Stop
                 $sessionArgs['CimSession'] = $cimSession
+                $needCleanup = $true
             }
         }
 
@@ -493,22 +525,22 @@ while ($true) {
     }
 
     # Imprime tabela com cabeçalho, dados e rodapé de status
-    $headerBanner = "[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) =============================="
+    $headerBanner = "[$hora] === DESEMPENHO DA REDE (JFMELGACO) ================================================================================================================================================="
     $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime               Temperatura"
     $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     ------               -----------"
 
-    Write-Host "$cCyan$headerBanner$cReset".PadRight(195)
-    Write-Host "$cYellow$headerCols$cReset".PadRight(195)
-    Write-Host "$cGray$headerDiv$cReset".PadRight(195)
+    Write-Host "$cCyan$headerBanner$cReset$esc[K"
+    Write-Host "$cYellow$headerCols$cReset$esc[K"
+    Write-Host "$cGray$headerDiv$cReset$esc[K"
 
     foreach ($cl in $consoleLines) {
-        Write-Host $cl.PadRight(195)
+        Write-Host "$cl$esc[K"
     }
 
-    $legenda = "$cGray--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
-    $infoRodape = "$cGray[$sampleCount amostras] $cYellow▲ Amarelo = Subiu$cReset $cGray|$cReset $cGreen▼ Verde = Desceu$cReset $cGray|$cReset $cWhite■ Branco = Estável$cReset $cGray|$cReset $cNoAccess■ Magenta = Sem Acesso$cReset $cGray| Log: $logFileName$cReset"
-    Write-Host $legenda.PadRight(195)
-    Write-Host $infoRodape.PadRight(195)
+    $legenda = "$cGray-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------$cReset"
+    $infoRodape = "$cGray[$sampleCount amostras] $cYellow[^] Amarelo = Subiu$cReset $cGray|$cReset $cGreen[v] Verde = Desceu$cReset $cGray|$cReset $cWhite[=] Branco = Estavel$cReset $cGray|$cReset $cNoAccess[x] Magenta = Sem Acesso$cReset $cGray| Log: $logFileName$cReset"
+    Write-Host "$legenda$esc[K"
+    Write-Host "$infoRodape$esc[K"
 
     # 5. Guarda as métricas atuais para a próxima comparação
     $prevMetrics = $currentMetrics
