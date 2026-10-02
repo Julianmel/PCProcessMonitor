@@ -1,4 +1,4 @@
-﻿# Diretrizes Globais do Projeto (Antigravity Rules)
+# Diretrizes Globais do Projeto (Antigravity Rules)
 
 Este repositório adota as regras de governança de projetos, automação de calendário e salvaguardas técnicas do Windows PowerShell definidas a seguir.
 
@@ -7,7 +7,7 @@ Este repositório adota as regras de governança de projetos, automação de cal
 ## 1. Governança do GitHub Projects & Gestão de Issues
 * **Padrão Obrigatório de Novos Projetos:** Todo projeto criado no GitHub Projects DEVE utilizar a feature estilo **KANBAN**.
 * **Campos Customizados Obrigatórios:** Incluir no projeto os campos:
-  * `Start Time` (Hora de início da issue)
+  * `Start Time` (Data e hora de início no formato obrigatório `"AAAAMMDD hh:mm"`, ex: `"20261002 11:35"`)
   * `End Time` (Hora de fim da issue)
   * `Total Time` (Tempo total decorrido da issue)
 * **View Principal do Projeto:** O projeto deve conter uma visualização principal com as colunas rigorosamente nesta ordem:
@@ -20,7 +20,7 @@ Este repositório adota as regras de governança de projetos, automação de cal
   7. `End Time`
   8. `Total Time`
   9. `Closed`
-* **Transição Automática para "In progress":** Sempre que for atribuída a data e hora de início (`Start Date` / `Start Time`), alterar **IMEDIATAMENTE** o status da issue no projeto para **`In progress`**.
+* **Transição Automática para "In progress":** Sempre que for atribuída a data e hora de início (`Start Date` / `Start Time`), registrar obrigatoriamente a data atual no formato `AAAAMMDD` antes da hora no campo `Start Time` (resultando em `"AAAAMMDD hh:mm"`) e alterar **IMEDIATAMENTE** o status da issue no projeto para **`In progress`**.
 * **Reabastecimento Automático da Fila ("Ready"):** Sempre que uma issue for movida para **`In progress`**, identificar imediatamente a próxima issue prioritária em **`Backlog`** e movê-la para o status **`Ready`**, sinalizando que será a próxima a ser executada na sequência da esteira.
 * **Fechamento em "Done":**
   * Registrar `End Date`, `End Time` e o tempo real decorrido em `Total Time` (no GitHub o tempo não necessita ser múltiplo de 10 min).
