@@ -1,4 +1,4 @@
-﻿param(
+param(
     [int]$MaxIterations = 0,
     [int]$IntervalSeconds = 5,
     [pscredential]$Credential = $null
@@ -22,8 +22,7 @@ $cRed      = "$esc[91m"  # OFFLINE
 $cOnline   = "$esc[92m"  # ONLINE
 $cNoAccess = "$esc[95m"  # SEM ACESSO (Rosa/Magenta: computador ligado, mas consulta WMI bloqueada)
 
-# Resolução dinâmica da pasta de logs (suporta execução em qualquer computador e pasta 'Data' se existir)
-$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } elseif ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { (Get-Location).Path }
 if (-not $ScriptDir) { $ScriptDir = $pwd.Path }
 
 # Lista canônica de todas as máquinas da rede (carregada de machines.json com ordenação alfabética estrita)
@@ -248,16 +247,31 @@ function Get-MachineMetrics {
         # 7. Temperatura do Hardware (°C)
         $tempVal = $null
         try {
-            $tz = Get-CimInstance -Namespace "root/wmi" -ClassName "MSAcpi_ThermalZoneTemperature" @sessionArgs -ErrorAction SilentlyContinue
-            if ($tz -and $tz.CurrentTemperature -gt 0) {
-                $tempVal = [math]::Round(($tz.CurrentTemperature - 2732) / 10, 0)
+            $tzList = @(Get-CimInstance -Namespace "root/wmi" -ClassName "MSAcpi_ThermalZoneTemperature" @sessionArgs)
+            $validTz = $tzList | Where-Object { $_.CurrentTemperature -gt 2732 } | Select-Object -First 1
+            if ($validTz) {
+                $tempVal = [math]::Round(($validTz.CurrentTemperature - 2732) / 10, 0)
             }
         } catch {}
         if ($null -eq $tempVal) {
             try {
-                $tp = Get-CimInstance -ClassName Win32_TemperatureProbe @sessionArgs -ErrorAction SilentlyContinue |
-                      Where-Object { $_.CurrentReading -gt 0 } | Select-Object -First 1
+                $tp = @(Get-CimInstance -ClassName Win32_TemperatureProbe @sessionArgs |
+                        Where-Object { $_.CurrentReading -gt 0 }) | Select-Object -First 1
                 if ($tp) { $tempVal = [math]::Round($tp.CurrentReading, 0) }
+            } catch {}
+        }
+        if ($null -eq $tempVal) {
+            try {
+                $ohm = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                         Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
+                if ($ohm) { $tempVal = [math]::Round($ohm.Value, 0) }
+            } catch {}
+        }
+        if ($null -eq $tempVal) {
+            try {
+                $lhm = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                         Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
+                if ($lhm) { $tempVal = [math]::Round($lhm.Value, 0) }
             } catch {}
         }
 
@@ -323,8 +337,10 @@ function Build-Lines($m, $prev) {
         $uptimeDisplay = if ($m.Uptime) { $m.Uptime } else { "---" }
         $cUptimeStr = "Uptime: {0,7}" -f $uptimeDisplay
         $fUptimeStr = "Uptime: {0,7}" -f $uptimeDisplay
-        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5,-24}  {6}  {7}" -f $m.Display, "---", "---", "---", "---", "---", $cPingStr, $cUptimeStr
-        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---", $fPingStr, $fUptimeStr
+        $cTempStr = "Temp: ---"
+        $fTempStr = "Temp: ---"
+        $cLine = "$cStatus {0,-22} {1,-16} {2,-28} {3,-22} {4,-24} {5,-24}  {6}  {7}  {8}" -f $m.Display, "---", "---", "---", "---", "---", $cPingStr, $cUptimeStr, $cTempStr
+        $fLine = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}  {9}" -f $fStatus, $m.Display, "---", "---", "---", "---", "---", $fPingStr, $fUptimeStr, $fTempStr
         return @{ Console = $cLine; File = $fLine }
     }
 
@@ -357,7 +373,8 @@ function Build-Lines($m, $prev) {
     $cNetStr    = "Rx: $rxColored | Tx: $txColored"
     $cPingStr   = "Ping: $pingColored"
     $cUptimeStr = "Uptime: {0,7}" -f $m.Uptime
-    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr  $cPingStr  $cUptimeStr"
+    $cTempStr   = if ($null -ne $m.Temp) { "Temp: {0,2}°C" -f $m.Temp } else { "Temp: ---" }
+    $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr  $cPingStr  $cUptimeStr  $cTempStr"
 
     # Linha para o arquivo texto (texto puro, compatível com regex de auditoria)
     $fStatus    = "ONLINE    "
@@ -369,7 +386,8 @@ function Build-Lines($m, $prev) {
     $fPingStr   = "Ping: {0,3}ms" -f $m.Ping
     $bootShort  = if ($m.BootDate -and $m.BootDate.Length -ge 16) { $m.BootDate.Substring(0, 16) } else { $m.BootDate }
     $fUptimeStr = "Uptime: {0,7} (Boot: {1})" -f $m.Uptime, $bootShort
-    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr, $fPingStr, $fUptimeStr
+    $fTempStr   = if ($null -ne $m.Temp) { "Temp: {0}°C" -f $m.Temp } else { "Temp: ---" }
+    $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}  {9}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr, $fPingStr, $fUptimeStr, $fTempStr
 
     return @{ Console = $cLine; File = $fLine }
 }
@@ -402,8 +420,8 @@ while ($true) {
     # 2. Grava bloco no arquivo texto (AAAAMMDD - HHMM - PC Processmonitor.txt)
     $fileBlock = [System.Text.StringBuilder]::new()
     $null = $fileBlock.AppendLine("[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================")
-    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime / Último Boot")
-    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     --------------------")
+    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime / Último Boot             Temperatura")
+    $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     --------------------             -----------")
     foreach ($fl in $fileLines) {
         $null = $fileBlock.AppendLine($fl)
     }
@@ -476,8 +494,8 @@ while ($true) {
 
     # Imprime tabela com cabeçalho, dados e rodapé de status
     $headerBanner = "[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) =============================="
-    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime"
-    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     ------"
+    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime               Temperatura"
+    $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     ------               -----------"
 
     Write-Host "$cCyan$headerBanner$cReset".PadRight(195)
     Write-Host "$cYellow$headerCols$cReset".PadRight(195)

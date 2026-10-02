@@ -162,7 +162,7 @@ foreach ($line in $lines) {
         }
 
         $uptimeVal = $null
-        if ($line -match 'Uptime:\s*(?<uptime>[^\|\r\n]+?)(?=\s*\(Boot:|\s*$)') {
+        if ($line -match 'Uptime:\s*(?<uptime>[^\|\r\n]+?)(?=\s*\(Boot:|\s*Temp:|\s*$)') {
             $uptimeVal = $matches['uptime'].Trim()
         }
 
@@ -508,6 +508,7 @@ foreach ($pc in $pcsList) {
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('$pc')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
                         <span id="card_${pc}_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">$($st.ping)ms</span>
                         <span id="card_${pc}_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; $($st.uptime)</span>
+                        <span id="card_${pc}_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; $(if ($st.latestTemp) { "$($st.latestTemp)&deg;C" } else { "---" })</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
@@ -1775,6 +1776,8 @@ $summaryTableRows
                 if (cTx) cTx.innerText = s.latestTx + 'k';
                 if (cPing) cPing.innerText = s.ping + 'ms';
                 if (cUptime && s.uptime) cUptime.innerHTML = '&#9201; ' + s.uptime;
+                const cTemp = document.getElementById('card_' + pc + '_temp');
+                if (cTemp) cTemp.innerHTML = (s.latestTemp && s.latestTemp > 0) ? '&#127777;&#xFE0F; ' + s.latestTemp + '&deg;C' : '&#127777;&#xFE0F; ---';
 
                 // Tabela Resumo
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
