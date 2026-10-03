@@ -306,32 +306,52 @@ function Get-MachineMetrics {
 
         # 7. Temperatura do Hardware (°C)
         $tempVal = $null
+        
+        # 7.1 Provedor especializado LibreHardwareMonitor (DTS real por núcleo/encapsulamento de CPU)
         try {
-            $tzList = @(Get-CimInstance -Namespace "root/wmi" -ClassName "MSAcpi_ThermalZoneTemperature" @sessionArgs)
-            $validTz = $tzList | Where-Object { $_.CurrentTemperature -gt 2732 } | Select-Object -First 1
-            if ($validTz) {
-                $tempVal = [math]::Round(($validTz.CurrentTemperature - 2732) / 10, 0)
+            $lhm = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                     Where-Object { $_.Value -gt 0 -and ($_.Name -like "*CPU*" -or $_.Name -like "*Core*" -or $_.Name -like "*Package*") }) | Select-Object -First 1
+            if (-not $lhm) {
+                $lhm = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                         Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
             }
+            if ($lhm) { $tempVal = [math]::Round($lhm.Value, 0) }
         } catch {}
+
+        # 7.2 Provedor especializado OpenHardwareMonitor
+        if ($null -eq $tempVal) {
+            try {
+                $ohm = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                         Where-Object { $_.Value -gt 0 -and ($_.Name -like "*CPU*" -or $_.Name -like "*Core*" -or $_.Name -like "*Package*") }) | Select-Object -First 1
+                if (-not $ohm) {
+                    $ohm = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                             Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
+                }
+                if ($ohm) { $tempVal = [math]::Round($ohm.Value, 0) }
+            } catch {}
+        }
+
+        # 7.3 Provedor ACPI nativo do Windows (MSAcpi_ThermalZoneTemperature em root/wmi)
+        if ($null -eq $tempVal) {
+            try {
+                $tzList = @(Get-CimInstance -Namespace "root/wmi" -ClassName "MSAcpi_ThermalZoneTemperature" @sessionArgs)
+                # Prioriza zonas com leituras dinâmicas (descarta 2982 dK = 25°C estático de BIOS Dell sem driver OEM)
+                $validTz = $tzList | Where-Object { $_.CurrentTemperature -gt 2732 -and $_.CurrentTemperature -ne 2982 } | Select-Object -First 1
+                if (-not $validTz) {
+                    $validTz = $tzList | Where-Object { $_.CurrentTemperature -gt 2732 } | Select-Object -First 1
+                }
+                if ($validTz) {
+                    $tempVal = [math]::Round(($validTz.CurrentTemperature - 2732) / 10, 0)
+                }
+            } catch {}
+        }
+
+        # 7.4 Fallback para Win32_TemperatureProbe (root/cimv2)
         if ($null -eq $tempVal) {
             try {
                 $tp = @(Get-CimInstance -ClassName Win32_TemperatureProbe @sessionArgs |
                         Where-Object { $_.CurrentReading -gt 0 }) | Select-Object -First 1
                 if ($tp) { $tempVal = [math]::Round($tp.CurrentReading, 0) }
-            } catch {}
-        }
-        if ($null -eq $tempVal) {
-            try {
-                $ohm = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
-                         Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
-                if ($ohm) { $tempVal = [math]::Round($ohm.Value, 0) }
-            } catch {}
-        }
-        if ($null -eq $tempVal) {
-            try {
-                $lhm = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
-                         Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
-                if ($lhm) { $tempVal = [math]::Round($lhm.Value, 0) }
             } catch {}
         }
 
