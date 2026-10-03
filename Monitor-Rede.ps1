@@ -180,16 +180,44 @@ function Get-MachineMetrics {
             }
         }
 
-        # 1. CPU
-        $cpuObj = Get-CimInstance Win32_Processor @sessionArgs | Measure-Object -Property LoadPercentage -Average
-        $cpu = [math]::Round($cpuObj.Average, 0)
+        # 1. CPU (Amostragem de alta fidelidade alinhada ao Task Manager do Windows)
+        $cpu = $null
+        try {
+            $perfCpu = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor @sessionArgs | Where-Object { $_.Name -eq '_Total' }
+            if ($perfCpu -and $null -ne $perfCpu.PercentProcessorTime) {
+                $cpu = [math]::Min(100, [math]::Max(0, [math]::Round([double]$perfCpu.PercentProcessorTime, 0)))
+            }
+        } catch {}
 
-        # 2. Memória RAM, Uptime e Último Boot
+        if ($null -eq $cpu) {
+            try {
+                $cpuObj = Get-CimInstance Win32_Processor @sessionArgs | Measure-Object -Property LoadPercentage -Average
+                $cpu = [math]::Round($cpuObj.Average, 0)
+            } catch {
+                $cpu = 0
+            }
+        }
+
+        # 2. Memória RAM, Uptime e Último Boot (Alinhamento com o modelo de memória em uso do Task Manager)
         $os = Get-CimInstance Win32_OperatingSystem @sessionArgs
         $totalRam = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
-        $freeRam  = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
-        $usedRam  = [math]::Round($totalRam - $freeRam, 1)
-        $pctRam   = [math]::Round(($usedRam / $totalRam) * 100, 0)
+
+        # Tenta calcular memória em uso através de AvailableMBytes (desconsiderando cache Standby, idêntico ao Task Manager)
+        $usedRam = $null
+        try {
+            $perfMem = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory @sessionArgs -ErrorAction Stop
+            if ($perfMem -and $null -ne $perfMem.AvailableMBytes) {
+                $availGB = [math]::Round($perfMem.AvailableMBytes / 1024, 1)
+                $usedRam = [math]::Max(0.0, [math]::Round($totalRam - $availGB, 1))
+            }
+        } catch {}
+
+        # Fallback para FreePhysicalMemory caso o contador de desempenho falhe
+        if ($null -eq $usedRam) {
+            $freeRam = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
+            $usedRam = [math]::Round($totalRam - $freeRam, 1)
+        }
+        $pctRam = [math]::Min(100, [math]::Max(0, [math]::Round(($usedRam / $totalRam) * 100, 0)))
 
         # Uptime e Data do Último Boot
         $lastBoot = $os.LastBootUpTime
