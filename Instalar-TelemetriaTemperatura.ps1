@@ -24,9 +24,8 @@ $networkFallback = "V:\Documents\PCProcessMonitor\Tools\LibreHardwareMonitor"
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin -and -not $Diagnostico -and -not $SemElevacao) {
     Write-Host "Solicitando permissões de Administrador para configurar serviços de hardware..." -ForegroundColor Yellow
-    $scriptPath = $MyInvocation.MyCommand.Path
-    if (-not $scriptPath) { $scriptPath = "$PSScriptRoot\Instalar-TelemetriaTemperatura.ps1" }
-    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -NoExit -File `"$scriptPath`"" -Verb RunAs
+    $scriptPath = if ($PSCommandPath) { $PSCommandPath } elseif ($PSScriptRoot) { "$PSScriptRoot\Instalar-TelemetriaTemperatura.ps1" } else { "C:\Users\Julian\Dev\PCProcessMonitor\Instalar-TelemetriaTemperatura.ps1" }
+    Start-Process powershell.exe -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", "`"$scriptPath`"") -Verb RunAs
     exit
 }
 
