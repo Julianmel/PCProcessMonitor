@@ -119,6 +119,17 @@ try {
     $pCim.Properties["SD"].Value = $binCim
     $rCim = $invCim.InvokeMethod("SetSD", $pCim, $null)
     Write-Host "      [OK] Namespace 'root\cimv2' configurado com descritor binario comprovado (ReturnCode: $($rCim['ReturnValue']))" -ForegroundColor Green
+
+    # 5.3 Concede permissão a 'Monitor' em 'root\LibreHardwareMonitor' se disponível
+    try {
+        if (Get-CimInstance -Namespace "root" -ClassName "__NAMESPACE" -Filter "Name='LibreHardwareMonitor'" -ErrorAction SilentlyContinue) {
+            $invLhm = New-Object System.Management.ManagementClass("root\LibreHardwareMonitor:__SystemSecurity")
+            $pLhm = $invLhm.GetMethodParameters("SetSD")
+            $pLhm.Properties["SD"].Value = $binCim
+            $rLhm = $invLhm.InvokeMethod("SetSD", $pLhm, $null)
+            Write-Host "      [OK] Namespace 'root\LibreHardwareMonitor' configurado para 'Monitor' (ReturnCode: $($rLhm['ReturnValue']))" -ForegroundColor Green
+        }
+    } catch {}
 } catch {
     Write-Warning "      [AVISO] Erro ao configurar WMI: $($_.Exception.Message)"
 }
