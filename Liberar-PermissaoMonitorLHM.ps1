@@ -8,7 +8,7 @@
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Host "Solicitando permissões de Administrador..." -ForegroundColor Yellow
-    $scriptPath = if ($PSCommandPath) { $PSCommandPath } else { "$PSScriptRoot\Liberar-PermissaoMonitorLHM.ps1" }
+    $scriptPath = if ($PSCommandPath) { $PSCommandPath } elseif ($PSScriptRoot) { "$PSScriptRoot\Liberar-PermissaoMonitorLHM.ps1" } else { "C:\Users\Julian\Dev\PCProcessMonitor\Liberar-PermissaoMonitorLHM.ps1" }
     Start-Process powershell.exe -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-NoExit", "-File", "`"$scriptPath`"") -Verb RunAs
     exit
 }
