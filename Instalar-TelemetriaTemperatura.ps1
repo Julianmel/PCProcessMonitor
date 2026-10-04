@@ -160,6 +160,27 @@ if (-not $Diagnostico) {
         } else {
             Write-Host "      Processo LibreHardwareMonitor já em execução (PID: $($running.Id))." -ForegroundColor White
         }
+
+        # 5. Concede permissão de telemetria remota ao usuário 'Monitor' no namespace root\LibreHardwareMonitor
+        Write-Host "`n[5/5] Configurando permissão remota WMI para o usuário 'Monitor'..." -ForegroundColor Cyan
+        try {
+            $monUser = Get-LocalUser -Name "Monitor" -ErrorAction SilentlyContinue
+            if ($monUser) {
+                $sidObj = (New-Object System.Security.Principal.NTAccount("Monitor")).Translate([System.Security.Principal.SecurityIdentifier])
+                $localSidBytes = New-Object byte[] ($sidObj.BinaryLength)
+                $sidObj.GetBinaryForm($localSidBytes, 0)
+                $b64 = "AQAEgJQAAACkAAAAAAAAABQAAAACAIAABQAAAAAAJAAjAAIAAQUAAAAAAAUVAAAAV3LPoKSHU0cqOBGlBAQAAAASGAA/AAYAAQIAAAAAAAUgAAAAIAIAAAASFAATAAAAAQEAAAAAAAUUAAAAABIUABMAAAABAQAAAAAABRMAAAAAEhQAEwAAAAEBAAAAAAAFCwAAAAECAAAAAAAFIAAAACACAAABAgAAAAAABSAAAAAgAgAA"
+                $bin = [Convert]::FromBase64String($b64)
+                [System.Buffer]::BlockCopy($localSidBytes, 0, $bin, 36, 28)
+                $inv = New-Object System.Management.ManagementClass("root\LibreHardwareMonitor:__SystemSecurity")
+                $p = $inv.GetMethodParameters("SetSD")
+                $p.Properties["SD"].Value = $bin
+                $res = $inv.InvokeMethod("SetSD", $p, $null)
+                Write-Host "      [OK] Namespace root\LibreHardwareMonitor liberado para 'Monitor' (ReturnCode: $($res['ReturnValue']))." -ForegroundColor Green
+            }
+        } catch {
+            Write-Warning "      Aviso ao conceder permissão WMI ao Monitor: $($_.Exception.Message)"
+        }
     } else {
         Write-Host "      [AVISO] Privilégios de Administrador não disponíveis para criar a Tarefa Agendada." -ForegroundColor Yellow
         Write-Host "      Inicie manualmente '$exePath' como Administrador." -ForegroundColor White
