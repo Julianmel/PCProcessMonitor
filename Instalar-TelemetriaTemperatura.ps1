@@ -18,6 +18,7 @@ param(
 $taskName = "PCProcessMonitor_LibreHardwareMonitor"
 $lhmVersion = "v0.9.4"
 $downloadUrl = "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases/download/$lhmVersion/LibreHardwareMonitor-net472.zip"
+$uncFallback = "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor\Tools\LibreHardwareMonitor"
 $networkFallback = "V:\Documents\PCProcessMonitor\Tools\LibreHardwareMonitor"
 
 # Auto-elevação para Administrador caso não seja modo somente-diagnóstico
@@ -85,9 +86,10 @@ if (-not $Diagnostico) {
         $zipTemp = Join-Path $env:TEMP "LibreHardwareMonitor-net472.zip"
         $downloaded = $false
 
-        if (Test-Path $networkFallback) {
-            Write-Host "      Copiando arquivos pré-carregados da rede ($networkFallback)..." -ForegroundColor Gray
-            Copy-Item -Path "$networkFallback\*" -Destination $InstallPath -Recurse -Force -ErrorAction SilentlyContinue
+        $sourceDir = if (Test-Path $uncFallback) { $uncFallback } elseif (Test-Path $networkFallback) { $networkFallback } else { $null }
+        if ($sourceDir) {
+            Write-Host "      Copiando arquivos pré-carregados da rede ($sourceDir)..." -ForegroundColor Gray
+            Copy-Item -Path "$sourceDir\*" -Destination $InstallPath -Recurse -Force -ErrorAction SilentlyContinue
             if (Test-Path $exePath) { $downloaded = $true }
         }
 
