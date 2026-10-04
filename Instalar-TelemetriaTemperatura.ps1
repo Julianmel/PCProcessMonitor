@@ -134,34 +134,50 @@ if (-not $Diagnostico) {
     [System.IO.File]::WriteAllText($cfgPath, $cfgXml, [System.Text.Encoding]::UTF8)
     Write-Host "      Configuração salva em: $cfgPath" -ForegroundColor White
 
-    # 4. Criação da Tarefa Agendada no Windows (Execução com Privilégios Elevados no Logon)
-    Write-Host "`n[4/4] Configurando Tarefa Agendada com privilégios elevados..." -ForegroundColor Cyan
+    # 4. Criação da Tarefa Agendada no Windows (Serviço Headless no Boot sob a conta SYSTEM)
+    Write-Host "`n[4/4] Configurando Tarefa Agendada Headless no boot (SYSTEM sem necessidade de login)..." -ForegroundColor Cyan
+    $headlessScript = Join-Path $InstallPath "Start-LHMHeadless.ps1"
+    $scriptSource = if ($PSScriptRoot -and (Test-Path (Join-Path $PSScriptRoot "Start-LHMHeadless.ps1"))) {
+        Join-Path $PSScriptRoot "Start-LHMHeadless.ps1"
+    } elseif (Test-Path "C:\Users\Julian\Dev\PCProcessMonitor\Start-LHMHeadless.ps1") {
+        "C:\Users\Julian\Dev\PCProcessMonitor\Start-LHMHeadless.ps1"
+    } else {
+        $null
+    }
+
+    if ($scriptSource -and (Test-Path $scriptSource)) {
+        Copy-Item -Path $scriptSource -Destination $headlessScript -Force -ErrorAction SilentlyContinue
+        Write-Host "      Script headless copiado para: $headlessScript" -ForegroundColor White
+    }
+
     if ($isAdmin) {
+        # Encerra eventuais processos anteriores com GUI
+        Get-Process -Name "LibreHardwareMonitor" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
         try {
-            $action = New-ScheduledTaskAction -Execute $exePath
-            $trigger = New-ScheduledTaskTrigger -AtLogOn
-            $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
-            $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 0)
+            $psArgs = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$headlessScript`""
+            $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $psArgs
+            $trigger = New-ScheduledTaskTrigger -AtStartup
+            $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+            $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 0) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
             $null = Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force -ErrorAction Stop
-            Write-Host "      [OK] Tarefa Agendada '$taskName' registrada com sucesso." -ForegroundColor Green
+            Write-Host "      [OK] Tarefa Agendada Headless '$taskName' (AtStartup / SYSTEM) registrada com sucesso." -ForegroundColor Green
         } catch {
             Write-Warning "      Tentando método alternativo via schtasks: $($_.Exception.Message)"
-            & schtasks.exe /Create /TN $taskName /TR "`"$exePath`"" /SC ONLOGON /RL HIGHEST /F | Out-Host
+            $actionCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$headlessScript`""
+            & schtasks.exe /Create /TN $taskName /TR "$actionCmd" /SC ONSTART /RU "SYSTEM" /RL HIGHEST /F | Out-Host
         }
 
-        # Inicia o processo caso não esteja ativo
-        $running = Get-Process -Name "LibreHardwareMonitor" -ErrorAction SilentlyContinue
-        if (-not $running) {
-            Write-Host "      Iniciando LibreHardwareMonitor..." -ForegroundColor Gray
-            try {
-                Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
-            } catch {
-                Start-Process -FilePath $exePath
-            }
-            Start-Sleep -Seconds 4
-        } else {
-            Write-Host "      Processo LibreHardwareMonitor já em execução (PID: $($running.Id))." -ForegroundColor White
+        # Inicia a tarefa agendada headless imediatamente
+        Write-Host "      Iniciando serviço headless do LibreHardwareMonitor..." -ForegroundColor Gray
+        try {
+            Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
+        } catch {
+            & schtasks.exe /Run /TN $taskName 2>$null | Out-Null
         }
+        Start-Sleep -Seconds 4
+        Write-Host "      [OK] Serviço de telemetria headless ativo." -ForegroundColor White
+    }
 
         # 5. Concede permissão de telemetria remota ao usuário 'Monitor' no namespace root\LibreHardwareMonitor
         Write-Host "`n[5/5] Configurando permissão remota WMI para o usuário 'Monitor'..." -ForegroundColor Cyan
