@@ -177,7 +177,6 @@ if (-not $Diagnostico) {
         }
         Start-Sleep -Seconds 4
         Write-Host "      [OK] Serviço de telemetria headless ativo." -ForegroundColor White
-    }
 
         # 5. Concede permissão de telemetria remota ao usuário 'Monitor' no namespace root\LibreHardwareMonitor
         Write-Host "`n[5/5] Configurando permissão remota WMI para o usuário 'Monitor'..." -ForegroundColor Cyan
