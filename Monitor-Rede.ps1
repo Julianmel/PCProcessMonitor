@@ -309,25 +309,44 @@ function Get-MachineMetrics {
         
         # 7.1 Provedor especializado LibreHardwareMonitor (DTS real por núcleo/encapsulamento de CPU)
         try {
-            $lhm = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
-                     Where-Object { $_.Value -gt 0 -and ($_.Name -like "*CPU*" -or $_.Name -like "*Core*" -or $_.Name -like "*Package*") }) | Select-Object -First 1
-            if (-not $lhm) {
-                $lhm = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
-                         Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
+            $lhmSensors = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                            Where-Object { $_.Value -gt 0 -and $_.Name -notlike "*Distance*" -and $_.Name -notlike "*TjMax*" -and $_.Name -notlike "*Margin*" })
+            if ($lhmSensors.Count -gt 0) {
+                # Prioridade 1: CPU Package / Tctl/Tdie
+                $cpuPkg = $lhmSensors | Where-Object { $_.Name -like "*Package*" -or $_.Name -like "*Tctl/Tdie*" } | Select-Object -First 1
+                if ($cpuPkg) {
+                    $tempVal = [math]::Round($cpuPkg.Value, 0)
+                } else {
+                    # Prioridade 2: Sensores de CPU Core (pico térmico entre os núcleos)
+                    $cpuCores = @($lhmSensors | Where-Object { $_.Name -like "*CPU*" -or $_.Name -like "*Core*" })
+                    if ($cpuCores.Count -gt 0) {
+                        $tempVal = [math]::Round(($cpuCores | Measure-Object -Property Value -Maximum).Maximum, 0)
+                    } else {
+                        # Prioridade 3: Maior leitura entre demais sensores térmicos
+                        $tempVal = [math]::Round(($lhmSensors | Measure-Object -Property Value -Maximum).Maximum, 0)
+                    }
+                }
             }
-            if ($lhm) { $tempVal = [math]::Round($lhm.Value, 0) }
         } catch {}
 
         # 7.2 Provedor especializado OpenHardwareMonitor
         if ($null -eq $tempVal) {
             try {
-                $ohm = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
-                         Where-Object { $_.Value -gt 0 -and ($_.Name -like "*CPU*" -or $_.Name -like "*Core*" -or $_.Name -like "*Package*") }) | Select-Object -First 1
-                if (-not $ohm) {
-                    $ohm = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
-                             Where-Object { $_.Value -gt 0 }) | Select-Object -First 1
+                $ohmSensors = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
+                                Where-Object { $_.Value -gt 0 -and $_.Name -notlike "*Distance*" -and $_.Name -notlike "*TjMax*" -and $_.Name -notlike "*Margin*" })
+                if ($ohmSensors.Count -gt 0) {
+                    $cpuPkg = $ohmSensors | Where-Object { $_.Name -like "*Package*" -or $_.Name -like "*Tctl/Tdie*" } | Select-Object -First 1
+                    if ($cpuPkg) {
+                        $tempVal = [math]::Round($cpuPkg.Value, 0)
+                    } else {
+                        $cpuCores = @($ohmSensors | Where-Object { $_.Name -like "*CPU*" -or $_.Name -like "*Core*" })
+                        if ($cpuCores.Count -gt 0) {
+                            $tempVal = [math]::Round(($cpuCores | Measure-Object -Property Value -Maximum).Maximum, 0)
+                        } else {
+                            $tempVal = [math]::Round(($ohmSensors | Measure-Object -Property Value -Maximum).Maximum, 0)
+                        }
+                    }
                 }
-                if ($ohm) { $tempVal = [math]::Round($ohm.Value, 0) }
             } catch {}
         }
 
