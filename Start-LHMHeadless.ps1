@@ -14,19 +14,28 @@ param(
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+$logFile = Join-Path $InstallPath "lhm_headless.log"
+function Write-Log($msg) {
+    $line = "[{0}] {1}" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"), $msg
+    try { Add-Content -Path $logFile -Value $line -Force } catch {}
+}
+
+Write-Log "=== INICIANDO Start-LHMHeadless (PID: $PID, Session: $((Get-Process -Id $PID).SessionId), User: $env:USERNAME) ==="
+
 $dllPath = Join-Path $InstallPath "LibreHardwareMonitorLib.dll"
 $exePath = Join-Path $InstallPath "LibreHardwareMonitor.exe"
 
 if (-not (Test-Path $dllPath) -or -not (Test-Path $exePath)) {
-    Write-Error "Bibliotecas do LibreHardwareMonitor não encontradas em $InstallPath"
+    Write-Log "[ERRO] Bibliotecas do LibreHardwareMonitor não encontradas em $InstallPath"
     exit 1
 }
 
 try {
     $null = [System.Reflection.Assembly]::LoadFrom($dllPath)
     $null = [System.Reflection.Assembly]::LoadFrom($exePath)
+    Write-Log "[OK] Assemblies carregados com sucesso."
 } catch {
-    Write-Error "Falha ao carregar assemblies: $($_.Exception.Message)"
+    Write-Log "[ERRO] Falha ao carregar assemblies: $($_.Exception.ToString())"
     exit 1
 }
 
@@ -40,21 +49,34 @@ $computer.IsNetworkEnabled = $false
 $computer.IsControllerEnabled = $false
 
 try {
+    Write-Log "Abrindo Computer..."
     $computer.Open()
+    Write-Log "[OK] Computer.Open() concluído. Total de Hardware: $($computer.Hardware.Count)"
+    foreach ($h in $computer.Hardware) {
+        Write-Log "  Hardware detectado: $($h.Name) ($($h.HardwareType)) - Sensores: $($h.Sensors.Count)"
+        foreach ($s in $h.Sensors) {
+            if ($s.SensorType -eq "Temperature") {
+                Write-Log "    Sensor Térmico: $($s.Name) = $($s.Value) °C"
+            }
+        }
+    }
 } catch {
-    Write-Error "Falha ao abrir Computer: $($_.Exception.Message)"
+    Write-Log "[ERRO] Falha ao abrir Computer: $($_.Exception.ToString())"
     exit 1
 }
 
 $wmi = $null
 try {
+    Write-Log "Instanciando WmiProvider..."
     $wmi = New-Object LibreHardwareMonitor.Wmi.WmiProvider($computer)
+    Write-Log "[OK] WmiProvider instanciado com sucesso."
 } catch {
-    Write-Error "Falha ao instanciar WmiProvider: $($_.Exception.Message)"
+    Write-Log "[ERRO] Falha ao instanciar WmiProvider: $($_.Exception.ToString())"
     $computer.Close()
     exit 1
 }
 
+# Permissão para usuário Monitor
 try {
     $monUser = Get-LocalUser -Name "Monitor" -ErrorAction SilentlyContinue
     if ($monUser) {
@@ -67,12 +89,18 @@ try {
         $inv = New-Object System.Management.ManagementClass("root\LibreHardwareMonitor:__SystemSecurity")
         $p = $inv.GetMethodParameters("SetSD")
         $p.Properties["SD"].Value = $bin
-        $null = $inv.InvokeMethod("SetSD", $p, $null)
+        $res = $inv.InvokeMethod("SetSD", $p, $null)
+        Write-Log "[OK] SetSD executado para Monitor (ReturnCode: $($res['ReturnValue']))."
     }
-} catch {}
+} catch {
+    Write-Log "[AVISO] Falha ao definir SetSD: $($_.Exception.Message)"
+}
 
+Write-Log "Iniciando loop contínuo de atualização..."
+$loopCount = 0
 try {
     while ($true) {
+        $loopCount++
         foreach ($hw in $computer.Hardware) {
             $hw.Update()
             foreach ($sub in $hw.SubHardware) {
@@ -80,11 +108,15 @@ try {
             }
         }
         $wmi.Update()
+        if ($loopCount % 60 -eq 1) {
+            Write-Log "Loop ativo (ciclo #$loopCount) - WMI atualizado."
+        }
         Start-Sleep -Seconds $IntervalSeconds
     }
 } catch {
-    Write-Error "Erro no ciclo de atualização WMI: $($_.Exception.Message)"
+    Write-Log "[ERRO] Erro no ciclo de atualização WMI: $($_.Exception.ToString())"
 } finally {
+    Write-Log "Finalizando Start-LHMHeadless..."
     if ($wmi) {
         try { $wmi.Dispose() } catch {}
     }
