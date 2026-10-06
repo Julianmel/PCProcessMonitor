@@ -1054,7 +1054,7 @@ $summaryTableRows
             },
             elements: {
                 line: { tension: 0.25, borderWidth: 2 },
-                point: { radius: 2, hoverRadius: 5 }
+                point: { radius: 0, hoverRadius: 0 }
             }
         };
 
@@ -1134,8 +1134,8 @@ $summaryTableRows
                     backgroundColor: isH ? 'rgba(255,255,255,0.1)' : (colors[pc] ? colors[pc].bg : 'rgba(56,189,248,0.1)'),
                     borderWidth: isH ? 3.5 : 2,
                     pointBackgroundColor: isH ? '#ffffff' : col,
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
                     fill: false,
                     spanGaps: true,
                     hidden: !isMachineVisible(pc),
@@ -1304,8 +1304,8 @@ $summaryTableRows
                     ds.borderColor = isH ? '#ffffff' : origCol;
                     ds.borderWidth = isH ? 3.5 : 2;
                     ds.pointBackgroundColor = isH ? '#ffffff' : origCol;
-                    ds.pointRadius = 2;
-                    ds.pointHoverRadius = 5;
+                    ds.pointRadius = 0;
+                    ds.pointHoverRadius = 0;
                     ds.order = isH ? -1 : 1;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
