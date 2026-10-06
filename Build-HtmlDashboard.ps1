@@ -144,7 +144,8 @@ foreach ($line in $lines) {
 
     if ($null -eq $currentTs) { continue }
 
-    if ($line -match '^(ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>[A-Za-z0-9_-]+)(?:\s+\(Local\))?(?:\s+|$)') {
+    if ($line -match '^(?<status>ONLINE|OFFLINE|SEM ACESSO)\s+(?<pc>[A-Za-z0-9_-]+)(?:\s+\(Local\))?(?:\s+|$)') {
+        $lineStatus = $matches['status']
         $rawPc = $matches['pc']
         $pc = $rawPc
         if ($pc -eq 'JFMELGACO3') { $pc = 'JFMELGACO-4' }
@@ -163,12 +164,14 @@ foreach ($line in $lines) {
 
         $uptimeVal = $null
         if ($line -match 'Uptime:\s*(?<uptime>[^\|\r\n]+?)(?=\s*\(Boot:|\s*Temp:|\s*$)') {
-            $uptimeVal = $matches['uptime'].Trim()
+            $rawU = $matches['uptime'].Trim()
+            if ($rawU -ne '---' -and $rawU -ne 'N/D') { $uptimeVal = $rawU }
         }
 
         $bootVal = $null
         if ($line -match '\(Boot:\s*(?<boot>[^\)]+)\)') {
-            $bootVal = $matches['boot'].Trim()
+            $rawB = $matches['boot'].Trim()
+            if ($rawB -ne '---' -and $rawB -ne 'N/D') { $bootVal = $rawB }
         }
 
         $tempVal = $null
@@ -176,7 +179,7 @@ foreach ($line in $lines) {
             $tempVal = [int]$matches['temp']
         }
 
-        if ($line -match $pattern) {
+        if ($lineStatus -eq 'ONLINE' -and $line -match $pattern -and -not [string]::IsNullOrWhiteSpace($matches['cpu'])) {
             $baseMatches = $matches
             $cpu = [int]$baseMatches['cpu']
             $ramPct = [int]$baseMatches['ramPct']
@@ -488,7 +491,7 @@ foreach ($pc in $pcsList) {
 
     $cardsHtml += @"
             <!-- Card: $pc -->
-            <div id="cardHost_$pc" onclick="selectMachineHighlight('$pc')" title="Clique para destacar $pc em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 $hoverBorder rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $offlineClass">
+            <div id="cardHost_$pc" onclick="selectMachineHighlight('$pc')" title="Clique para destacar $pc em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 $hoverBorder rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $offlineClass$(if (-not $st.isOnline) { 'opacity-60 ' })">
                 <div id="cardTopBar_$pc" class="absolute top-0 left-0 right-0 h-1 $cfgBar transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
                     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -506,31 +509,31 @@ foreach ($pc in $pcsList) {
                     </span>
                     <div class="flex items-center gap-1">
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('$pc')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_${pc}_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">$($st.ping)ms</span>
-                        <span id="card_${pc}_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; $($st.uptime)</span>
-                        <span id="card_${pc}_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; $(if ($st.latestTemp) { "$($st.latestTemp)&deg;C" } else { "---" })</span>
+                        <span id="card_${pc}_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">$(if ($st.isOnline -and $null -ne $st.ping) { "$($st.ping)ms" } else { "---" })</span>
+                        <span id="card_${pc}_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; $(if ($st.isOnline -and $st.uptime) { $st.uptime } else { "---" })</span>
+                        <span id="card_${pc}_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; $(if ($st.isOnline -and $st.latestTemp) { "$($st.latestTemp)&deg;C" } else { "---" })</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 $cpuBoxClass" id="box_${pc}_cpu" title="CPU Atual: $($st.latestCpu)%">
+                    <div class="border rounded px-1 py-1 $(if ($st.isOnline) { $cpuBoxClass } else { 'bg-slate-900/40 border-slate-800/60 opacity-60 ' })" id="box_${pc}_cpu" title="CPU Atual: $(if ($st.isOnline) { "$($st.latestCpu)%" } else { "Offline" })">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs $(if ($st.isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_${pc}_cpu">$($st.latestCpu)%</strong>
+                        <strong class="text-xs $(if (-not $st.isOnline) { 'text-slate-500' } elseif ($st.isCpuAlert) { 'text-amber-300 font-bold' } else { 'text-white' })" id="card_${pc}_cpu">$(if ($st.isOnline) { "$($st.latestCpu)%" } else { "---" })</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 $ramBoxClass" id="box_${pc}_ram" title="RAM Atual: $($st.latestRam)%">
+                    <div class="border rounded px-1 py-1 $(if ($st.isOnline) { $ramBoxClass } else { 'bg-slate-900/40 border-slate-800/60 opacity-60 ' })" id="box_${pc}_ram" title="RAM Atual: $(if ($st.isOnline) { "$($st.latestRam)%" } else { "Offline" })">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs $(if ($st.isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_${pc}_ram">$($st.latestRam)%</strong>
+                        <strong class="text-xs $(if (-not $st.isOnline) { 'text-slate-500' } elseif ($st.isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_${pc}_ram">$(if ($st.isOnline) { "$($st.latestRam)%" } else { "---" })</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 $diskBoxClass" id="box_${pc}_disk" title="Espaço Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 $(if ($st.isOnline) { $diskBoxClass } else { 'bg-slate-900/40 border-slate-800/60 opacity-60 ' })" id="box_${pc}_disk" title="Espaço Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs $(if ($st.isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_${pc}_disk">$($st.diskFree)G</strong>
+                        <strong class="text-xs $(if (-not $st.isOnline) { 'text-slate-500' } elseif ($st.isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_${pc}_disk">$(if ($st.isOnline) { "$($st.diskFree)G" } else { "---" })</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_${pc}_io" title="I/O Escrita Atual">
+                    <div class="rounded px-1 py-1 $(if ($st.isOnline) { 'bg-slate-900/80 border border-slate-800 ' } else { 'bg-slate-900/40 border border-slate-800/60 opacity-60 ' })" id="box_${pc}_io" title="I/O Escrita Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_${pc}_io">$($st.latestIoW)k</strong>
+                        <strong class="text-xs $(if ($st.isOnline) { 'text-amber-400' } else { 'text-slate-500' })" id="card_${pc}_io">$(if ($st.isOnline) { "$($st.latestIoW)k" } else { "---" })</strong>
                     </div>
-                    <div class="bg-slate-900/80 border border-slate-800 rounded px-1 py-1" id="box_${pc}_tx" title="Rede Tx Atual">
+                    <div class="rounded px-1 py-1 $(if ($st.isOnline) { 'bg-slate-900/80 border border-slate-800 ' } else { 'bg-slate-900/40 border border-slate-800/60 opacity-60 ' })" id="box_${pc}_tx" title="Rede Tx Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                        <strong class="text-xs text-cyan-400" id="card_${pc}_tx">$($st.latestTx)k</strong>
+                        <strong class="text-xs $(if ($st.isOnline) { 'text-cyan-400' } else { 'text-slate-500' })" id="card_${pc}_tx">$(if ($st.isOnline) { "$($st.latestTx)k" } else { "---" })</strong>
                     </div>
                 </div>
             </div>
@@ -550,7 +553,7 @@ foreach ($pc in $pcsList) {
     }
     $summaryTableRows += @"
                         <tr class="hover:bg-slate-800/50">
-                            <td class="py-2.5 px-3 $colorClass">$pc</td>
+                            <td class="py-2.5 px-3 $colorClass">$pc $(if (-not $st.isOnline) { '<span class="text-[9px] text-red-400 font-bold ml-1">(Offline)</span>' })</td>
                             <td class="py-2.5 px-3" id="modal_${pc}_cpuAvg">$($st.avgCpu)%</td>
                             <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_${pc}_cpuMax">$($st.maxCpu)%</td>
                             <td class="py-2.5 px-3" id="modal_${pc}_ramAvg">$($st.avgRam)%</td>
@@ -558,9 +561,9 @@ foreach ($pc in $pcsList) {
                             <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_${pc}_io">$($st.maxIoR) / $($st.maxIoW) KB/s</td>
                             <td class="py-2.5 px-3" id="modal_${pc}_rx">$($st.maxRx) KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_${pc}_tx">$($st.maxTx) KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_${pc}_disk">$($st.diskFree) GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_${pc}_ping">$($st.ping) ms <span class="text-[10px] text-slate-400 font-normal">(méd $($st.avgPing)ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_${pc}_uptime">&#9201; $($st.uptime) <span class="text-[10px] text-slate-400 font-normal">($($st.bootDate))</span></td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_${pc}_disk">$(if ($st.isOnline) { "$($st.diskFree) GB" } else { "---" })</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_${pc}_ping">$(if ($st.isOnline) { "$($st.ping) ms <span class=""text-[10px] text-slate-400 font-normal"">(méd $($st.avgPing)ms)</span>" } else { "---" })</td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_${pc}_uptime">$(if ($st.isOnline -and $st.uptime) { "&#9201; $($st.uptime) <span class=""text-[10px] text-slate-400 font-normal"">($($st.bootDate))</span>" } else { "---" })</td>
                             <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('$pc')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
 "@
@@ -1046,7 +1049,7 @@ $summaryTableRows
             },
             elements: {
                 line: { tension: 0.25, borderWidth: 2 },
-                point: { radius: 0, hoverRadius: 5 }
+                point: { radius: 2, hoverRadius: 5 }
             }
         };
 
@@ -1126,7 +1129,7 @@ $summaryTableRows
                     backgroundColor: isH ? 'rgba(255,255,255,0.1)' : (colors[pc] ? colors[pc].bg : 'rgba(56,189,248,0.1)'),
                     borderWidth: isH ? 3.5 : 2,
                     pointBackgroundColor: isH ? '#ffffff' : col,
-                    pointRadius: 0,
+                    pointRadius: 2,
                     pointHoverRadius: 5,
                     fill: false,
                     spanGaps: true,
@@ -1693,17 +1696,17 @@ $summaryTableRows
                     const validCpu = (d.cpu || []).filter(v => v !== null);
                     const validRam = (d.ramPct || []).filter(v => v !== null);
                     const validTemp = (d.temp || []).filter(v => v !== null);
-                    const isOnline = validCpu.length > 0 && d.cpu[d.cpu.length - 1] !== null;
+                    const isOnline = Boolean(d.cpu && d.cpu.length > 0 && d.cpu[d.cpu.length - 1] !== null);
                     s = {
                         isOnline: isOnline,
                         latestCpu: isOnline ? d.cpu[d.cpu.length - 1] : 0,
                         latestRam: isOnline ? d.ramPct[d.ramPct.length - 1] : 0,
-                        latestTemp: validTemp.length > 0 ? validTemp[validTemp.length - 1] : null,
-                        latestTx: (d.tx && d.tx.length > 0) ? d.tx[d.tx.length - 1] : 0,
-                        latestIoW: (d.ioW && d.ioW.length > 0) ? d.ioW[d.ioW.length - 1] : 0,
-                        diskFree: (d.diskFree && d.diskFree.length > 0) ? d.diskFree[d.diskFree.length - 1] : 0,
-                        ping: (d.ping && d.ping.length > 0) ? d.ping[d.ping.length - 1] : 0,
-                        uptime: (d.uptime && d.uptime.length > 0) ? d.uptime[d.uptime.length - 1] : 'N/D',
+                        latestTemp: (isOnline && validTemp.length > 0) ? validTemp[validTemp.length - 1] : null,
+                        latestTx: isOnline && (d.tx && d.tx.length > 0) ? d.tx[d.tx.length - 1] : 0,
+                        latestIoW: isOnline && (d.ioW && d.ioW.length > 0) ? d.ioW[d.ioW.length - 1] : 0,
+                        diskFree: isOnline && (d.diskFree && d.diskFree.length > 0) ? d.diskFree[d.diskFree.length - 1] : 0,
+                        ping: isOnline && (d.ping && d.ping.length > 0) ? d.ping[d.ping.length - 1] : 0,
+                        uptime: isOnline && (d.uptime && d.uptime.length > 0) ? d.uptime[d.uptime.length - 1] : '---',
                         avgCpu: validCpu.length > 0 ? Math.round(validCpu.reduce((a,b)=>a+b,0)/validCpu.length) : 0,
                         avgRam: validRam.length > 0 ? Math.round(validRam.reduce((a,b)=>a+b,0)/validRam.length) : 0
                     };
@@ -1731,14 +1734,14 @@ $summaryTableRows
                         sDot.className = 'h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]';
                         sText.className = 'text-emerald-400 font-medium';
                         sText.innerText = 'Online';
-                        if (cardHost) cardHost.classList.remove('card-offline-blink', 'opacity-70');
+                        if (cardHost) cardHost.classList.remove('card-offline-blink', 'opacity-60');
                     } else {
                         sDot.className = 'h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]';
                         sText.className = 'text-red-400 font-bold';
                         sText.innerText = 'Offline';
                         if (cardHost) {
                             cardHost.classList.remove('card-alert-pulse');
-                            cardHost.classList.add('card-offline-blink');
+                            cardHost.classList.add('card-offline-blink', 'opacity-60');
                         }
                         if (alertBadge) alertBadge.classList.add('hidden');
                     }
@@ -1789,17 +1792,52 @@ $summaryTableRows
                             : 'border rounded px-1 py-1 bg-slate-900/80 border-slate-800';
                         if (cDisk) cDisk.className = isDiskAlert ? 'text-xs text-amber-300 font-bold' : 'text-xs text-emerald-400';
                     }
-                }
 
-                if (cCpu) cCpu.innerText = s.latestCpu + '%';
-                if (cRam) cRam.innerText = s.latestRam + '%';
-                if (cDisk) cDisk.innerText = s.diskFree + 'G';
-                if (cIo) cIo.innerText = s.latestIoW + 'k';
-                if (cTx) cTx.innerText = s.latestTx + 'k';
-                if (cPing) cPing.innerText = s.ping + 'ms';
-                if (cUptime && s.uptime) cUptime.innerHTML = '&#9201; ' + s.uptime;
-                const cTemp = document.getElementById('card_' + pc + '_temp');
-                if (cTemp) cTemp.innerHTML = (s.latestTemp && s.latestTemp > 0) ? '&#127777;&#xFE0F; ' + s.latestTemp + '&deg;C' : '&#127777;&#xFE0F; ---';
+                    const bIo = document.getElementById('box_' + pc + '_io');
+                    if (bIo) bIo.className = 'rounded px-1 py-1 bg-slate-900/80 border border-slate-800';
+                    if (cIo) cIo.className = 'text-xs text-amber-400';
+
+                    const bTx = document.getElementById('box_' + pc + '_tx');
+                    if (bTx) bTx.className = 'rounded px-1 py-1 bg-slate-900/80 border border-slate-800';
+                    if (cTx) cTx.className = 'text-xs text-cyan-400';
+
+                    if (cCpu) cCpu.innerText = s.latestCpu + '%';
+                    if (cRam) cRam.innerText = s.latestRam + '%';
+                    if (cDisk) cDisk.innerText = s.diskFree + 'G';
+                    if (cIo) cIo.innerText = s.latestIoW + 'k';
+                    if (cTx) cTx.innerText = s.latestTx + 'k';
+                    if (cPing) cPing.innerText = (s.ping !== null ? s.ping : '---') + 'ms';
+                    if (cUptime && s.uptime) cUptime.innerHTML = '&#9201; ' + s.uptime;
+                    const cTemp = document.getElementById('card_' + pc + '_temp');
+                    if (cTemp) cTemp.innerHTML = (s.latestTemp && s.latestTemp > 0) ? '&#127777;&#xFE0F; ' + s.latestTemp + '&deg;C' : '&#127777;&#xFE0F; ---';
+                } else {
+                    // Estado OFFLINE
+                    if (cardHost) cardHost.classList.add('opacity-60');
+                    if (bCpu) {
+                        bCpu.className = 'border rounded px-1 py-1 bg-slate-900/40 border-slate-800/60 opacity-60';
+                        if (cCpu) { cCpu.className = 'text-xs text-slate-500'; cCpu.innerText = '---'; }
+                    }
+                    if (bRam) {
+                        bRam.className = 'border rounded px-1 py-1 bg-slate-900/40 border-slate-800/60 opacity-60';
+                        if (cRam) { cRam.className = 'text-xs text-slate-500'; cRam.innerText = '---'; }
+                    }
+                    if (bDisk) {
+                        bDisk.className = 'border rounded px-1 py-1 bg-slate-900/40 border-slate-800/60 opacity-60';
+                        if (cDisk) { cDisk.className = 'text-xs text-slate-500'; cDisk.innerText = '---'; }
+                    }
+                    const bIo = document.getElementById('box_' + pc + '_io');
+                    if (bIo) bIo.className = 'rounded px-1 py-1 bg-slate-900/40 border border-slate-800/60 opacity-60';
+                    if (cIo) { cIo.className = 'text-xs text-slate-500'; cIo.innerText = '---'; }
+
+                    const bTx = document.getElementById('box_' + pc + '_tx');
+                    if (bTx) bTx.className = 'rounded px-1 py-1 bg-slate-900/40 border border-slate-800/60 opacity-60';
+                    if (cTx) { cTx.className = 'text-xs text-slate-500'; cTx.innerText = '---'; }
+
+                    if (cPing) cPing.innerText = '---';
+                    if (cUptime) cUptime.innerHTML = '&#9201; ---';
+                    const cTemp = document.getElementById('card_' + pc + '_temp');
+                    if (cTemp) cTemp.innerHTML = '&#127777;&#xFE0F; ---';
+                }
 
                 // Tabela Resumo
                 const mCpuAvg = document.getElementById('modal_' + pc + '_cpuAvg');
@@ -1817,11 +1855,11 @@ $summaryTableRows
                 const mTx = document.getElementById('modal_' + pc + '_tx');
                 if (mTx) mTx.innerText = s.maxTx + ' KB/s';
                 const mDisk = document.getElementById('modal_' + pc + '_disk');
-                if (mDisk) mDisk.innerText = s.diskFree + ' GB';
+                if (mDisk) mDisk.innerText = s.isOnline ? s.diskFree + ' GB' : '---';
                 const mPing = document.getElementById('modal_' + pc + '_ping');
-                if (mPing) mPing.innerHTML = s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(méd ' + s.avgPing + 'ms)</span>';
+                if (mPing) mPing.innerHTML = s.isOnline ? s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(méd ' + s.avgPing + 'ms)</span>' : '---';
                 const mUptime = document.getElementById('modal_' + pc + '_uptime');
-                if (mUptime && s.uptime) mUptime.innerHTML = '&#9201; ' + s.uptime;
+                if (mUptime) mUptime.innerHTML = (s.isOnline && s.uptime) ? '&#9201; ' + s.uptime : '---';
             });
 
             if (payload.topProcesses) {
