@@ -307,8 +307,56 @@ function Get-MachineMetrics {
         # 7. Temperatura do Hardware (°C)
         $tempVal = $null
         
-        # 7.1 Provedor especializado LibreHardwareMonitor (DTS real por núcleo/encapsulamento de CPU)
+        # 7.0 Provedor especializado LibreHardwareMonitor HTTP Web Server (porta 8085)
+        # Compatível com LibreHardwareMonitor v0.9.6+ e driver PawnIO em Windows 11 com HVCI
         try {
+            $httpHost = if ($isLocal) { "127.0.0.1" } else { $ComputerName }
+            $lhmHttpUrl = "http://${httpHost}:8085/data.json"
+            $webResp = Invoke-RestMethod -Uri $lhmHttpUrl -TimeoutSec 2 -ErrorAction Stop
+            if ($webResp) {
+                $stack = [System.Collections.Generic.Stack[psobject]]::new()
+                $stack.Push($webResp)
+                $httpTemps = [System.Collections.Generic.List[psobject]]::new()
+
+                while ($stack.Count -gt 0) {
+                    $node = $stack.Pop()
+                    if ($node.Value -and $node.Text) {
+                        if ($node.Value -match '([0-9]+[.,]?[0-9]*)\s*°?C') {
+                            $val = [double]($Matches[1] -replace ',', '.')
+                            if ($val -gt 0 -and $node.Text -notlike "*Distance*" -and $node.Text -notlike "*TjMax*" -and $node.Text -notlike "*Margin*") {
+                                $httpTemps.Add([PSCustomObject]@{
+                                    Name = $node.Text
+                                    Value = $val
+                                })
+                            }
+                        }
+                    }
+                    if ($node.Children) {
+                        foreach ($child in $node.Children) {
+                            $stack.Push($child)
+                        }
+                    }
+                }
+
+                if ($httpTemps.Count -gt 0) {
+                    $cpuPkg = $httpTemps | Where-Object { $_.Name -like "*Package*" -or $_.Name -like "*Tctl/Tdie*" } | Select-Object -First 1
+                    if ($cpuPkg) {
+                        $tempVal = [math]::Round($cpuPkg.Value, 0)
+                    } else {
+                        $cpuCores = @($httpTemps | Where-Object { $_.Name -like "*CPU*" -or $_.Name -like "*Core*" })
+                        if ($cpuCores.Count -gt 0) {
+                            $tempVal = [math]::Round(($cpuCores | Measure-Object -Property Value -Maximum).Maximum, 0)
+                        } else {
+                            $tempVal = [math]::Round(($httpTemps | Measure-Object -Property Value -Maximum).Maximum, 0)
+                        }
+                    }
+                }
+            }
+        } catch {}
+
+        # 7.1 Provedor especializado LibreHardwareMonitor WMI (DTS real por núcleo/encapsulamento de CPU)
+        if ($null -eq $tempVal) {
+            try {
             $lhmSensors = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
                             Where-Object { $_.Value -gt 0 -and $_.Name -notlike "*Distance*" -and $_.Name -notlike "*TjMax*" -and $_.Name -notlike "*Margin*" })
             if ($lhmSensors.Count -gt 0) {
@@ -328,6 +376,7 @@ function Get-MachineMetrics {
                 }
             }
         } catch {}
+    }
 
         # 7.2 Provedor especializado OpenHardwareMonitor
         if ($null -eq $tempVal) {
