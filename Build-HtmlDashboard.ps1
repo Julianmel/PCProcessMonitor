@@ -288,7 +288,12 @@ foreach ($pc in $pcsList) {
     $latestTx  = if ($isOnline) { $machineData[$pc].tx[-1] } else { 0 }
     $latestRx  = if ($isOnline) { $machineData[$pc].rx[-1] } else { 0 }
     $latestPing = if ($validPing) { $validPing | Select-Object -Last 1 } else { 0 }
-    $latestTemp = if ($validTemp) { $validTemp | Select-Object -Last 1 } else { $null }
+    $tempCount = $machineData[$pc].temp.Count
+    $recentTemps = if ($tempCount -gt 0) {
+        $tempStart = [math]::Max(0, $tempCount - 3)
+        @($machineData[$pc].temp.GetRange($tempStart, $tempCount - $tempStart) | Where-Object { $null -ne $_ -and $_ -gt 0 })
+    } else { @() }
+    $latestTemp = if ($isOnline -and $recentTemps.Count -gt 0) { $recentTemps[-1] } else { $null }
 
     $validDiskPct = $machineData[$pc].diskPct | Where-Object { $null -ne $_ -and $_ -gt 0 }
     $latestDiskPct = if ($validDiskPct) { $validDiskPct | Select-Object -Last 1 } else { 0 }
@@ -1299,7 +1304,7 @@ $summaryTableRows
                     ds.borderColor = isH ? '#ffffff' : origCol;
                     ds.borderWidth = isH ? 3.5 : 2;
                     ds.pointBackgroundColor = isH ? '#ffffff' : origCol;
-                    ds.pointRadius = 0;
+                    ds.pointRadius = 2;
                     ds.pointHoverRadius = 5;
                     ds.order = isH ? -1 : 1;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
@@ -1695,13 +1700,13 @@ $summaryTableRows
                     const d = payload.rawData[pc];
                     const validCpu = (d.cpu || []).filter(v => v !== null);
                     const validRam = (d.ramPct || []).filter(v => v !== null);
-                    const validTemp = (d.temp || []).filter(v => v !== null);
+                    const recentTemps = (d.temp || []).slice(-3).filter(v => v !== null && v > 0);
                     const isOnline = Boolean(d.cpu && d.cpu.length > 0 && d.cpu[d.cpu.length - 1] !== null);
                     s = {
                         isOnline: isOnline,
                         latestCpu: isOnline ? d.cpu[d.cpu.length - 1] : 0,
                         latestRam: isOnline ? d.ramPct[d.ramPct.length - 1] : 0,
-                        latestTemp: (isOnline && validTemp.length > 0) ? validTemp[validTemp.length - 1] : null,
+                        latestTemp: (isOnline && recentTemps.length > 0) ? recentTemps[recentTemps.length - 1] : null,
                         latestTx: isOnline && (d.tx && d.tx.length > 0) ? d.tx[d.tx.length - 1] : 0,
                         latestIoW: isOnline && (d.ioW && d.ioW.length > 0) ? d.ioW[d.ioW.length - 1] : 0,
                         diskFree: isOnline && (d.diskFree && d.diskFree.length > 0) ? d.diskFree[d.diskFree.length - 1] : 0,
