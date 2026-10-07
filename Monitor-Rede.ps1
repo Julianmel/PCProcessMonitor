@@ -599,7 +599,7 @@ while ($true) {
         if (Test-Path $builder) {
             $dashHtml = Join-Path $ScriptDir "dashboard_desempenho.html"
             & $builder -LogFile $logFilePath -OutputFile $dashHtml *>$null
-            if ($sampleCount -eq 1 -and (Test-Path $dashHtml) -and $env:COMPUTERNAME -ne 'JFMELGACO-1' -and [Environment]::UserInteractive) {
+            if ($sampleCount -eq 1 -and (Test-Path $dashHtml) -and $env:COMPUTERNAME -eq 'JFMELGACO-4' -and [Environment]::UserInteractive) {
                 try {
                     Start-Process $dashHtml
                     Write-Host "Dashboard aberto automaticamente no navegador padrão: $dashHtml" -ForegroundColor Green

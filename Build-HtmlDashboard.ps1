@@ -365,7 +365,7 @@ if (-not $detectedLocalHost -and $env:COMPUTERNAME) {
     if ($matchedHost) { $detectedLocalHost = $matchedHost }
 }
 if (-not $detectedLocalHost) {
-    $detectedLocalHost = 'JFMELGACO-1'
+    $detectedLocalHost = if ($env:COMPUTERNAME -and ($pcsList -contains $env:COMPUTERNAME)) { $env:COMPUTERNAME } else { 'JFMELGACO-2' }
 }
 
 Write-Host "Host Local detectado: $detectedLocalHost" -ForegroundColor Yellow
