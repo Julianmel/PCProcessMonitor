@@ -52,9 +52,9 @@
             </span>
             <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.2.1</span></h1>
             <span class="text-slate-500">|</span>
-            <span class="text-slate-400" id="headerTimeRange">12:31:23 &rarr; 12:45:01</span>
+            <span class="text-slate-400" id="headerTimeRange">12:56:33 &rarr; 13:23:46</span>
             <span class="text-slate-500">|</span>
-            <span class="text-cyan-400 font-semibold" id="headerSampleCount">31 amostras</span>
+            <span class="text-cyan-400 font-semibold" id="headerSampleCount">20 amostras</span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -74,9 +74,9 @@
                 </button>
             </div>
 
-            <!-- Auto-Refresh com PerÃ­odo CustomizÃ¡vel -->
+            <!-- Auto-Refresh com Período Customizável -->
             <div class="flex items-center gap-1.5 bg-cardbg border border-borderbg px-2 py-1 rounded-lg">
-                <button onclick="promptChangeInterval()" class="flex items-center gap-1 hover:text-cyan-300 transition cursor-pointer" title="Clique para alterar o perÃ­odo de atualizaÃ§Ã£o (mÃ­nimo 1s)">
+                <button onclick="promptChangeInterval()" class="flex items-center gap-1 hover:text-cyan-300 transition cursor-pointer" title="Clique para alterar o período de atualização (mínimo 1s)">
                     <span class="text-slate-400 text-[11px]">Auto:</span>
                     <span id="countdownEl" class="text-cyan-400 font-bold text-[11px] w-6 text-center">5s</span>
                 </button>
@@ -84,27 +84,27 @@
                 <button onclick="promptChangeInterval()" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/80 font-mono cursor-pointer" title="Definir intervalo">&#9881; <span id="intervalSecLabel">5s</span></button>
             </div>
 
-            <!-- BotÃ£o Gerenciar NÃ³s -->
+            <!-- Botão Gerenciar Nós -->
             <button onclick="toggleMachinesModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-medium transition cursor-pointer flex items-center gap-1" title="Adicionar, editar e descobrir computadores na rede">
                 &#128187; Gerenciar N&oacute;s
             </button>
 
-            <!-- BotÃ£o Tabela de Resumo Modal -->
+            <!-- Botão Tabela de Resumo Modal -->
             <button onclick="toggleSummaryModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-medium transition cursor-pointer flex items-center gap-1">
                 &#128203; Tabela Resumo
             </button>
 
-            <!-- Alternador Tela Ãšnica / Rolagem -->
-            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Ãšnica e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
+            <!-- Alternador Tela Única / Rolagem -->
+            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Única e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
                 &#128421;&#xFE0F; Tela &Uacute;nica
             </button>
         </div>
     </header>
 
-    <!-- CONTAINER PRINCIPAL: GRÃFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
+    <!-- CONTAINER PRINCIPAL: GRÁFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
     <div id="dashboardContent" class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden">
 
-        <!-- ÃREA PRINCIPAL DOS GRÃFICOS: GRID 2 COLUNAS X 3 LINHAS (TELA ÃšNICA) OU ROLAGEM VERTICAL (MODO ROLAGEM) -->
+        <!-- ÁREA PRINCIPAL DOS GRÁFICOS: GRID 2 COLUNAS X 3 LINHAS (TELA ÚNICA) OU ROLAGEM VERTICAL (MODO ROLAGEM) -->
         <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-3 gap-2 h-full min-h-0 overflow-hidden pr-0.5">
 
             <!-- 1. CPU CHART -->
@@ -166,11 +166,6 @@
                         <span class="h-2 w-2 rounded-full bg-purple-400"></span>
                         5. Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot5Chart('ping')" id="btnSlot5Ping" title="Exibir Ping no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-bold border border-purple-500/50 transition cursor-pointer">&#128225; Ping</button>
-                        <button onclick="toggleSlot5Chart('disk')" id="btnSlot5Disk" title="Exibir EspaÃ§o em Disco no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128190; Disco C:</button>
-                        <button onclick="toggleSlot5Chart('io')" id="btnSlot5Io" title="Exibir Taxa de I/O no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#9881; I/O Disco</button>
-                    </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="pingChart"></canvas>
@@ -186,9 +181,7 @@
                     </span>
                     <div class="flex items-center gap-1">
                         <button onclick="toggleSlot6Chart('temp')" id="btnSlot6Temp" title="Exibir Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6Net" title="Exibir TrÃ¡fego Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                        <button onclick="toggleSlot6Chart('disk')" id="btnSlot6Disk" title="Exibir EspaÃ§o em Disco no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128190; Disco C:</button>
-                        <button onclick="toggleSlot6Chart('io')" id="btnSlot6Io" title="Exibir Taxa de I/O no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#9881; I/O Disco</button>
+                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6Net" title="Exibir Tráfego Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
                     </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
@@ -204,10 +197,8 @@
                         6. Tr&aacute;fego Internet (Download / Upload em Mbps)
                     </span>
                     <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot6Chart('temp')" id="btnSlot6NetTemp" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6NetNet" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer">&#127760; Internet</button>
-                        <button onclick="toggleSlot6Chart('disk')" id="btnSlot6NetDisk" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128190; Disco C:</button>
-                        <button onclick="toggleSlot6Chart('io')" id="btnSlot6NetIo" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#9881; I/O Disco</button>
+                        <button onclick="toggleSlot6Chart('temp')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
+                        <button onclick="toggleSlot6Chart('internet')" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer">&#127760; Internet</button>
                     </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
@@ -222,11 +213,6 @@
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         8. Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot5Chart('ping')" title="Alternar para Ping no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128225; Ping</button>
-                        <button onclick="toggleSlot6Chart('temp')" title="Alternar para Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" title="Alternar para Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                    </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="diskChart"></canvas>
@@ -240,11 +226,6 @@
                         <span class="h-2 w-2 rounded-full bg-amber-400"></span>
                         9. Disco C: Taxa de I/O Escrita (KB/s)
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot5Chart('ping')" title="Alternar para Ping no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128225; Ping</button>
-                        <button onclick="toggleSlot6Chart('temp')" title="Alternar para Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" title="Alternar para Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                    </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="ioChart"></canvas>
@@ -253,7 +234,7 @@
 
         </main>
 
-        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES (DISTRIBUIÃ‡ÃƒO UNIFORME SEM ESPAÃ‡O VAGO) -->
+        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES (DISTRIBUICAO UNIFORME SEM ESPACO VAGO) -->
         <aside id="nodesSidebar" class="w-full lg:w-[360px] xl:w-[400px] flex flex-col justify-between gap-2 shrink-0 h-full overflow-y-auto pr-0.5">
             <div class="flex items-center justify-between px-1 text-[11px] text-slate-400 font-semibold border-b border-borderbg pb-1 shrink-0">
                 <span class="flex items-center gap-1.5 text-slate-300">
@@ -264,7 +245,7 @@
             </div>
 
             <!-- Card: JFMELGACO-1 -->
-            <div id="cardHost_JFMELGACO-1" onclick="selectMachineHighlight('JFMELGACO-1')" title="Clique para destacar JFMELGACO-1 em branco nos grÃ¡ficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none ">
+            <div id="cardHost_JFMELGACO-1" onclick="selectMachineHighlight('JFMELGACO-1')" title="Clique para destacar JFMELGACO-1 em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-emerald-500/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none card-alert-pulse ">
                 <div id="cardTopBar_JFMELGACO-1" class="absolute top-0 left-0 right-0 h-1 bg-emerald-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
                     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -272,7 +253,7 @@
                         <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-1">JFMELGACO-1</strong>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-1" class="hidden text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="">âš ï¸ AtenÃ§Ã£o</span>
+                        <span id="cardAlertBadge_JFMELGACO-1" class="text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="Alerta: CPU: 100% (>=85%) | Temp: 91°C (>=75°C)">⚠️ Atenção</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80 my-0.5">
@@ -282,27 +263,27 @@
                     </span>
                     <div class="flex items-center gap-1">
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-1')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-1_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="LatÃªncia ICMP (Ping RTT)">0ms</span>
-                        <span id="card_JFMELGACO-1_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contÃ­nuo">&#9201; 17h 7m</span>
-                        <span id="card_JFMELGACO-1_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; 58&deg;C</span>
+                        <span id="card_JFMELGACO-1_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">0ms</span>
+                        <span id="card_JFMELGACO-1_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; 17h 46m</span>
+                        <span id="card_JFMELGACO-1_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; 91&deg;C</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-1_cpu" title="CPU Atual: 5%">
+                    <div class="border rounded px-1 py-1 bg-amber-500/20 border-amber-500/80 ring-1 ring-amber-500/40 " id="box_JFMELGACO-1_cpu" title="CPU Atual: 100%">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-1_cpu">5%</strong>
+                        <strong class="text-xs text-amber-300 font-bold" id="card_JFMELGACO-1_cpu">100%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-1_ram" title="RAM Atual: 65%">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-1_ram" title="RAM Atual: 80%">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">65%</strong>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-1_ram">80%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-1_disk" title="EspaÃ§o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-1_disk" title="Espaço Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
                         <strong class="text-xs text-emerald-400" id="card_JFMELGACO-1_disk">434.5G</strong>
                     </div>
                     <div class="rounded px-1 py-1 bg-slate-900/80 border border-slate-800 " id="box_JFMELGACO-1_io" title="I/O Escrita Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">340k</strong>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-1_io">0k</strong>
                     </div>
                     <div class="rounded px-1 py-1 bg-slate-900/80 border border-slate-800 " id="box_JFMELGACO-1_tx" title="Rede Tx Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
@@ -310,7 +291,7 @@
                     </div>
                 </div>
             </div>            <!-- Card: JFMELGACO-2 -->
-            <div id="cardHost_JFMELGACO-2" onclick="selectMachineHighlight('JFMELGACO-2')" title="Clique para destacar JFMELGACO-2 em branco nos grÃ¡ficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-yellow-400/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none ">
+            <div id="cardHost_JFMELGACO-2" onclick="selectMachineHighlight('JFMELGACO-2')" title="Clique para destacar JFMELGACO-2 em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-yellow-400/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none ">
                 <div id="cardTopBar_JFMELGACO-2" class="absolute top-0 left-0 right-0 h-1 bg-yellow-400 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
                     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -318,7 +299,7 @@
                         <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-2">JFMELGACO-2</strong>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-2" class="hidden text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="">âš ï¸ AtenÃ§Ã£o</span>
+                        <span id="cardAlertBadge_JFMELGACO-2" class="hidden text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="">⚠️ Atenção</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80 my-0.5">
@@ -328,8 +309,8 @@
                     </span>
                     <div class="flex items-center gap-1">
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-2')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-2_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="LatÃªncia ICMP (Ping RTT)">0ms</span>
-                        <span id="card_JFMELGACO-2_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contÃ­nuo">&#9201; 17h 9m</span>
+                        <span id="card_JFMELGACO-2_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">0ms</span>
+                        <span id="card_JFMELGACO-2_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; 17h 48m</span>
                         <span id="card_JFMELGACO-2_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; 41&deg;C</span>
                     </div>
                 </div>
@@ -342,7 +323,7 @@
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
                         <strong class="text-xs text-white" id="card_JFMELGACO-2_ram">39%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-2_disk" title="EspaÃ§o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-2_disk" title="Espaço Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
                         <strong class="text-xs text-emerald-400" id="card_JFMELGACO-2_disk">358.2G</strong>
                     </div>
@@ -356,7 +337,7 @@
                     </div>
                 </div>
             </div>            <!-- Card: JFMELGACO-3 -->
-            <div id="cardHost_JFMELGACO-3" onclick="selectMachineHighlight('JFMELGACO-3')" title="Clique para destacar JFMELGACO-3 em branco nos grÃ¡ficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none ">
+            <div id="cardHost_JFMELGACO-3" onclick="selectMachineHighlight('JFMELGACO-3')" title="Clique para destacar JFMELGACO-3 em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-red-500/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none ">
                 <div id="cardTopBar_JFMELGACO-3" class="absolute top-0 left-0 right-0 h-1 bg-red-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
                     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -364,7 +345,7 @@
                         <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-3">JFMELGACO-3</strong>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-3" class="hidden text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="">âš ï¸ AtenÃ§Ã£o</span>
+                        <span id="cardAlertBadge_JFMELGACO-3" class="hidden text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="">⚠️ Atenção</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80 my-0.5">
@@ -374,27 +355,27 @@
                     </span>
                     <div class="flex items-center gap-1">
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-3')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-3_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="LatÃªncia ICMP (Ping RTT)">10ms</span>
-                        <span id="card_JFMELGACO-3_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contÃ­nuo">&#9201; 4h 53m</span>
+                        <span id="card_JFMELGACO-3_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">5ms</span>
+                        <span id="card_JFMELGACO-3_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; 5h 33m</span>
                         <span id="card_JFMELGACO-3_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; 41&deg;C</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-3_cpu" title="CPU Atual: 52%">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-3_cpu" title="CPU Atual: 7%">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">52%</strong>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-3_cpu">7%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-3_ram" title="RAM Atual: 43%">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-3_ram" title="RAM Atual: 44%">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">43%</strong>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-3_ram">44%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-3_disk" title="EspaÃ§o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-3_disk" title="Espaço Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
                         <strong class="text-xs text-emerald-400" id="card_JFMELGACO-3_disk">350.8G</strong>
                     </div>
                     <div class="rounded px-1 py-1 bg-slate-900/80 border border-slate-800 " id="box_JFMELGACO-3_io" title="I/O Escrita Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
-                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">1638.4k</strong>
+                        <strong class="text-xs text-amber-400" id="card_JFMELGACO-3_io">0k</strong>
                     </div>
                     <div class="rounded px-1 py-1 bg-slate-900/80 border border-slate-800 " id="box_JFMELGACO-3_tx" title="Rede Tx Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
@@ -402,7 +383,7 @@
                     </div>
                 </div>
             </div>            <!-- Card: JFMELGACO-4 -->
-            <div id="cardHost_JFMELGACO-4" onclick="selectMachineHighlight('JFMELGACO-4')" title="Clique para destacar JFMELGACO-4 em branco nos grÃ¡ficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none card-alert-pulse ">
+            <div id="cardHost_JFMELGACO-4" onclick="selectMachineHighlight('JFMELGACO-4')" title="Clique para destacar JFMELGACO-4 em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 hover:border-blue-500/80 rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none card-alert-pulse ">
                 <div id="cardTopBar_JFMELGACO-4" class="absolute top-0 left-0 right-0 h-1 bg-blue-500 transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
                     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -410,7 +391,7 @@
                         <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_JFMELGACO-4">JFMELGACO-4</strong>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_JFMELGACO-4" class="text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="Alerta: RAM: 94% (>=90%)">âš ï¸ AtenÃ§Ã£o</span>
+                        <span id="cardAlertBadge_JFMELGACO-4" class="text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="Alerta: RAM: 97% (>=90%)">⚠️ Atenção</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80 my-0.5">
@@ -420,23 +401,23 @@
                     </span>
                     <div class="flex items-center gap-1">
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('JFMELGACO-4')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_JFMELGACO-4_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="LatÃªncia ICMP (Ping RTT)">3ms</span>
-                        <span id="card_JFMELGACO-4_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contÃ­nuo">&#9201; 1d 0h</span>
+                        <span id="card_JFMELGACO-4_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">3ms</span>
+                        <span id="card_JFMELGACO-4_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; 1d 1h</span>
                         <span id="card_JFMELGACO-4_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; ---</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-5 gap-1 text-center">
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-4_cpu" title="CPU Atual: 0%">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-4_cpu" title="CPU Atual: 7%">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">CPU</span>
-                        <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">0%</strong>
+                        <strong class="text-xs text-white" id="card_JFMELGACO-4_cpu">7%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 " id="box_JFMELGACO-4_ram" title="RAM Atual: 94%">
+                    <div class="border rounded px-1 py-1 bg-red-500/20 border-red-500/80 ring-1 ring-red-500/40 " id="box_JFMELGACO-4_ram" title="RAM Atual: 97%">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
-                        <strong class="text-xs text-red-300 font-bold" id="card_JFMELGACO-4_ram">94%</strong>
+                        <strong class="text-xs text-red-300 font-bold" id="card_JFMELGACO-4_ram">97%</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-4_disk" title="EspaÃ§o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 bg-slate-900/80 border-slate-800 " id="box_JFMELGACO-4_disk" title="Espaço Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
-                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">205.8G</strong>
+                        <strong class="text-xs text-emerald-400" id="card_JFMELGACO-4_disk">204.7G</strong>
                     </div>
                     <div class="rounded px-1 py-1 bg-slate-900/80 border border-slate-800 " id="box_JFMELGACO-4_io" title="I/O Escrita Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">I/O W</span>
@@ -444,7 +425,7 @@
                     </div>
                     <div class="rounded px-1 py-1 bg-slate-900/80 border border-slate-800 " id="box_JFMELGACO-4_tx" title="Rede Tx Atual">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Rede Tx</span>
-                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">5k</strong>
+                        <strong class="text-xs text-cyan-400" id="card_JFMELGACO-4_tx">3k</strong>
                     </div>
                 </div>
             </div>
@@ -452,7 +433,7 @@
         </aside>
     </div>
 
-    <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÃSTICO -->
+    <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÍSTICO -->
     <div id="summaryModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-5xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between p-4 border-b border-borderbg bg-slate-800/40">
@@ -485,55 +466,55 @@
                     <tbody class="divide-y divide-borderbg font-mono text-[11px]">
                         <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 text-emerald-400 font-semibold">JFMELGACO-1 </td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">14.4%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_cpuAvg">85.2%</td>
                             <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-1_cpuMax">100%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">68.5%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">70%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">629 / 364 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramAvg">82.5%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-1_ramMax">90%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-1_io">23961.6 / 1228.8 KB/s</td>
                             <td class="py-2.5 px-3" id="modal_JFMELGACO-1_rx">9 KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_tx">8 KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-1_tx">10 KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-1_disk">434.5 GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(mÃ©d 0ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; 17h 7m <span class="text-[10px] text-slate-400 font-normal">(06/10/2026 19:37)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-1_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(méd 0ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-1_uptime">&#9201; 17h 46m <span class="text-[10px] text-slate-400 font-normal">(06/10/2026 19:37)</span></td>
                             <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-1')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>                        <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 text-yellow-300 font-semibold">JFMELGACO-2 </td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">0%</td>
-                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-2_cpuMax">0%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">39%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">39%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">0 / 504 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">7 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_cpuAvg">0.3%</td>
+                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-2_cpuMax">5%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramAvg">39.2%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_ramMax">41%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-2_io">0 / 153 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-2_rx">5 KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-2_tx">2 KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-2_disk">358.2 GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(mÃ©d 0ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; 17h 9m <span class="text-[10px] text-slate-400 font-normal">(06/10/2026 19:36)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-2_ping">0 ms <span class="text-[10px] text-slate-400 font-normal">(méd 0.2ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-2_uptime">&#9201; 17h 48m <span class="text-[10px] text-slate-400 font-normal">(06/10/2026 19:36)</span></td>
                             <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-2')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>                        <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 text-red-400 font-semibold">JFMELGACO-3 </td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">28.8%</td>
-                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">64%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">42.7%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramMax">43%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-3_io">0 / 1945.6 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">2 KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-3_tx">0 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_cpuAvg">11%</td>
+                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-3_cpuMax">44%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramAvg">44.1%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_ramMax">46%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-3_io">273 / 707 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-3_rx">37 KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-3_tx">256 KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-3_disk">350.8 GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">10 ms <span class="text-[10px] text-slate-400 font-normal">(mÃ©d 10.5ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; 4h 53m <span class="text-[10px] text-slate-400 font-normal">(07/10/2026 07:51)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-3_ping">5 ms <span class="text-[10px] text-slate-400 font-normal">(méd 9.9ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-3_uptime">&#9201; 5h 33m <span class="text-[10px] text-slate-400 font-normal">(07/10/2026 07:51)</span></td>
                             <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-3')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>                        <tr class="hover:bg-slate-800/50">
                             <td class="py-2.5 px-3 text-blue-400 font-semibold">JFMELGACO-4 </td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_cpuAvg">11.8%</td>
-                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-4_cpuMax">58%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramAvg">93.7%</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramMax">95%</td>
-                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-4_io">18841.6 / 23449.6 KB/s</td>
-                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">85 KB/s</td>
-                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">4198.4 KB/s</td>
-                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">205.8 GB</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">3 ms <span class="text-[10px] text-slate-400 font-normal">(mÃ©d 2.6ms)</span></td>
-                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; 1d 0h <span class="text-[10px] text-slate-400 font-normal">(06/10/2026 12:07)</span></td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_cpuAvg">10.3%</td>
+                            <td class="py-2.5 px-3 font-bold text-rose-400" id="modal_JFMELGACO-4_cpuMax">28%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramAvg">92.2%</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_ramMax">97%</td>
+                            <td class="py-2.5 px-3 text-amber-300 font-semibold" id="modal_JFMELGACO-4_io">94003.2 / 11468.8 KB/s</td>
+                            <td class="py-2.5 px-3" id="modal_JFMELGACO-4_rx">57 KB/s</td>
+                            <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_JFMELGACO-4_tx">983 KB/s</td>
+                            <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_JFMELGACO-4_disk">204.7 GB</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_JFMELGACO-4_ping">3 ms <span class="text-[10px] text-slate-400 font-normal">(méd 6.8ms)</span></td>
+                            <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_JFMELGACO-4_uptime">&#9201; 1d 1h <span class="text-[10px] text-slate-400 font-normal">(06/10/2026 12:07)</span></td>
                             <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('JFMELGACO-4')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
                     </tbody>
@@ -545,7 +526,7 @@
         </div>
     </div>
 
-    <!-- MODAL POPUP: TOP 10 PROCESSOS POR NÃ“ -->
+    <!-- MODAL POPUP: TOP 10 PROCESSOS POR NÓ -->
     <div id="processModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden transition-opacity">
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-700/50">
             <div class="flex items-center justify-between p-3.5 border-b border-borderbg bg-slate-800/60">
@@ -594,7 +575,7 @@
         </div>
     </div>
 
-    <!-- MODAL: GERENCIAMENTO DE MÃQUINAS (CADASTRO / EDIÃ‡ÃƒO / DESCOBERTA) -->
+    <!-- MODAL: GERENCIAMENTO DE MAQUINAS (CADASTRO / EDICAO / DESCOBERTA) -->
     <div id="machinesModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden transition-opacity">
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-700/50">
             <div class="flex items-center justify-between p-3.5 border-b border-borderbg bg-slate-800/60">
@@ -608,7 +589,7 @@
                 <button onclick="toggleMachinesModal(false)" class="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs font-bold">&times; Fechar</button>
             </div>
             <div class="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
-                <!-- FormulÃ¡rio Adicionar NÃ³ -->
+                <!-- Formulário Adicionar Nó -->
                 <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex flex-col gap-2">
                     <label class="text-[11px] font-semibold text-slate-300">Adicionar Novo N&oacute; ou Servidor:</label>
                     <div class="flex gap-2">
@@ -647,26 +628,10 @@
 
     <!-- SCRIPT CHART.JS & CONTROLE -->
     <script>
-        let timestamps = ["12:31:23","12:31:58","12:32:24","12:32:50","12:33:19","12:33:45","12:34:15","12:34:53","12:35:20","12:35:46","12:36:12","12:36:37","12:37:04","12:37:30","12:37:57","12:38:23","12:38:49","12:39:16","12:39:43","12:40:09","12:40:37","12:41:03","12:41:30","12:41:56","12:42:23","12:42:49","12:43:16","12:43:42","12:44:09","12:44:35","12:45:01"];
-        let rawData = {"JFMELGACO-1":{"internet":[0.01,0.01,0.02,0,0.01,0,0,0,0.01,0,0.07,0.01,0,0,0.07,0.01,0.1,0.01,0.01,0.01,0,0,0.01,0.01,0.02,0.02,0,0,0,0,0],"ramUsed":[1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.4,1.3,1.3,1.4,1.3,1.3,1.3,1.3,1.3,1.3,1.3],"uptime":["16h 53m","16h 54m","16h 54m","16h 55m","16h 55m","16h 56m","16h 56m","16h 57m","16h 57m","16h 58m","16h 58m","16h 59m","16h 59m","16h 59m","17h 0m","17h 0m","17h 1m","17h 1m","17h 2m","17h 2m","17h 3m","17h 3m","17h 3m","17h 4m","17h 4m","17h 5m","17h 5m","17h 6m","17h 6m","17h 7m","17h 7m"],"diskTotal":0,"temp":[69,68,66,66,66,65,67,63,63,64,62,62,61,61,62,61,61,61,60,61,60,61,60,58,58,62,58,58,58,58,58],"rx":[1,1,1,0,1,0,0,0,1,0,9,1,0,0,9,1,5,1,1,1,0,0,1,1,2,2,0,0,0,0,0],"bootDate":["06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37"],"ioW":[0,0,0,0,364,0,0,0,241,0,0,0,0,0,0,0,0,0,0,0,0,0,355,0,0,0,0,0,0,0,340],"diskFree":[434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5,434.5],"ramPct":[70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,65,65,70,65,65,65,65,65,65,65],"tx":[0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,1,0,0,0,0,0],"ramTotal":2,"ioR":[0,0,0,0,0,0,629,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ping":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"cpu":[23,8,23,19,0,23,100,5,50,11,8,2,8,11,5,5,50,8,20,0,2,14,0,2,2,14,11,11,5,2,5],"diskPct":[7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7]},"JFMELGACO-3":{"internet":[0.01,0.01,0.01,0,0,0,0.01,0.01,0.02,0.01,0,0,0.01,0,0,0,0,0,0,0.02,0.01,0.01,0,0,0,0,0,0.01,0.01,0.02,0],"ramUsed":[3.3,3.3,3.3,3.3,3.3,3.3,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.3,3.3,3.3,3.3,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4,3.4],"uptime":["4h 39m","4h 40m","4h 40m","4h 41m","4h 41m","4h 42m","4h 42m","4h 43m","4h 43m","4h 44m","4h 44m","4h 44m","4h 45m","4h 45m","4h 46m","4h 46m","4h 47m","4h 47m","4h 48m","4h 48m","4h 48m","4h 49m","4h 49m","4h 50m","4h 50m","4h 51m","4h 51m","4h 52m","4h 52m","4h 52m","4h 53m"],"diskTotal":0,"temp":[41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41],"rx":[1,1,1,0,0,0,1,1,2,1,0,0,1,0,0,0,0,0,0,2,1,1,0,0,0,0,0,1,1,2,0],"bootDate":["07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51"],"ioW":[16,1433.6,0,1945.6,235,1433.6,0,15,16,0,0,0,726,0,0,1126.4,0,0,0,0,0,0,408,0,0,0,0,321,0,0,1638.4],"diskFree":[350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8],"ramPct":[42,42,42,42,42,42,43,43,43,43,43,43,43,43,43,43,43,43,42,42,42,42,43,43,43,43,43,43,43,43,43],"tx":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ramTotal":7.9,"ioR":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ping":[5,27,9,9,5,7,7,12,6,5,7,8,7,4,7,32,8,4,5,11,20,28,6,6,7,10,36,4,9,5,10],"cpu":[25,24,26,24,29,30,27,27,24,39,27,35,25,64,26,24,32,24,24,25,24,25,26,26,24,26,27,25,29,27,52],"diskPct":[11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11]},"JFMELGACO-4":{"internet":[5.23,0.1,0.83,0.21,0.22,0.15,0.16,0.12,0.09,0.11,0.14,0.09,0.09,0.23,0.14,0.07,0.45,0.55,0.09,0.09,0.66,0.09,0.12,0.09,4.3,33.41,0.12,0.09,0.12,0.09,0.09],"ramUsed":[14.4,14.6,14.5,14.4,14.4,14.4,14.4,14.4,14.3,14.4,14.4,14.3,14.5,14.4,14.3,14.4,14.4,14.3,14.4,14.3,14.3,14.2,14.4,14.4,14.4,14.4,14.3,14.4,14.4,14.5,14.4],"uptime":["1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h"],"diskTotal":0,"temp":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"rx":[17,8,85,22,22,11,9,12,6,9,12,6,6,23,13,6,32,31,7,7,68,6,6,6,14,78,11,7,8,7,6],"bootDate":["06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07"],"ioW":[0,0,0,282,0,0,0,0,0,309,0,418,0,0,0,223,280,0,0,15155.2,16,23449.6,0,0,0,0,0,156,0,0,0],"diskFree":[205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8,205.8],"ramPct":[94,95,94,94,94,94,94,94,93,94,94,93,94,94,93,94,94,93,94,93,93,92,94,94,94,94,93,94,94,94,94],"tx":[653,5,21,5,6,8,11,4,5,5,6,5,5,7,5,3,26,39,5,4,17,5,10,5,537,4198.4,5,5,8,5,5],"ramTotal":15.4,"ioR":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,62,0,0,0,0,0,757,0,18841.6,0,0,0,0,3379.2,0],"ping":[3,2,2,3,2,4,3,4,3,2,2,3,3,2,3,3,2,3,2,2,2,2,4,3,2,3,3,2,2,3,3],"cpu":[0,8,1,22,6,3,0,11,11,18,0,8,21,10,2,1,8,12,24,4,0,12,10,9,58,35,38,2,8,24,0],"diskPct":[44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44]},"JFMELGACO-2":{"internet":[0,0,0,0.02,0.01,0.02,0,0.01,0,0,0,0.02,0.01,0.02,0.01,0,0,0.01,0.01,0,0,0,0.07,0.01,0.01,0,0.01,0,0,0,0],"ramUsed":[3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1],"uptime":["16h 55m","16h 55m","16h 56m","16h 56m","16h 57m","16h 57m","16h 58m","16h 58m","16h 59m","16h 59m","17h 0m","17h 0m","17h 1m","17h 1m","17h 1m","17h 2m","17h 2m","17h 3m","17h 3m","17h 4m","17h 4m","17h 5m","17h 5m","17h 5m","17h 6m","17h 6m","17h 7m","17h 7m","17h 8m","17h 8m","17h 9m"],"diskTotal":0,"temp":[41,40,41,40,41,41,40,41,40,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41],"rx":[0,0,0,2,1,2,0,1,0,0,0,2,1,2,1,0,0,1,1,0,0,0,7,1,1,0,1,0,0,0,0],"bootDate":["06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36"],"ioW":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,504,0,0,0,0,0,0,0,152,0,0,0,0,0,175,0],"diskFree":[358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2],"ramPct":[39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39],"tx":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0],"ramTotal":7.9,"ioR":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ping":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"cpu":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"diskPct":[23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23]}};
+        let timestamps = ["12:56:33","12:56:58","12:57:20","12:57:45","12:58:09","12:58:59","13:00:28","13:02:26","13:04:17","13:06:16","13:09:05","13:10:04","13:11:04","13:12:08","13:13:15","13:14:12","13:16:46","13:19:59","13:22:17","13:23:46"];
+        let rawData = {"JFMELGACO-1":{"internet":[0,0.05,0.01,0.04,0.02,0,0,0.05,0.01,0.04,0.01,0.01,0.11,0.02,0.08,0.07,0.01,0.1,0.03,0.02],"ramUsed":[1.4,1.4,1.4,1.4,1.6,1.7,1.7,1.8,1.8,1.7,1.8,1.8,1.8,1.7,1.7,1.7,1.6,1.7,1.7,1.6],"uptime":["17h 19m","17h 19m","17h 19m","17h 20m","17h 20m","17h 21m","17h 23m","17h 25m","17h 27m","17h 29m","17h 31m","17h 32m","17h 33m","17h 34m","17h 35m","17h 36m","17h 39m","17h 42m","17h 44m","17h 46m"],"diskTotal":0,"temp":[63,62,61,64,74,84,90,89,90,90,90,90,91,87,90,90,89,91,90,91],"rx":[0,5,1,2,2,0,0,2,1,3,1,1,9,0,1,3,1,3,1,3],"bootDate":["06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37","06/10/2026 19:37"],"ioW":[0,79,0,1228.8,0,0,0,302,0,0,0,0,223,0,16,0,0,291,0,0],"diskFree":[434.5,434.5,434.5,434.5,434.4,434.4,434.4,434.4,434.5,434.4,434.4,434.4,434.4,434.4,434.4,434.4,434.4,434.4,434.5,434.5],"ramPct":[70,70,70,70,80,85,85,90,90,85,90,90,90,85,85,85,80,85,85,80],"tx":[0,1,0,3,0,0,0,5,0,2,0,0,5,3,9,6,0,10,3,0],"ramTotal":2,"ioR":[0,0,0,1843.2,3379.2,167,1228.8,587,0,0,490,0,2150.4,0,0,0,0,23961.6,189,0],"ping":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"cpu":[64,5,2,32,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100],"diskPct":[7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7]},"JFMELGACO-3":{"internet":[2.29,0,0.01,0.01,0,0,0,0.01,0,0.04,0,0.02,0,0.09,0.02,0.02,0,0.01,0,0.03],"ramUsed":[3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.6,3.5,3.5,3.5],"uptime":["5h 4m","5h 5m","5h 5m","5h 6m","5h 6m","5h 7m","5h 9m","5h 11m","5h 13m","5h 16m","5h 17m","5h 18m","5h 19m","5h 20m","5h 21m","5h 23m","5h 26m","5h 29m","5h 31m","5h 33m"],"diskTotal":0,"temp":[41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41,41],"rx":[37,0,1,1,0,0,0,1,0,5,0,1,0,11,2,2,0,1,0,4],"bootDate":["07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51","07/10/2026 07:51"],"ioW":[696,0,62,707,124,0,16,0,0,16,0,0,0,0,0,489,15,0,0,0],"diskFree":[350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8,350.8],"ramPct":[44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,46,44,44,44],"tx":[256,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0],"ramTotal":7.9,"ioR":[167,225,177,86,174,199,241,273,0,0,0,0,0,0,0,0,0,0,0,0],"ping":[18,4,4,5,6,8,16,4,5,4,6,4,4,24,64,4,4,5,4,5],"cpu":[20,14,17,44,14,8,18,13,9,0,4,0,3,6,8,0,27,9,0,7],"diskPct":[11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11]},"JFMELGACO-4":{"internet":[7.76,0.12,0.09,0.05,0.15,0.05,0.03,0.09,0.12,0.04,0.15,0.14,1.8,0.19,0.07,0.5,5.48,5.18,1.09,0.04],"ramUsed":[14.4,14.2,14.2,14.3,14.2,14.1,14.2,14.1,14.1,14.1,13.9,14.1,14,14.1,14.1,14.2,14,14.3,14.1,14.9],"uptime":["1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 0h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h","1d 1h"],"diskTotal":0,"temp":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"rx":[10,13,9,6,17,3,2,4,14,3,16,14,37,20,7,31,57,20,10,2],"bootDate":["06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07","06/10/2026 12:07"],"ioW":[462,184,0,5734.4,0,0,408,897,0,0,0,4300.8,0,0,63,0,0,11468.8,0,0],"diskFree":[204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7,204.7],"ramPct":[94,92,92,93,92,92,92,92,92,92,90,92,91,92,92,92,91,93,92,97],"tx":[983,2,2,1,2,3,2,7,2,2,3,4,193,4,2,33,645,643,130,3],"ramTotal":15.4,"ioR":[0,0,0,0,0,932,0,806,0,0,94003.2,0,0,0,0,0,0,2048,0,16],"ping":[3,3,2,3,5,3,3,3,3,16,3,3,3,3,3,3,3,66,3,3],"cpu":[0,0,8,0,4,10,22,28,19,9,20,21,0,0,22,3,6,10,17,7],"diskPct":[44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44,44]},"JFMELGACO-2":{"internet":[0.02,0.01,0,0,0,0,0,0,0.01,0.01,0,0.02,0,0.02,0,0.01,0.01,0,0,0.04],"ramUsed":[3.2,3.2,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1,3.1],"uptime":["17h 20m","17h 20m","17h 21m","17h 21m","17h 22m","17h 23m","17h 25m","17h 27m","17h 28m","17h 31m","17h 33m","17h 34m","17h 35m","17h 36m","17h 37m","17h 38m","17h 41m","17h 44m","17h 46m","17h 48m"],"diskTotal":0,"temp":[41,41,41,41,41,41,41,41,41,41,40,40,40,41,41,40,41,41,41,41],"rx":[1,1,0,0,0,0,0,0,1,1,0,1,0,2,0,1,1,0,0,5],"bootDate":["06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36","06/10/2026 19:36"],"ioW":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,153,0,0,0],"diskFree":[358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2,358.2],"ramPct":[41,41,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39,39],"tx":[1,0,0,0,0,0,0,0,0,0,0,2,0,1,0,0,0,0,0,0],"ramTotal":7.9,"ioR":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ping":[0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0],"cpu":[5,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0],"diskPct":[23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23,23]}};
         let pcsList = ["JFMELGACO-1","JFMELGACO-2","JFMELGACO-3","JFMELGACO-4"];
-        let dashboardTopProcesses = {"JFMELGACO-2":[{"Pid":7504,"Name":"WmiPrvSE.exe","MemMB":5.5,"Cpu":10},{"Pid":4636,"Name":"MsMpEng.exe","MemMB":184.2,"Cpu":0},{"Pid":9480,"Name":"msedgewebview2.exe","MemMB":128.2,"Cpu":0},{"Pid":2652,"Name":"SearchApp.exe","MemMB":84.8,"Cpu":0},{"Pid":2440,"Name":"svchost.exe","MemMB":70.5,"Cpu":0},{"Pid":8200,"Name":"msedge.exe","MemMB":69.9,"Cpu":0},{"Pid":2592,"Name":"Memory Compression.exe","MemMB":49.7,"Cpu":0},{"Pid":5556,"Name":"msedge.exe","MemMB":35.4,"Cpu":0},{"Pid":4404,"Name":"svchost.exe","MemMB":26.3,"Cpu":0},{"Pid":6100,"Name":"msedgewebview2.exe","MemMB":25.6,"Cpu":0}],"JFMELGACO-3":[{"Pid":2588,"Name":"svchost.exe","MemMB":104.7,"Cpu":100},{"Pid":5280,"Name":"MsMpEng.exe","MemMB":183.1,"Cpu":69},{"Pid":1372,"Name":"WmiPrvSE.exe","MemMB":5.9,"Cpu":26},{"Pid":884,"Name":"lsass.exe","MemMB":5.3,"Cpu":21},{"Pid":5108,"Name":"svchost.exe","MemMB":3,"Cpu":8},{"Pid":2920,"Name":"Memory Compression.exe","MemMB":35.2,"Cpu":0},{"Pid":3588,"Name":"svchost.exe","MemMB":24.3,"Cpu":0},{"Pid":7072,"Name":"WmiPrvSE.exe","MemMB":24.3,"Cpu":0},{"Pid":5116,"Name":"svchost.exe","MemMB":16.1,"Cpu":0},{"Pid":5928,"Name":"SearchIndexer.exe","MemMB":15.3,"Cpu":0}],"JFMELGACO-4":[{"Pid":24456,"Name":"AIProcessMonitor.exe","MemMB":27,"Cpu":57},{"Pid":9948,"Name":"WmiPrvSE.exe","MemMB":23.9,"Cpu":17},{"Pid":4904,"Name":"svchost.exe","MemMB":18.2,"Cpu":17},{"Pid":7828,"Name":"WmiPrvSE.exe","MemMB":9.3,"Cpu":11},{"Pid":4,"Name":"System","MemMB":0,"Cpu":11},{"Pid":16932,"Name":"agy.exe","MemMB":962.4,"Cpu":5},{"Pid":5256,"Name":"MsMpEng.exe","MemMB":258.2,"Cpu":5},{"Pid":21736,"Name":"OneDrive.exe","MemMB":233.1,"Cpu":5},{"Pid":19620,"Name":"msedge.exe","MemMB":226.6,"Cpu":5},{"Pid":12440,"Name":"msedge.exe","MemMB":204.2,"Cpu":5}],"JFMELGACO-1":[{"Pid":2296,"Name":"LogonUI.exe","MemMB":3.2,"Cpu":8},{"Pid":6024,"Name":"WmiPrvSE.exe","MemMB":4.1,"Cpu":2.5},{"Pid":3224,"Name":"MsMpEng.exe","MemMB":81.6,"Cpu":0},{"Pid":4144,"Name":"powershell.exe","MemMB":40.6,"Cpu":0},{"Pid":1640,"Name":"Memory Compression.exe","MemMB":39.6,"Cpu":0},{"Pid":1132,"Name":"svchost.exe","MemMB":23.9,"Cpu":0},{"Pid":1096,"Name":"explorer.exe","MemMB":20.7,"Cpu":0},{"Pid":1300,"Name":"svchost.exe","MemMB":17.8,"Cpu":0},{"Pid":1220,"Name":"svchost.exe","MemMB":16.7,"Cpu":0},{"Pid":216,"Name":"WUDFHost.exe","MemMB":16.7,"Cpu":0}]};
-        let stats = {"JFMELGACO-1":{"latestRam":65,"maxIoR":629,"latestTemp":58,"isCpuAlert":false,"maxCpu":100,"statusText":"Online","hasAlert":false,"bootDate":"06/10/2026 19:37","diskFree":434.5,"latestTx":0,"avgRam":68.5,"isDiskAlert":false,"onlineTextClass":"text-emerald-400","latestCpu":5,"maxTx":8,"uptime":"17h 7m","latestIoR":0,"avgPing":0,"avgCpu":14.4,"ramTotal":2,"isRamAlert":false,"onlineDotClass":"bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]","diskPct":7,"maxIoW":364,"maxRx":9,"isOnline":true,"latestIoW":340,"maxRam":70,"isTempAlert":false,"maxPing":0,"ping":0,"alertTitle":"","latestRx":0},"JFMELGACO-3":{"latestRam":43,"maxIoR":0,"latestTemp":41,"isCpuAlert":false,"maxCpu":64,"statusText":"Online","hasAlert":false,"bootDate":"07/10/2026 07:51","diskFree":350.8,"latestTx":0,"avgRam":42.7,"isDiskAlert":false,"onlineTextClass":"text-emerald-400","latestCpu":52,"maxTx":0,"uptime":"4h 53m","latestIoR":0,"avgPing":10.5,"avgCpu":28.8,"ramTotal":7.9,"isRamAlert":false,"onlineDotClass":"bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]","diskPct":11,"maxIoW":1945.6,"maxRx":2,"isOnline":true,"latestIoW":1638.4,"maxRam":43,"isTempAlert":false,"maxPing":36,"ping":10,"alertTitle":"","latestRx":0},"JFMELGACO-4":{"latestRam":94,"maxIoR":18841.6,"latestTemp":null,"isCpuAlert":false,"maxCpu":58,"statusText":"Online","hasAlert":true,"bootDate":"06/10/2026 12:07","diskFree":205.8,"latestTx":5,"avgRam":93.7,"isDiskAlert":false,"onlineTextClass":"text-emerald-400","latestCpu":0,"maxTx":4198.4,"uptime":"1d 0h","latestIoR":0,"avgPing":2.6,"avgCpu":11.8,"ramTotal":15.4,"isRamAlert":true,"onlineDotClass":"bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]","diskPct":44,"maxIoW":23449.6,"maxRx":85,"isOnline":true,"latestIoW":0,"maxRam":95,"isTempAlert":false,"maxPing":4,"ping":3,"alertTitle":"Alerta: RAM: 94% (\u003e=90%)","latestRx":6},"JFMELGACO-2":{"latestRam":39,"maxIoR":0,"latestTemp":41,"isCpuAlert":false,"maxCpu":0,"statusText":"Online","hasAlert":false,"bootDate":"06/10/2026 19:36","diskFree":358.2,"latestTx":0,"avgRam":39,"isDiskAlert":false,"onlineTextClass":"text-emerald-400","latestCpu":0,"maxTx":2,"uptime":"17h 9m","latestIoR":0,"avgPing":0,"avgCpu":0,"ramTotal":7.9,"isRamAlert":false,"onlineDotClass":"bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]","diskPct":23,"maxIoW":504,"maxRx":7,"isOnline":true,"latestIoW":0,"maxRam":39,"isTempAlert":false,"maxPing":0,"ping":0,"alertTitle":"","latestRx":0}};
-        window.stats = stats;
-
-        function getLatestDiskFree(pc) {
-            if (window.stats && window.stats[pc] && window.stats[pc].diskFree !== undefined && window.stats[pc].diskFree !== null) {
-                return window.stats[pc].diskFree;
-            }
-            if (stats && stats[pc] && stats[pc].diskFree !== undefined && stats[pc].diskFree !== null) {
-                return stats[pc].diskFree;
-            }
-            if (rawData && rawData[pc] && Array.isArray(rawData[pc].diskFree)) {
-                const arr = rawData[pc].diskFree.filter(v => v !== null && v > 0);
-                if (arr.length > 0) return arr[arr.length - 1];
-            }
-            return 0;
-        }
+        let dashboardTopProcesses = {"JFMELGACO-2":[{"Pid":912,"Name":"WmiPrvSE.exe","MemMB":5.4,"Cpu":5},{"Pid":4636,"Name":"MsMpEng.exe","MemMB":188.2,"Cpu":0},{"Pid":9480,"Name":"msedgewebview2.exe","MemMB":128.2,"Cpu":0},{"Pid":2652,"Name":"SearchApp.exe","MemMB":84.8,"Cpu":0},{"Pid":9956,"Name":"msedge.exe","MemMB":72.3,"Cpu":0},{"Pid":2440,"Name":"svchost.exe","MemMB":70.2,"Cpu":0},{"Pid":2592,"Name":"Memory Compression.exe","MemMB":44.6,"Cpu":0},{"Pid":8336,"Name":"msedge.exe","MemMB":35,"Cpu":0},{"Pid":4404,"Name":"svchost.exe","MemMB":26.5,"Cpu":0},{"Pid":4536,"Name":"WmiPrvSE.exe","MemMB":25.7,"Cpu":0}],"JFMELGACO-3":[{"Pid":5692,"Name":"WmiPrvSE.exe","MemMB":5.2,"Cpu":13},{"Pid":5280,"Name":"MsMpEng.exe","MemMB":179.5,"Cpu":0},{"Pid":2588,"Name":"svchost.exe","MemMB":114.8,"Cpu":0},{"Pid":2920,"Name":"Memory Compression.exe","MemMB":41.1,"Cpu":0},{"Pid":7072,"Name":"WmiPrvSE.exe","MemMB":26.3,"Cpu":0},{"Pid":3588,"Name":"svchost.exe","MemMB":24.6,"Cpu":0},{"Pid":5116,"Name":"svchost.exe","MemMB":16.1,"Cpu":0},{"Pid":5928,"Name":"SearchIndexer.exe","MemMB":15.4,"Cpu":0},{"Pid":4268,"Name":"svchost.exe","MemMB":11.2,"Cpu":0},{"Pid":6504,"Name":"MoUsoCoreWorker.exe","MemMB":10.7,"Cpu":0}],"JFMELGACO-4":[{"Pid":4,"Name":"System","MemMB":0,"Cpu":11},{"Pid":23992,"Name":"msedge.exe","MemMB":299.1,"Cpu":5},{"Pid":23744,"Name":"msedge.exe","MemMB":270.8,"Cpu":5},{"Pid":12484,"Name":"mstsc.exe","MemMB":112.6,"Cpu":5},{"Pid":18400,"Name":"WmiPrvSE.exe","MemMB":8.6,"Cpu":5},{"Pid":16932,"Name":"agy.exe","MemMB":1004.4,"Cpu":0},{"Pid":21444,"Name":"msedge.exe","MemMB":552.8,"Cpu":0},{"Pid":15200,"Name":"SamsungNotes.exe","MemMB":519.9,"Cpu":0},{"Pid":16108,"Name":"msedge.exe","MemMB":491.1,"Cpu":0},{"Pid":17640,"Name":"msedge.exe","MemMB":475.5,"Cpu":0}],"JFMELGACO-1":[{"Pid":400,"Name":"msedge.exe","MemMB":82.4,"Cpu":62},{"Pid":6800,"Name":"msedge.exe","MemMB":4.2,"Cpu":25},{"Pid":216,"Name":"WUDFHost.exe","MemMB":16.6,"Cpu":5.5},{"Pid":7556,"Name":"WmiPrvSE.exe","MemMB":4.6,"Cpu":5.5},{"Pid":7688,"Name":"dwm.exe","MemMB":2.1,"Cpu":2.5},{"Pid":3224,"Name":"MsMpEng.exe","MemMB":62.1,"Cpu":0},{"Pid":8176,"Name":"powershell.exe","MemMB":46.3,"Cpu":0},{"Pid":3432,"Name":"msedge.exe","MemMB":36.9,"Cpu":0},{"Pid":1132,"Name":"svchost.exe","MemMB":24.7,"Cpu":0},{"Pid":1220,"Name":"svchost.exe","MemMB":23.2,"Cpu":0}]};
 
         // Paleta oficial de cores: Amarelo tradicional puro (#facc15), Verde (#10b981), Vermelho (#ef4444), Azul (#3b82f6)
         const colors = {
@@ -684,7 +649,7 @@
             }
         });
 
-        // LÃ³gica de Janela Temporal Task Manager
+        // Lógica de Janela Temporal Task Manager
         let currentWindowSize = localStorage.getItem('monitorWindowSize') || '60';
 
         function alignDataTaskmanager(allTimestamps, seriesData, winSize) {
@@ -736,11 +701,11 @@
                     ticks: { color: '#64748b', font: { size: 10 } }
                 }
             },
+            spanGaps: false,
             elements: {
                 line: { tension: 0.25, borderWidth: 2, spanGaps: false },
                 point: { radius: 0, hoverRadius: 0 }
-            },
-            spanGaps: false
+            }
         };
 
         // CONTROLE INTERATIVO DE VISIBILIDADE E DESTAQUE EM BRANCO (CLICK NO CARD)
@@ -804,6 +769,23 @@
         }
 
         const initialLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
+                function getLatestDiskFree(pc) {
+            if (window.stats && window.stats[pc] && window.stats[pc].diskFree !== undefined) {
+                return window.stats[pc].diskFree;
+            }
+            if (typeof stats !== 'undefined' && stats && stats[pc] && stats[pc].diskFree !== undefined) {
+                return stats[pc].diskFree;
+            }
+            if (rawData && rawData[pc] && Array.isArray(rawData[pc].diskFree) && rawData[pc].diskFree.length > 0) {
+                for (let i = rawData[pc].diskFree.length - 1; i >= 0; i--) {
+                    if (rawData[pc].diskFree[i] !== null && rawData[pc].diskFree[i] !== undefined) {
+                        return rawData[pc].diskFree[i];
+                    }
+                }
+            }
+            return 0;
+        }
+
         const charts = {};
 
         function createDatasetList(metricKey) {
@@ -888,9 +870,9 @@
             data: {
                 labels: initialVisiblePcs,
                 datasets: [{
-                    label: 'EspaÃ§o Livre (GB)',
+                    label: 'Espaço Livre (GB)',
                     data: initialVisiblePcs.map(pc => getLatestDiskFree(pc)),
-                    backgroundColor: initialVisiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#10b981'))),
+                    backgroundColor: initialVisiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#3b82f6'))),
                     borderRadius: 6
                 }]
             },
@@ -939,7 +921,7 @@
                 ...commonOptions,
                 scales: {
                     ...commonOptions.scales,
-                    y: { ...commonOptions.scales.y, min: 20, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' Â°C' } }
+                    y: { ...commonOptions.scales.y, min: 20, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' °C' } }
                 }
             }
         });
@@ -992,9 +974,9 @@
                     ds.pointRadius = 0;
                     ds.pointHoverRadius = 0;
                     ds.order = isH ? -1 : 1;
-                    ds.spanGaps = false;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
+                    ds.spanGaps = false;
                 });
                 charts[k].update(mode);
             });
@@ -1002,7 +984,7 @@
                 const visiblePcs = pcsList.filter(pc => isMachineVisible(pc));
                 charts.disk.data.labels = visiblePcs;
                 charts.disk.data.datasets[0].data = visiblePcs.map(pc => getLatestDiskFree(pc));
-                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#10b981')));
+                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#3b82f6')));
                 charts.disk.update(mode);
             }
         }
@@ -1010,7 +992,7 @@
         // Aplica o estado visual inicial aos cards
         pcsList.forEach(pc => updateCardVisualState(pc));
 
-        // MODAL ESTATÃSTICO CONSOLIDADO
+        // MODAL ESTATÍSTICO CONSOLIDADO
         function toggleSummaryModal(show) {
             const modal = document.getElementById('summaryModal');
             if (!modal) return;
@@ -1054,11 +1036,11 @@
             if (isVis) {
                 btn.innerHTML = '&#128065; Exibir gr&aacute;ficos &#10003;';
                 btn.className = 'text-[10px] px-2.5 py-1 rounded bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/50 font-bold transition cursor-pointer flex items-center gap-1 shadow-sm';
-                btn.title = 'MÃ¡quina visÃ­vel nos grÃ¡ficos. Clique para ocultar.';
+                btn.title = 'Máquina visível nos gráficos. Clique para ocultar.';
             } else {
                 btn.innerHTML = '&#128065; Oculto nos gr&aacute;ficos';
                 btn.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1';
-                btn.title = 'MÃ¡quina oculta nos grÃ¡ficos. Clique para exibir.';
+                btn.title = 'Máquina oculta nos gráficos. Clique para exibir.';
             }
         }
 
@@ -1128,7 +1110,7 @@
             }
         }
 
-        // GERENCIAMENTO DE MÃQUINAS (MODAL)
+        // GERENCIAMENTO DE MÁQUINAS (MODAL)
         function toggleMachinesModal(show) {
             const modal = document.getElementById('machinesModal');
             if (!modal) return;
@@ -1171,7 +1153,7 @@
                 input.value = '';
                 saveMachinesConfig();
             } else {
-                alert('O nÃ³ ' + name + ' jÃ¡ estÃ¡ cadastrado.');
+                alert('O nó ' + name + ' já está cadastrado.');
             }
         }
 
@@ -1256,69 +1238,14 @@
             if (e.target.id === 'machinesModal') toggleMachinesModal(false);
         });
 
-        // MODO TELA ÃšNICA VS ROLAGEM E CONTROLE DINÃ‚MICO DE SLOTS
+        // MODO TELA ÚNICA VS ROLAGEM
         let isSingleScreen = localStorage.getItem('monitorSingleScreen') !== 'false';
-        let currentSlot5Mode = localStorage.getItem('monitorSlot5Mode') || 'ping';
         let currentSlot6Mode = localStorage.getItem('monitorSlot6Mode') || 'temp';
-
-        function toggleSlot5Chart(mode) {
-            currentSlot5Mode = mode;
-            if (currentSlot5Mode === currentSlot6Mode) {
-                currentSlot6Mode = (mode === 'disk') ? 'temp' : 'disk';
-                localStorage.setItem('monitorSlot6Mode', currentSlot6Mode);
-            }
-            localStorage.setItem('monitorSlot5Mode', mode);
-            applyScreenMode();
-        }
 
         function toggleSlot6Chart(mode) {
             currentSlot6Mode = mode;
-            if (currentSlot6Mode === currentSlot5Mode) {
-                currentSlot5Mode = (mode === 'disk') ? 'ping' : 'disk';
-                localStorage.setItem('monitorSlot5Mode', currentSlot5Mode);
-            }
             localStorage.setItem('monitorSlot6Mode', mode);
             applyScreenMode();
-        }
-
-        function updateSlotButtons() {
-            const bS5Ping = document.getElementById('btnSlot5Ping');
-            const bS5Disk = document.getElementById('btnSlot5Disk');
-            const bS5Io   = document.getElementById('btnSlot5Io');
-            if (bS5Ping) bS5Ping.className = currentSlot5Mode === 'ping'
-                ? 'text-[10px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-bold border border-purple-500/50 transition cursor-pointer'
-                : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            if (bS5Disk) bS5Disk.className = currentSlot5Mode === 'disk'
-                ? 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500/50 transition cursor-pointer'
-                : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            if (bS5Io) bS5Io.className = currentSlot5Mode === 'io'
-                ? 'text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-300 font-bold border border-amber-500/50 transition cursor-pointer'
-                : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-
-            ['btnSlot6Temp', 'btnSlot6NetTemp'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'temp'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
-            ['btnSlot6Net', 'btnSlot6NetNet'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'internet'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
-            ['btnSlot6Disk', 'btnSlot6NetDisk'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'disk'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
-            ['btnSlot6Io', 'btnSlot6NetIo'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'io'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-300 font-bold border border-amber-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
         }
 
         function applyScreenMode() {
@@ -1347,43 +1274,34 @@
                 if (chartsMain) {
                     chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-3 gap-2 h-full min-h-0 overflow-hidden pr-0.5";
                 }
-
-                // Cards 1 a 4 sempre visÃ­veis nos primeiros slots
-                [cardCpu, cardRam, cardRx, cardTx].forEach((el, idx) => {
-                    if (el) {
-                        el.classList.remove('hidden');
-                        el.style.order = (idx + 1).toString();
-                    }
+                // Cards 1 a 5 sempre visíveis
+                [cardCpu, cardRam, cardRx, cardTx, cardPing].forEach(el => {
+                    if (el) el.classList.remove('hidden');
                 });
+                // Slot 6: alterna entre Temperatura e Internet
+                if (currentSlot6Mode === 'internet') {
+                    if (cardTemp) cardTemp.classList.add('hidden');
+                    if (cardInternet) cardInternet.classList.remove('hidden');
+                } else {
+                    if (cardTemp) cardTemp.classList.remove('hidden');
+                    if (cardInternet) cardInternet.classList.add('hidden');
+                }
+                // Cards de disco ocultos na tela única para manter estritamente 6 gráficos
+                if (cardDisk) cardDisk.classList.add('hidden');
+                if (cardIo) cardIo.classList.add('hidden');
 
-                // Oculta os cards secundÃ¡rios inicialmente
-                [cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach(el => {
-                    if (el) {
-                        el.classList.add('hidden');
-                        el.style.order = '';
+                // Atualiza botões de alternância do slot 6
+                const btnTemp = document.getElementById('btnSlot6Temp');
+                const btnNet = document.getElementById('btnSlot6Net');
+                if (btnTemp && btnNet) {
+                    if (currentSlot6Mode === 'internet') {
+                        btnTemp.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
+                        btnNet.className = 'text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer';
+                    } else {
+                        btnTemp.className = 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer';
+                        btnNet.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
                     }
-                });
-
-                // Ativa o card selecionado para o Slot 5 (ordem 5)
-                let activeSlot5Card = cardPing;
-                if (currentSlot5Mode === 'disk') activeSlot5Card = cardDisk;
-                else if (currentSlot5Mode === 'io') activeSlot5Card = cardIo;
-                if (activeSlot5Card) {
-                    activeSlot5Card.classList.remove('hidden');
-                    activeSlot5Card.style.order = '5';
                 }
-
-                // Ativa o card selecionado para o Slot 6 (ordem 6)
-                let activeSlot6Card = cardTemp;
-                if (currentSlot6Mode === 'internet') activeSlot6Card = cardInternet;
-                else if (currentSlot6Mode === 'disk') activeSlot6Card = cardDisk;
-                else if (currentSlot6Mode === 'io') activeSlot6Card = cardIo;
-                if (activeSlot6Card) {
-                    activeSlot6Card.classList.remove('hidden');
-                    activeSlot6Card.style.order = '6';
-                }
-
-                updateSlotButtons();
 
                 allChartCards.forEach(c => {
                     c.classList.remove('h-[220px]', 'min-h-[200px]', 'shrink-0');
@@ -1402,12 +1320,9 @@
                 if (chartsMain) {
                     chartsMain.className = "flex-1 flex flex-col gap-2.5 overflow-y-auto pr-1";
                 }
-                // Na rolagem, todos os 9 grÃ¡ficos ficam visÃ­veis na ordem natural
-                [cardCpu, cardRam, cardRx, cardTx, cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach((el, idx) => {
-                    if (el) {
-                        el.classList.remove('hidden');
-                        el.style.order = (idx + 1).toString();
-                    }
+                // Na rolagem, todos os 9 gráficos ficam visíveis
+                [cardCpu, cardRam, cardRx, cardTx, cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach(el => {
+                    if (el) el.classList.remove('hidden');
                 });
                 allChartCards.forEach(c => {
                     c.classList.remove('h-full', 'min-h-0');
@@ -1431,16 +1346,13 @@
         }
         applyScreenMode();
 
-        // ATUALIZAÃ‡ÃƒO CONTÃNUA EM SEGUNDO PLANO
+        // ATUALIZACAO CONTINUA EM SEGUNDO PLANO
         window.updateDashboardData = function(payload) {
             if (!payload || !payload.timestamps || !payload.rawData) return;
 
             timestamps = payload.timestamps;
             rawData = payload.rawData;
-            if (payload.stats) {
-                stats = payload.stats;
-                window.stats = payload.stats;
-            }
+            if (payload.stats) { stats = payload.stats; window.stats = payload.stats; }
 
             const timeRangeEl = document.getElementById('headerTimeRange');
             if (timeRangeEl && payload.startTime && payload.endTime) {
@@ -1520,7 +1432,7 @@
                     if (isCpuAlert) alertReasons.push('CPU: ' + s.latestCpu + '% (>=85%)');
                     if (isRamAlert) alertReasons.push('RAM: ' + s.latestRam + '% (>=90%)');
                     if (isDiskAlert) alertReasons.push('Disco C: ' + s.diskFree + 'GB livres (<=15GB ou >=90%)');
-                    if (isTempAlert) alertReasons.push('Temp: ' + s.latestTemp + 'Â°C (>=75Â°C)');
+                    if (isTempAlert) alertReasons.push('Temp: ' + s.latestTemp + '°C (>=75°C)');
 
                     if (cardHost) {
                         if (hasAlert) cardHost.classList.add('card-alert-pulse');
@@ -1619,7 +1531,7 @@
                 const mDisk = document.getElementById('modal_' + pc + '_disk');
                 if (mDisk) mDisk.innerText = s.isOnline ? s.diskFree + ' GB' : '---';
                 const mPing = document.getElementById('modal_' + pc + '_ping');
-                if (mPing) mPing.innerHTML = s.isOnline ? s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(mÃ©d ' + s.avgPing + 'ms)</span>' : '---';
+                if (mPing) mPing.innerHTML = s.isOnline ? s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(méd ' + s.avgPing + 'ms)</span>' : '---';
                 const mUptime = document.getElementById('modal_' + pc + '_uptime');
                 if (mUptime) mUptime.innerHTML = (s.isOnline && s.uptime) ? '&#9201; ' + s.uptime : '---';
             });
@@ -1665,7 +1577,7 @@
             document.head.appendChild(s);
         }
 
-        // AUTO-REFRESH CONTROLLER CONFIGURÃVEL (MÃNIMO 1s)
+        // AUTO-REFRESH CONTROLLER CONFIGURÁVEL (MÍNIMO 1s)
         let refreshInterval = parseInt(localStorage.getItem('monitorRefreshInterval') || '5');
         if (isNaN(refreshInterval) || refreshInterval < 1) refreshInterval = 5;
         let refreshTimer = refreshInterval;
@@ -1674,21 +1586,8 @@
         const initLbl = document.getElementById('intervalSecLabel');
         if (initLbl) initLbl.innerText = refreshInterval + 's';
 
-        function updateCountdownDisplay() {
-            const el = document.getElementById('countdownEl');
-            if (!el) return;
-            if (refreshInterval === 1) {
-                el.innerText = '1s';
-                el.className = 'text-emerald-400 font-bold text-[11px] w-6 text-center animate-pulse';
-            } else {
-                el.className = 'text-cyan-400 font-bold text-[11px] w-6 text-center';
-                el.innerText = (refreshTimer > 0 ? refreshTimer : refreshInterval) + 's';
-            }
-        }
-        updateCountdownDisplay();
-
         function promptChangeInterval() {
-            const input = prompt("Defina o perÃ­odo de atualizaÃ§Ã£o automÃ¡tica em segundos (mÃ­nimo 1):", refreshInterval);
+            const input = prompt("Defina o período de atualização automática em segundos (mínimo 1):", refreshInterval);
             if (input !== null) {
                 const val = parseInt(input);
                 if (!isNaN(val) && val >= 1) {
@@ -1697,7 +1596,8 @@
                     localStorage.setItem('monitorRefreshInterval', val.toString());
                     const lbl = document.getElementById('intervalSecLabel');
                     if (lbl) lbl.innerText = val + 's';
-                    updateCountdownDisplay();
+                    const el = document.getElementById('countdownEl');
+                    if (el) el.innerText = val + 's';
                 } else {
                     alert("Por favor, informe um valor inteiro maior ou igual a 1 segundo.");
                 }
@@ -1718,11 +1618,12 @@
         setInterval(() => {
             if (autoRefreshActive) {
                 refreshTimer--;
+                const el = document.getElementById('countdownEl');
+                if (el) el.innerText = refreshTimer + 's';
                 if (refreshTimer <= 0) {
                     refreshTimer = refreshInterval;
                     requestDataUpdate();
                 }
-                updateCountdownDisplay();
             }
         }, 1000);
     </script>

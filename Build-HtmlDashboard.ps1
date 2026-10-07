@@ -47,7 +47,7 @@ function Parse-MetricNumber([string]$str) {
 Write-Host "Lendo arquivo de log: $LogFile ..." -ForegroundColor Cyan
 $lines = [System.IO.File]::ReadAllLines($LogFile, [System.Text.Encoding]::UTF8)
 
-# Carregamento da lista canÃ´nica de mÃ¡quinas (machines.json com fallback e ordenaÃ§Ã£o alfabÃ©tica estrita)
+# Carregamento da lista canônica de máquinas (machines.json com fallback e ordenação alfabética estrita)
 $machinesJsonPath = Join-Path $PSScriptRoot "machines.json"
 if (-not (Test-Path $machinesJsonPath)) { $machinesJsonPath = Join-Path $PSScriptRoot "Data\machines.json" }
 $pcsList = @('JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3', 'JFMELGACO-4')
@@ -115,15 +115,15 @@ function Flush-Block {
                 $machineData[$p].ramUsed.Add($null)
                 $machineData[$p].diskFree.Add($null)
                 $machineData[$p].diskPct.Add($null)
-                $machineData[$p].ioR.Add($null)
-                $machineData[$p].ioW.Add($null)
-                $machineData[$p].rx.Add($null)
-                $machineData[$p].tx.Add($null)
+                $machineData[$p].ioR.Add(0)
+                $machineData[$p].ioW.Add(0)
+                $machineData[$p].rx.Add(0)
+                $machineData[$p].tx.Add(0)
                 $machineData[$p].ping.Add($null)
                 $machineData[$p].uptime.Add($null)
                 $machineData[$p].bootDate.Add($null)
                 $machineData[$p].temp.Add($null)
-                $machineData[$p].internet.Add($null)
+                $machineData[$p].internet.Add(0)
             }
         }
         $currentBlockPcs.Clear()
@@ -155,7 +155,7 @@ foreach ($line in $lines) {
             $detectedLocalHost = $pc
         }
 
-        # Parsing desacoplado e robusto de mÃ©tricas adicionais
+        # Parsing desacoplado e robusto de métricas adicionais
         $pingVal = $null
         if ($line -match 'Ping:\s*(?<ping>\d+|---|N\/D)\s*ms') {
             $rawP = $matches['ping']
@@ -226,16 +226,16 @@ foreach ($line in $lines) {
                 ramUsed  = $null
                 ramTotal = 0
                 diskFree = $null
-                diskPct  = $null
-                ioR      = $null
-                ioW      = $null
-                rx       = $null
-                tx       = $null
-                ping     = $null
+                diskPct  = 0
+                ioR      = 0
+                ioW      = 0
+                rx       = 0
+                tx       = 0
+                ping     = $pingVal
                 uptime   = $null
                 bootDate = $null
                 temp     = $null
-                internet = $null
+                internet = 0
             }
         }
     }
@@ -244,7 +244,7 @@ Flush-Block
 
 Write-Host "Total de pontos temporais processados: $($timestamps.Count)" -ForegroundColor Green
 
-# Calculando estatÃ­sticas consolidadas
+# Calculando estatísticas consolidadas
 $stats = @{}
 foreach ($pc in $pcsList) {
     $validCpu    = $machineData[$pc].cpu | Where-Object { $null -ne $_ }
@@ -320,7 +320,7 @@ foreach ($pc in $pcsList) {
     if ($isCpuAlert)  { $alertReasons.Add("CPU: $latestCpu% (>=85%)") }
     if ($isRamAlert)  { $alertReasons.Add("RAM: $latestRam% (>=90%)") }
     if ($isDiskAlert) { $alertReasons.Add("Disco C: ${diskFreeVal}GB livres (<=15GB ou >=90%)") }
-    if ($isTempAlert) { $alertReasons.Add("Temp: ${latestTemp}Â°C (>=75Â°C)") }
+    if ($isTempAlert) { $alertReasons.Add("Temp: ${latestTemp}°C (>=75°C)") }
     $alertTitle   = if ($alertReasons.Count -gt 0) { "Alerta: " + ($alertReasons -join " | ") } else { "" }
 
     $stats[$pc] = @{
@@ -370,7 +370,7 @@ if (-not $detectedLocalHost) {
 
 Write-Host "Host Local detectado: $detectedLocalHost" -ForegroundColor Yellow
 
-# Carregamento ou extraÃ§Ã£o de Top 10 Processos com CPU normalizada por nÃºmero de nÃºcleos
+# Carregamento ou extração de Top 10 Processos com CPU normalizada por número de núcleos
 $topProcessesData = @{}
 $procJsonCandidates = @()
 if (-not [string]::IsNullOrWhiteSpace($LogFile)) {
@@ -402,7 +402,7 @@ foreach ($cPath in $procJsonCandidates) {
     }
 }
 
-# Se o nÃ³ local nÃ£o tiver processos no json, consulta via CIM com CPU normalizada
+# Se o nó local não tiver processos no json, consulta via CIM com CPU normalizada
 if (-not $topProcessesData.ContainsKey($detectedLocalHost)) {
     try {
         $numCores = [System.Environment]::ProcessorCount
@@ -429,7 +429,7 @@ if (-not $topProcessesData.ContainsKey($detectedLocalHost)) {
     } catch {}
 }
 
-# Tenta preencher nÃ³s remotos se ainda faltantes e online
+# Tenta preencher nós remotos se ainda faltantes e online
 foreach ($remPc in $pcsList) {
     if (-not $topProcessesData.ContainsKey($remPc) -and $stats[$remPc].isOnline) {
         try {
@@ -463,7 +463,7 @@ foreach ($remPc in $pcsList) {
 
 $topProcessesJson = $topProcessesData | ConvertTo-Json -Depth 4 -Compress
 
-# ConstruÃ§Ã£o dos Cards Laterais dos Computadores (Ordem AlfabÃ©tica, Amarelo Puro, Sem RÃ³tulos DesnecessÃ¡rios)
+# Construção dos Cards Laterais dos Computadores (Ordem Alfabética, Amarelo Puro, Sem Rótulos Desnecessários)
 $cardsHtml = ""
 foreach ($pc in $pcsList) {
     $cfgBar = switch ($pc) {
@@ -496,7 +496,7 @@ foreach ($pc in $pcsList) {
 
     $cardsHtml += @"
             <!-- Card: $pc -->
-            <div id="cardHost_$pc" onclick="selectMachineHighlight('$pc')" title="Clique para destacar $pc em branco nos grÃ¡ficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 $hoverBorder rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $offlineClass$(if (-not $st.isOnline) { 'opacity-60 ' })">
+            <div id="cardHost_$pc" onclick="selectMachineHighlight('$pc')" title="Clique para destacar $pc em branco nos gráficos" class="node-card flex-1 flex flex-col justify-between bg-cardbg border border-slate-700/70 $hoverBorder rounded-xl p-2 shadow-md transition-all relative overflow-hidden cursor-pointer select-none $offlineClass$(if (-not $st.isOnline) { 'opacity-60 ' })">
                 <div id="cardTopBar_$pc" class="absolute top-0 left-0 right-0 h-1 $cfgBar transition-all"></div>
                 <div class="flex items-center justify-between gap-1 pt-0.5 flex-nowrap overflow-hidden">
                     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -504,7 +504,7 @@ foreach ($pc in $pcsList) {
                         <strong class="text-white text-xs font-bold tracking-wide truncate whitespace-nowrap" id="cardName_$pc">$pc</strong>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 flex-nowrap">
-                        <span id="cardAlertBadge_$pc" class="${alertHidden}text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($st.alertTitle)">âš ï¸ AtenÃ§Ã£o</span>
+                        <span id="cardAlertBadge_$pc" class="${alertHidden}text-[8.5px] px-1.5 py-0.2 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase tracking-tight shrink-0 animate-pulse whitespace-nowrap" title="$($st.alertTitle)">⚠️ Atenção</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] bg-slate-900/60 rounded px-2 py-0.5 border border-slate-800/80 my-0.5">
@@ -514,8 +514,8 @@ foreach ($pc in $pcsList) {
                     </span>
                     <div class="flex items-center gap-1">
                         <span class="text-[8.5px] px-1.5 py-0.2 rounded font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/40 transition cursor-pointer" onclick="event.stopPropagation(); openProcessModal('$pc')" title="Ver Top 10 Processos com maior consumo">&#9889; Top 10</span>
-                        <span id="card_${pc}_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="LatÃªncia ICMP (Ping RTT)">$(if ($st.isOnline -and $null -ne $st.ping) { "$($st.ping)ms" } else { "---" })</span>
-                        <span id="card_${pc}_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contÃ­nuo">&#9201; $(if ($st.isOnline -and $st.uptime) { $st.uptime } else { "---" })</span>
+                        <span id="card_${pc}_ping" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-cyan-300 border border-cyan-500/30" title="Latência ICMP (Ping RTT)">$(if ($st.isOnline -and $null -ne $st.ping) { "$($st.ping)ms" } else { "---" })</span>
+                        <span id="card_${pc}_uptime" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/30" title="Uptime contínuo">&#9201; $(if ($st.isOnline -and $st.uptime) { $st.uptime } else { "---" })</span>
                         <span id="card_${pc}_temp" class="text-[9px] px-1.5 py-0.2 rounded font-mono font-semibold bg-slate-800 text-rose-300 border border-rose-500/30" title="Temperatura de Hardware">&#127777;&#xFE0F; $(if ($st.isOnline -and $st.latestTemp) { "$($st.latestTemp)&deg;C" } else { "---" })</span>
                     </div>
                 </div>
@@ -528,7 +528,7 @@ foreach ($pc in $pcsList) {
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">RAM</span>
                         <strong class="text-xs $(if (-not $st.isOnline) { 'text-slate-500' } elseif ($st.isRamAlert) { 'text-red-300 font-bold' } else { 'text-white' })" id="card_${pc}_ram">$(if ($st.isOnline) { "$($st.latestRam)%" } else { "---" })</strong>
                     </div>
-                    <div class="border rounded px-1 py-1 $(if ($st.isOnline) { $diskBoxClass } else { 'bg-slate-900/40 border-slate-800/60 opacity-60 ' })" id="box_${pc}_disk" title="EspaÃ§o Livre em Disco C:">
+                    <div class="border rounded px-1 py-1 $(if ($st.isOnline) { $diskBoxClass } else { 'bg-slate-900/40 border-slate-800/60 opacity-60 ' })" id="box_${pc}_disk" title="Espaço Livre em Disco C:">
                         <span class="text-[8px] text-slate-400 uppercase block font-semibold">Disco C:</span>
                         <strong class="text-xs $(if (-not $st.isOnline) { 'text-slate-500' } elseif ($st.isDiskAlert) { 'text-amber-300 font-bold' } else { 'text-emerald-400' })" id="card_${pc}_disk">$(if ($st.isOnline) { "$($st.diskFree)G" } else { "---" })</strong>
                     </div>
@@ -545,7 +545,7 @@ foreach ($pc in $pcsList) {
 "@
 }
 
-# ConstruÃ§Ã£o das linhas da tabela de resumo consolidado
+# Construção das linhas da tabela de resumo consolidado
 $summaryTableRows = ""
 foreach ($pc in $pcsList) {
     $st = $stats[$pc]
@@ -567,14 +567,14 @@ foreach ($pc in $pcsList) {
                             <td class="py-2.5 px-3" id="modal_${pc}_rx">$($st.maxRx) KB/s</td>
                             <td class="py-2.5 px-3 font-bold text-cyan-400" id="modal_${pc}_tx">$($st.maxTx) KB/s</td>
                             <td class="py-2.5 px-3 text-emerald-400 font-bold" id="modal_${pc}_disk">$(if ($st.isOnline) { "$($st.diskFree) GB" } else { "---" })</td>
-                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_${pc}_ping">$(if ($st.isOnline) { "$($st.ping) ms <span class=""text-[10px] text-slate-400 font-normal"">(mÃ©d $($st.avgPing)ms)</span>" } else { "---" })</td>
+                            <td class="py-2.5 px-3 font-semibold text-cyan-300 font-mono" id="modal_${pc}_ping">$(if ($st.isOnline) { "$($st.ping) ms <span class=""text-[10px] text-slate-400 font-normal"">(méd $($st.avgPing)ms)</span>" } else { "---" })</td>
                             <td class="py-2.5 px-3 font-semibold text-amber-300 font-mono" id="modal_${pc}_uptime">$(if ($st.isOnline -and $st.uptime) { "&#9201; $($st.uptime) <span class=""text-[10px] text-slate-400 font-normal"">($($st.bootDate))</span>" } else { "---" })</td>
                             <td class="py-2.5 px-3 text-center"><button onclick="toggleSummaryModal(false); openProcessModal('$pc')" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer">&#9889; Top 10</button></td>
                         </tr>
 "@
 }
 
-# SerializaÃ§Ã£o JSON para dados do Chart.js
+# Serialização JSON para dados do Chart.js
 $jsonTimestamps = $timestamps | ConvertTo-Json -Compress
 $jsonData = $machineData | ConvertTo-Json -Depth 4 -Compress
 $jsonPcsList = $pcsList | ConvertTo-Json -Compress
@@ -661,9 +661,9 @@ $html = @"
                 </button>
             </div>
 
-            <!-- Auto-Refresh com PerÃ­odo CustomizÃ¡vel -->
+            <!-- Auto-Refresh com Período Customizável -->
             <div class="flex items-center gap-1.5 bg-cardbg border border-borderbg px-2 py-1 rounded-lg">
-                <button onclick="promptChangeInterval()" class="flex items-center gap-1 hover:text-cyan-300 transition cursor-pointer" title="Clique para alterar o perÃ­odo de atualizaÃ§Ã£o (mÃ­nimo 1s)">
+                <button onclick="promptChangeInterval()" class="flex items-center gap-1 hover:text-cyan-300 transition cursor-pointer" title="Clique para alterar o período de atualização (mínimo 1s)">
                     <span class="text-slate-400 text-[11px]">Auto:</span>
                     <span id="countdownEl" class="text-cyan-400 font-bold text-[11px] w-6 text-center">5s</span>
                 </button>
@@ -671,27 +671,27 @@ $html = @"
                 <button onclick="promptChangeInterval()" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/80 font-mono cursor-pointer" title="Definir intervalo">&#9881; <span id="intervalSecLabel">5s</span></button>
             </div>
 
-            <!-- BotÃ£o Gerenciar NÃ³s -->
+            <!-- Botão Gerenciar Nós -->
             <button onclick="toggleMachinesModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-medium transition cursor-pointer flex items-center gap-1" title="Adicionar, editar e descobrir computadores na rede">
                 &#128187; Gerenciar N&oacute;s
             </button>
 
-            <!-- BotÃ£o Tabela de Resumo Modal -->
+            <!-- Botão Tabela de Resumo Modal -->
             <button onclick="toggleSummaryModal(true)" class="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-medium transition cursor-pointer flex items-center gap-1">
                 &#128203; Tabela Resumo
             </button>
 
-            <!-- Alternador Tela Ãšnica / Rolagem -->
-            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Ãšnica e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
+            <!-- Alternador Tela Única / Rolagem -->
+            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Única e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
                 &#128421;&#xFE0F; Tela &Uacute;nica
             </button>
         </div>
     </header>
 
-    <!-- CONTAINER PRINCIPAL: GRÃFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
+    <!-- CONTAINER PRINCIPAL: GRÁFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
     <div id="dashboardContent" class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden">
 
-        <!-- ÃREA PRINCIPAL DOS GRÃFICOS: GRID 2 COLUNAS X 3 LINHAS (TELA ÃšNICA) OU ROLAGEM VERTICAL (MODO ROLAGEM) -->
+        <!-- ÁREA PRINCIPAL DOS GRÁFICOS: GRID 2 COLUNAS X 3 LINHAS (TELA ÚNICA) OU ROLAGEM VERTICAL (MODO ROLAGEM) -->
         <main id="chartsMain" class="flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-3 gap-2 h-full min-h-0 overflow-hidden pr-0.5">
 
             <!-- 1. CPU CHART -->
@@ -753,11 +753,6 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-purple-400"></span>
                         5. Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot5Chart('ping')" id="btnSlot5Ping" title="Exibir Ping no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-bold border border-purple-500/50 transition cursor-pointer">&#128225; Ping</button>
-                        <button onclick="toggleSlot5Chart('disk')" id="btnSlot5Disk" title="Exibir EspaÃ§o em Disco no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128190; Disco C:</button>
-                        <button onclick="toggleSlot5Chart('io')" id="btnSlot5Io" title="Exibir Taxa de I/O no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#9881; I/O Disco</button>
-                    </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="pingChart"></canvas>
@@ -773,9 +768,7 @@ $html = @"
                     </span>
                     <div class="flex items-center gap-1">
                         <button onclick="toggleSlot6Chart('temp')" id="btnSlot6Temp" title="Exibir Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6Net" title="Exibir TrÃ¡fego Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                        <button onclick="toggleSlot6Chart('disk')" id="btnSlot6Disk" title="Exibir EspaÃ§o em Disco no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128190; Disco C:</button>
-                        <button onclick="toggleSlot6Chart('io')" id="btnSlot6Io" title="Exibir Taxa de I/O no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#9881; I/O Disco</button>
+                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6Net" title="Exibir Tráfego Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
                     </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
@@ -791,10 +784,8 @@ $html = @"
                         6. Tr&aacute;fego Internet (Download / Upload em Mbps)
                     </span>
                     <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot6Chart('temp')" id="btnSlot6NetTemp" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6NetNet" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer">&#127760; Internet</button>
-                        <button onclick="toggleSlot6Chart('disk')" id="btnSlot6NetDisk" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128190; Disco C:</button>
-                        <button onclick="toggleSlot6Chart('io')" id="btnSlot6NetIo" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#9881; I/O Disco</button>
+                        <button onclick="toggleSlot6Chart('temp')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
+                        <button onclick="toggleSlot6Chart('internet')" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer">&#127760; Internet</button>
                     </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
@@ -809,11 +800,6 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
                         8. Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot5Chart('ping')" title="Alternar para Ping no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128225; Ping</button>
-                        <button onclick="toggleSlot6Chart('temp')" title="Alternar para Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" title="Alternar para Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                    </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="diskChart"></canvas>
@@ -827,11 +813,6 @@ $html = @"
                         <span class="h-2 w-2 rounded-full bg-amber-400"></span>
                         9. Disco C: Taxa de I/O Escrita (KB/s)
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot5Chart('ping')" title="Alternar para Ping no slot 5" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#128225; Ping</button>
-                        <button onclick="toggleSlot6Chart('temp')" title="Alternar para Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" title="Alternar para Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                    </div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="ioChart"></canvas>
@@ -840,7 +821,7 @@ $html = @"
 
         </main>
 
-        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES (DISTRIBUIÃ‡ÃƒO UNIFORME SEM ESPAÃ‡O VAGO) -->
+        <!-- BARRA LATERAL VERTICAL DIREITA: CARDS DOS COMPUTADORES (DISTRIBUICAO UNIFORME SEM ESPACO VAGO) -->
         <aside id="nodesSidebar" class="w-full lg:w-[360px] xl:w-[400px] flex flex-col justify-between gap-2 shrink-0 h-full overflow-y-auto pr-0.5">
             <div class="flex items-center justify-between px-1 text-[11px] text-slate-400 font-semibold border-b border-borderbg pb-1 shrink-0">
                 <span class="flex items-center gap-1.5 text-slate-300">
@@ -855,7 +836,7 @@ $cardsHtml
         </aside>
     </div>
 
-    <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÃSTICO -->
+    <!-- MODAL POPUP: TABELA CONSOLIDADA DE RESUMO ESTATÍSTICO -->
     <div id="summaryModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-5xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="flex items-center justify-between p-4 border-b border-borderbg bg-slate-800/40">
@@ -896,7 +877,7 @@ $summaryTableRows
         </div>
     </div>
 
-    <!-- MODAL POPUP: TOP 10 PROCESSOS POR NÃ“ -->
+    <!-- MODAL POPUP: TOP 10 PROCESSOS POR NÓ -->
     <div id="processModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden transition-opacity">
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-700/50">
             <div class="flex items-center justify-between p-3.5 border-b border-borderbg bg-slate-800/60">
@@ -945,7 +926,7 @@ $summaryTableRows
         </div>
     </div>
 
-    <!-- MODAL: GERENCIAMENTO DE MÃQUINAS (CADASTRO / EDIÃ‡ÃƒO / DESCOBERTA) -->
+    <!-- MODAL: GERENCIAMENTO DE MAQUINAS (CADASTRO / EDICAO / DESCOBERTA) -->
     <div id="machinesModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden transition-opacity">
         <div class="bg-cardbg border border-borderbg rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden ring-1 ring-slate-700/50">
             <div class="flex items-center justify-between p-3.5 border-b border-borderbg bg-slate-800/60">
@@ -959,7 +940,7 @@ $summaryTableRows
                 <button onclick="toggleMachinesModal(false)" class="text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs font-bold">&times; Fechar</button>
             </div>
             <div class="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
-                <!-- FormulÃ¡rio Adicionar NÃ³ -->
+                <!-- Formulário Adicionar Nó -->
                 <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex flex-col gap-2">
                     <label class="text-[11px] font-semibold text-slate-300">Adicionar Novo N&oacute; ou Servidor:</label>
                     <div class="flex gap-2">
@@ -1002,22 +983,6 @@ $summaryTableRows
         let rawData = $jsonData;
         let pcsList = $jsonPcsList;
         let dashboardTopProcesses = $topProcessesJson;
-        let stats = $jsonStats;
-        window.stats = stats;
-
-        function getLatestDiskFree(pc) {
-            if (window.stats && window.stats[pc] && window.stats[pc].diskFree !== undefined && window.stats[pc].diskFree !== null) {
-                return window.stats[pc].diskFree;
-            }
-            if (stats && stats[pc] && stats[pc].diskFree !== undefined && stats[pc].diskFree !== null) {
-                return stats[pc].diskFree;
-            }
-            if (rawData && rawData[pc] && Array.isArray(rawData[pc].diskFree)) {
-                const arr = rawData[pc].diskFree.filter(v => v !== null && v > 0);
-                if (arr.length > 0) return arr[arr.length - 1];
-            }
-            return 0;
-        }
 
         // Paleta oficial de cores: Amarelo tradicional puro (#facc15), Verde (#10b981), Vermelho (#ef4444), Azul (#3b82f6)
         const colors = {
@@ -1035,7 +1000,7 @@ $summaryTableRows
             }
         });
 
-        // LÃ³gica de Janela Temporal Task Manager
+        // Lógica de Janela Temporal Task Manager
         let currentWindowSize = localStorage.getItem('monitorWindowSize') || '60';
 
         function alignDataTaskmanager(allTimestamps, seriesData, winSize) {
@@ -1087,11 +1052,11 @@ $summaryTableRows
                     ticks: { color: '#64748b', font: { size: 10 } }
                 }
             },
+            spanGaps: false,
             elements: {
                 line: { tension: 0.25, borderWidth: 2, spanGaps: false },
                 point: { radius: 0, hoverRadius: 0 }
-            },
-            spanGaps: false
+            }
         };
 
         // CONTROLE INTERATIVO DE VISIBILIDADE E DESTAQUE EM BRANCO (CLICK NO CARD)
@@ -1155,6 +1120,23 @@ $summaryTableRows
         }
 
         const initialLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
+                function getLatestDiskFree(pc) {
+            if (window.stats && window.stats[pc] && window.stats[pc].diskFree !== undefined) {
+                return window.stats[pc].diskFree;
+            }
+            if (typeof stats !== 'undefined' && stats && stats[pc] && stats[pc].diskFree !== undefined) {
+                return stats[pc].diskFree;
+            }
+            if (rawData && rawData[pc] && Array.isArray(rawData[pc].diskFree) && rawData[pc].diskFree.length > 0) {
+                for (let i = rawData[pc].diskFree.length - 1; i >= 0; i--) {
+                    if (rawData[pc].diskFree[i] !== null && rawData[pc].diskFree[i] !== undefined) {
+                        return rawData[pc].diskFree[i];
+                    }
+                }
+            }
+            return 0;
+        }
+
         const charts = {};
 
         function createDatasetList(metricKey) {
@@ -1239,9 +1221,9 @@ $summaryTableRows
             data: {
                 labels: initialVisiblePcs,
                 datasets: [{
-                    label: 'EspaÃ§o Livre (GB)',
+                    label: 'Espaço Livre (GB)',
                     data: initialVisiblePcs.map(pc => getLatestDiskFree(pc)),
-                    backgroundColor: initialVisiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#10b981'))),
+                    backgroundColor: initialVisiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#3b82f6'))),
                     borderRadius: 6
                 }]
             },
@@ -1290,7 +1272,7 @@ $summaryTableRows
                 ...commonOptions,
                 scales: {
                     ...commonOptions.scales,
-                    y: { ...commonOptions.scales.y, min: 20, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' Â°C' } }
+                    y: { ...commonOptions.scales.y, min: 20, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' °C' } }
                 }
             }
         });
@@ -1343,9 +1325,9 @@ $summaryTableRows
                     ds.pointRadius = 0;
                     ds.pointHoverRadius = 0;
                     ds.order = isH ? -1 : 1;
-                    ds.spanGaps = false;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
+                    ds.spanGaps = false;
                 });
                 charts[k].update(mode);
             });
@@ -1353,7 +1335,7 @@ $summaryTableRows
                 const visiblePcs = pcsList.filter(pc => isMachineVisible(pc));
                 charts.disk.data.labels = visiblePcs;
                 charts.disk.data.datasets[0].data = visiblePcs.map(pc => getLatestDiskFree(pc));
-                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#10b981')));
+                charts.disk.data.datasets[0].backgroundColor = visiblePcs.map(pc => (highlightedMachine === pc ? '#ffffff' : (colors[pc] ? colors[pc].border : '#3b82f6')));
                 charts.disk.update(mode);
             }
         }
@@ -1361,7 +1343,7 @@ $summaryTableRows
         // Aplica o estado visual inicial aos cards
         pcsList.forEach(pc => updateCardVisualState(pc));
 
-        // MODAL ESTATÃSTICO CONSOLIDADO
+        // MODAL ESTATÍSTICO CONSOLIDADO
         function toggleSummaryModal(show) {
             const modal = document.getElementById('summaryModal');
             if (!modal) return;
@@ -1405,11 +1387,11 @@ $summaryTableRows
             if (isVis) {
                 btn.innerHTML = '&#128065; Exibir gr&aacute;ficos &#10003;';
                 btn.className = 'text-[10px] px-2.5 py-1 rounded bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/50 font-bold transition cursor-pointer flex items-center gap-1 shadow-sm';
-                btn.title = 'MÃ¡quina visÃ­vel nos grÃ¡ficos. Clique para ocultar.';
+                btn.title = 'Máquina visível nos gráficos. Clique para ocultar.';
             } else {
                 btn.innerHTML = '&#128065; Oculto nos gr&aacute;ficos';
                 btn.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1';
-                btn.title = 'MÃ¡quina oculta nos grÃ¡ficos. Clique para exibir.';
+                btn.title = 'Máquina oculta nos gráficos. Clique para exibir.';
             }
         }
 
@@ -1479,7 +1461,7 @@ $summaryTableRows
             }
         }
 
-        // GERENCIAMENTO DE MÃQUINAS (MODAL)
+        // GERENCIAMENTO DE MÁQUINAS (MODAL)
         function toggleMachinesModal(show) {
             const modal = document.getElementById('machinesModal');
             if (!modal) return;
@@ -1522,7 +1504,7 @@ $summaryTableRows
                 input.value = '';
                 saveMachinesConfig();
             } else {
-                alert('O nÃ³ ' + name + ' jÃ¡ estÃ¡ cadastrado.');
+                alert('O nó ' + name + ' já está cadastrado.');
             }
         }
 
@@ -1607,69 +1589,14 @@ $summaryTableRows
             if (e.target.id === 'machinesModal') toggleMachinesModal(false);
         });
 
-        // MODO TELA ÃšNICA VS ROLAGEM E CONTROLE DINÃ‚MICO DE SLOTS
+        // MODO TELA ÚNICA VS ROLAGEM
         let isSingleScreen = localStorage.getItem('monitorSingleScreen') !== 'false';
-        let currentSlot5Mode = localStorage.getItem('monitorSlot5Mode') || 'ping';
         let currentSlot6Mode = localStorage.getItem('monitorSlot6Mode') || 'temp';
-
-        function toggleSlot5Chart(mode) {
-            currentSlot5Mode = mode;
-            if (currentSlot5Mode === currentSlot6Mode) {
-                currentSlot6Mode = (mode === 'disk') ? 'temp' : 'disk';
-                localStorage.setItem('monitorSlot6Mode', currentSlot6Mode);
-            }
-            localStorage.setItem('monitorSlot5Mode', mode);
-            applyScreenMode();
-        }
 
         function toggleSlot6Chart(mode) {
             currentSlot6Mode = mode;
-            if (currentSlot6Mode === currentSlot5Mode) {
-                currentSlot5Mode = (mode === 'disk') ? 'ping' : 'disk';
-                localStorage.setItem('monitorSlot5Mode', currentSlot5Mode);
-            }
             localStorage.setItem('monitorSlot6Mode', mode);
             applyScreenMode();
-        }
-
-        function updateSlotButtons() {
-            const bS5Ping = document.getElementById('btnSlot5Ping');
-            const bS5Disk = document.getElementById('btnSlot5Disk');
-            const bS5Io   = document.getElementById('btnSlot5Io');
-            if (bS5Ping) bS5Ping.className = currentSlot5Mode === 'ping'
-                ? 'text-[10px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-300 font-bold border border-purple-500/50 transition cursor-pointer'
-                : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            if (bS5Disk) bS5Disk.className = currentSlot5Mode === 'disk'
-                ? 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500/50 transition cursor-pointer'
-                : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            if (bS5Io) bS5Io.className = currentSlot5Mode === 'io'
-                ? 'text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-300 font-bold border border-amber-500/50 transition cursor-pointer'
-                : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-
-            ['btnSlot6Temp', 'btnSlot6NetTemp'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'temp'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
-            ['btnSlot6Net', 'btnSlot6NetNet'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'internet'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
-            ['btnSlot6Disk', 'btnSlot6NetDisk'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'disk'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
-            ['btnSlot6Io', 'btnSlot6NetIo'].forEach(id => {
-                const b = document.getElementById(id);
-                if (b) b.className = currentSlot6Mode === 'io'
-                    ? 'text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-300 font-bold border border-amber-500/50 transition cursor-pointer'
-                    : 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-            });
         }
 
         function applyScreenMode() {
@@ -1698,43 +1625,34 @@ $summaryTableRows
                 if (chartsMain) {
                     chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-3 gap-2 h-full min-h-0 overflow-hidden pr-0.5";
                 }
-
-                // Cards 1 a 4 sempre visÃ­veis nos primeiros slots
-                [cardCpu, cardRam, cardRx, cardTx].forEach((el, idx) => {
-                    if (el) {
-                        el.classList.remove('hidden');
-                        el.style.order = (idx + 1).toString();
-                    }
+                // Cards 1 a 5 sempre visíveis
+                [cardCpu, cardRam, cardRx, cardTx, cardPing].forEach(el => {
+                    if (el) el.classList.remove('hidden');
                 });
+                // Slot 6: alterna entre Temperatura e Internet
+                if (currentSlot6Mode === 'internet') {
+                    if (cardTemp) cardTemp.classList.add('hidden');
+                    if (cardInternet) cardInternet.classList.remove('hidden');
+                } else {
+                    if (cardTemp) cardTemp.classList.remove('hidden');
+                    if (cardInternet) cardInternet.classList.add('hidden');
+                }
+                // Cards de disco ocultos na tela única para manter estritamente 6 gráficos
+                if (cardDisk) cardDisk.classList.add('hidden');
+                if (cardIo) cardIo.classList.add('hidden');
 
-                // Oculta os cards secundÃ¡rios inicialmente
-                [cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach(el => {
-                    if (el) {
-                        el.classList.add('hidden');
-                        el.style.order = '';
+                // Atualiza botões de alternância do slot 6
+                const btnTemp = document.getElementById('btnSlot6Temp');
+                const btnNet = document.getElementById('btnSlot6Net');
+                if (btnTemp && btnNet) {
+                    if (currentSlot6Mode === 'internet') {
+                        btnTemp.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
+                        btnNet.className = 'text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer';
+                    } else {
+                        btnTemp.className = 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer';
+                        btnNet.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
                     }
-                });
-
-                // Ativa o card selecionado para o Slot 5 (ordem 5)
-                let activeSlot5Card = cardPing;
-                if (currentSlot5Mode === 'disk') activeSlot5Card = cardDisk;
-                else if (currentSlot5Mode === 'io') activeSlot5Card = cardIo;
-                if (activeSlot5Card) {
-                    activeSlot5Card.classList.remove('hidden');
-                    activeSlot5Card.style.order = '5';
                 }
-
-                // Ativa o card selecionado para o Slot 6 (ordem 6)
-                let activeSlot6Card = cardTemp;
-                if (currentSlot6Mode === 'internet') activeSlot6Card = cardInternet;
-                else if (currentSlot6Mode === 'disk') activeSlot6Card = cardDisk;
-                else if (currentSlot6Mode === 'io') activeSlot6Card = cardIo;
-                if (activeSlot6Card) {
-                    activeSlot6Card.classList.remove('hidden');
-                    activeSlot6Card.style.order = '6';
-                }
-
-                updateSlotButtons();
 
                 allChartCards.forEach(c => {
                     c.classList.remove('h-[220px]', 'min-h-[200px]', 'shrink-0');
@@ -1753,12 +1671,9 @@ $summaryTableRows
                 if (chartsMain) {
                     chartsMain.className = "flex-1 flex flex-col gap-2.5 overflow-y-auto pr-1";
                 }
-                // Na rolagem, todos os 9 grÃ¡ficos ficam visÃ­veis na ordem natural
-                [cardCpu, cardRam, cardRx, cardTx, cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach((el, idx) => {
-                    if (el) {
-                        el.classList.remove('hidden');
-                        el.style.order = (idx + 1).toString();
-                    }
+                // Na rolagem, todos os 9 gráficos ficam visíveis
+                [cardCpu, cardRam, cardRx, cardTx, cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach(el => {
+                    if (el) el.classList.remove('hidden');
                 });
                 allChartCards.forEach(c => {
                     c.classList.remove('h-full', 'min-h-0');
@@ -1782,16 +1697,13 @@ $summaryTableRows
         }
         applyScreenMode();
 
-        // ATUALIZAÃ‡ÃƒO CONTÃNUA EM SEGUNDO PLANO
+        // ATUALIZACAO CONTINUA EM SEGUNDO PLANO
         window.updateDashboardData = function(payload) {
             if (!payload || !payload.timestamps || !payload.rawData) return;
 
             timestamps = payload.timestamps;
             rawData = payload.rawData;
-            if (payload.stats) {
-                stats = payload.stats;
-                window.stats = payload.stats;
-            }
+            if (payload.stats) { stats = payload.stats; window.stats = payload.stats; }
 
             const timeRangeEl = document.getElementById('headerTimeRange');
             if (timeRangeEl && payload.startTime && payload.endTime) {
@@ -1871,7 +1783,7 @@ $summaryTableRows
                     if (isCpuAlert) alertReasons.push('CPU: ' + s.latestCpu + '% (>=85%)');
                     if (isRamAlert) alertReasons.push('RAM: ' + s.latestRam + '% (>=90%)');
                     if (isDiskAlert) alertReasons.push('Disco C: ' + s.diskFree + 'GB livres (<=15GB ou >=90%)');
-                    if (isTempAlert) alertReasons.push('Temp: ' + s.latestTemp + 'Â°C (>=75Â°C)');
+                    if (isTempAlert) alertReasons.push('Temp: ' + s.latestTemp + '°C (>=75°C)');
 
                     if (cardHost) {
                         if (hasAlert) cardHost.classList.add('card-alert-pulse');
@@ -1970,7 +1882,7 @@ $summaryTableRows
                 const mDisk = document.getElementById('modal_' + pc + '_disk');
                 if (mDisk) mDisk.innerText = s.isOnline ? s.diskFree + ' GB' : '---';
                 const mPing = document.getElementById('modal_' + pc + '_ping');
-                if (mPing) mPing.innerHTML = s.isOnline ? s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(mÃ©d ' + s.avgPing + 'ms)</span>' : '---';
+                if (mPing) mPing.innerHTML = s.isOnline ? s.ping + ' ms <span class="text-[10px] text-slate-400 font-normal">(méd ' + s.avgPing + 'ms)</span>' : '---';
                 const mUptime = document.getElementById('modal_' + pc + '_uptime');
                 if (mUptime) mUptime.innerHTML = (s.isOnline && s.uptime) ? '&#9201; ' + s.uptime : '---';
             });
@@ -2016,7 +1928,7 @@ $summaryTableRows
             document.head.appendChild(s);
         }
 
-        // AUTO-REFRESH CONTROLLER CONFIGURÃVEL (MÃNIMO 1s)
+        // AUTO-REFRESH CONTROLLER CONFIGURÁVEL (MÍNIMO 1s)
         let refreshInterval = parseInt(localStorage.getItem('monitorRefreshInterval') || '5');
         if (isNaN(refreshInterval) || refreshInterval < 1) refreshInterval = 5;
         let refreshTimer = refreshInterval;
@@ -2025,21 +1937,8 @@ $summaryTableRows
         const initLbl = document.getElementById('intervalSecLabel');
         if (initLbl) initLbl.innerText = refreshInterval + 's';
 
-        function updateCountdownDisplay() {
-            const el = document.getElementById('countdownEl');
-            if (!el) return;
-            if (refreshInterval === 1) {
-                el.innerText = '1s';
-                el.className = 'text-emerald-400 font-bold text-[11px] w-6 text-center animate-pulse';
-            } else {
-                el.className = 'text-cyan-400 font-bold text-[11px] w-6 text-center';
-                el.innerText = (refreshTimer > 0 ? refreshTimer : refreshInterval) + 's';
-            }
-        }
-        updateCountdownDisplay();
-
         function promptChangeInterval() {
-            const input = prompt("Defina o perÃ­odo de atualizaÃ§Ã£o automÃ¡tica em segundos (mÃ­nimo 1):", refreshInterval);
+            const input = prompt("Defina o período de atualização automática em segundos (mínimo 1):", refreshInterval);
             if (input !== null) {
                 const val = parseInt(input);
                 if (!isNaN(val) && val >= 1) {
@@ -2048,7 +1947,8 @@ $summaryTableRows
                     localStorage.setItem('monitorRefreshInterval', val.toString());
                     const lbl = document.getElementById('intervalSecLabel');
                     if (lbl) lbl.innerText = val + 's';
-                    updateCountdownDisplay();
+                    const el = document.getElementById('countdownEl');
+                    if (el) el.innerText = val + 's';
                 } else {
                     alert("Por favor, informe um valor inteiro maior ou igual a 1 segundo.");
                 }
@@ -2069,11 +1969,12 @@ $summaryTableRows
         setInterval(() => {
             if (autoRefreshActive) {
                 refreshTimer--;
+                const el = document.getElementById('countdownEl');
+                if (el) el.innerText = refreshTimer + 's';
                 if (refreshTimer <= 0) {
                     refreshTimer = refreshInterval;
                     requestDataUpdate();
                 }
-                updateCountdownDisplay();
             }
         }, 1000);
     </script>
@@ -2103,7 +2004,7 @@ $utf8Bom = [System.Text.UTF8Encoding]::new($true)
 Write-Host "Dashboard HTML gerado com sucesso em: $OutputFile" -ForegroundColor Green
 Write-Host "Arquivo de dados JS gerado com sucesso em: $dataJsFile" -ForegroundColor Green
 
-# Sincroniza com o compartilhamento na rede se acessÃ­vel
+# Sincroniza com o compartilhamento na rede se acessível
 $netShareDir = "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor"
 $netShareHtml = "$netShareDir\dashboard_desempenho.html"
 $netShareDataJs = "$netShareDir\dashboard_data.js"

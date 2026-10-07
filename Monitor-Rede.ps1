@@ -5,7 +5,7 @@
 )
 
 # ============================================================
-# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.2.1)
+# PAINEL DE DESEMPENHO DA REDE EM TEMPO REAL - JFMELGACO (v1.2.0)
 # ============================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -30,13 +30,13 @@ try {
     $script:defaultTelemetryCred = New-Object System.Management.Automation.PSCredential("Monitor", $secPass)
 } catch {}
 
-# Cores ANSI para formataÃ§Ã£o dinÃ¢mica
+# Cores ANSI para formatação dinâmica
 $esc = [char]27
 $cReset    = "$esc[0m"
-$cYellow   = "$esc[93m"  # Maior que a mediÃ§Ã£o anterior
-$cGreen    = "$esc[92m"  # Menor que a mediÃ§Ã£o anterior
-$cWhite    = "$esc[97m"  # Inalterado / mediÃ§Ã£o inicial
-$cCyan     = "$esc[96m"  # CabeÃ§alho e tÃ­tulos
+$cYellow   = "$esc[93m"  # Maior que a medição anterior
+$cGreen    = "$esc[92m"  # Menor que a medição anterior
+$cWhite    = "$esc[97m"  # Inalterado / medição inicial
+$cCyan     = "$esc[96m"  # Cabeçalho e títulos
 $cGray     = "$esc[90m"  # Bordas e separadores
 $cRed      = "$esc[91m"  # OFFLINE
 $cOnline   = "$esc[92m"  # ONLINE
@@ -45,7 +45,7 @@ $cNoAccess = "$esc[95m"  # SEM ACESSO (Rosa/Magenta: computador ligado, mas cons
 $ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } elseif ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { (Get-Location).Path }
 if (-not $ScriptDir) { $ScriptDir = $pwd.Path }
 
-# Lista canÃ´nica de todas as mÃ¡quinas da rede (carregada de machines.json com ordenaÃ§Ã£o alfabÃ©tica estrita)
+# Lista canônica de todas as máquinas da rede (carregada de machines.json com ordenação alfabética estrita)
 $machinesJsonPath = Join-Path $ScriptDir "machines.json"
 if (-not (Test-Path $machinesJsonPath)) { $machinesJsonPath = Join-Path $ScriptDir "Data\machines.json" }
 $Computadores = @('JFMELGACO-1', 'JFMELGACO-2', 'JFMELGACO-3', 'JFMELGACO-4')
@@ -71,7 +71,7 @@ $logFilePath = Join-Path $LogDir $logFileName
 Write-Host "Iniciando monitoramento da rede (JFMELGACO)..." -ForegroundColor Cyan
 Write-Host "Host Local identificado: $env:COMPUTERNAME" -ForegroundColor Yellow
 Write-Host "Arquivo de log gerado em: $logFilePath" -ForegroundColor Green
-Write-Host "Painel atualizado 'na mesma linha' com comparativo dinÃ¢mico de cores.`n" -ForegroundColor DarkGray
+Write-Host "Painel atualizado 'na mesma linha' com comparativo dinâmico de cores.`n" -ForegroundColor DarkGray
 
 function Format-Speed($bytesPerSec) {
     if ($null -eq $bytesPerSec -or $bytesPerSec -le 0) {
@@ -83,7 +83,7 @@ function Format-Speed($bytesPerSec) {
     }
 }
 
-# Regra 1: Quando o nÃºmero for maior do que a mediÃ§Ã£o anterior => Amarelo; se menor => Verde; igual/inicial => Branco
+# Regra 1: Quando o número for maior do que a medição anterior => Amarelo; se menor => Verde; igual/inicial => Branco
 function Color-Num($current, $prev, [string]$displayStr) {
     if ($null -eq $prev -or $current -eq $prev) {
         return "$cWhite$displayStr$cReset"
@@ -100,11 +100,11 @@ function Get-MachineMetrics {
         [pscredential]$Cred = $null
     )
 
-    # Identifica se a mÃ¡quina alvo Ã© a mÃ¡quina local onde o script estÃ¡ rodando
+    # Identifica se a máquina alvo é a máquina local onde o script está rodando
     $isLocal = ($ComputerName.ToUpper() -eq $env:COMPUTERNAME.ToUpper()) -or ($ComputerName -eq 'localhost')
     $nomeDisplay = if ($isLocal) { "$ComputerName (Local)" } else { $ComputerName }
 
-    # Se for remoto, faz um ping rÃ¡pido prÃ©vio para capturar RTT (ms) e evitar timeouts caso esteja desligado
+    # Se for remoto, faz um ping rápido prévio para capturar RTT (ms) e evitar timeouts caso esteja desligado
     $isPingable = $true
     $pingMs = 0
     if (-not $isLocal) {
@@ -127,7 +127,7 @@ function Get-MachineMetrics {
                 Computer    = $ComputerName
                 Display     = $nomeDisplay
                 Ping        = $null
-                ErrorReason = 'Host inacessÃ­vel (sem resposta ao ping/desligado)'
+                ErrorReason = 'Host inacessível (sem resposta ao ping/desligado)'
             }
         }
     } else {
@@ -143,7 +143,7 @@ function Get-MachineMetrics {
             $effectiveCred = if ($Cred) { $Cred } else { $script:defaultTelemetryCred }
             $optDcom = New-CimSessionOption -Protocol Dcom
 
-            # 1. Tenta DCOM com a credencial de telemetria da rede (protocolo mais confiÃ¡vel e rÃ¡pido em Workgroup)
+            # 1. Tenta DCOM com a credencial de telemetria da rede (protocolo mais confiável e rápido em Workgroup)
             $connected = $false
             if ($effectiveCred) {
                 try {
@@ -157,7 +157,7 @@ function Get-MachineMetrics {
                 }
             }
 
-            # 2. Se falhar, tenta WinRM sem credencial (autenticaÃ§Ã£o integrada da sessÃ£o local)
+            # 2. Se falhar, tenta WinRM sem credencial (autenticação integrada da sessão local)
             if (-not $connected) {
                 try {
                     $optWsman = New-CimSessionOption -Protocol Wsman
@@ -171,7 +171,7 @@ function Get-MachineMetrics {
                 }
             }
 
-            # 3. Se falhar, tenta DCOM sem credencial (fallback de sessÃ£o local)
+            # 3. Se falhar, tenta DCOM sem credencial (fallback de sessão local)
             if (-not $connected) {
                 $cimSession = New-CimSession -ComputerName $ComputerName -SessionOption $optDcom -OperationTimeoutSec 3 -ErrorAction Stop
                 $null = Get-CimInstance Win32_OperatingSystem -CimSession $cimSession -ErrorAction Stop
@@ -198,11 +198,11 @@ function Get-MachineMetrics {
             }
         }
 
-        # 2. MemÃ³ria RAM, Uptime e Ãšltimo Boot (Alinhamento com o modelo de memÃ³ria em uso do Task Manager)
+        # 2. Memória RAM, Uptime e Último Boot (Alinhamento com o modelo de memória em uso do Task Manager)
         $os = Get-CimInstance Win32_OperatingSystem @sessionArgs
         $totalRam = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
 
-        # Tenta calcular memÃ³ria em uso atravÃ©s de AvailableMBytes (desconsiderando cache Standby, idÃªntico ao Task Manager)
+        # Tenta calcular memória em uso através de AvailableMBytes (desconsiderando cache Standby, idêntico ao Task Manager)
         $usedRam = $null
         try {
             $perfMem = Get-CimInstance Win32_PerfFormattedData_PerfOS_Memory @sessionArgs -ErrorAction Stop
@@ -219,7 +219,7 @@ function Get-MachineMetrics {
         }
         $pctRam = [math]::Min(100, [math]::Max(0, [math]::Round(($usedRam / $totalRam) * 100, 0)))
 
-        # Uptime e Data do Ãšltimo Boot
+        # Uptime e Data do Último Boot
         $lastBoot = $os.LastBootUpTime
         $bootDateStr = if ($lastBoot) { $lastBoot.ToString("dd/MM/yyyy HH:mm") } else { "N/D" }
         $uptimeSpan = if ($lastBoot) { (Get-Date) - $lastBoot } else { $null }
@@ -228,7 +228,7 @@ function Get-MachineMetrics {
             else { "{0}h {1}m" -f $uptimeSpan.Hours, $uptimeSpan.Minutes }
         } else { "N/D" }
 
-        # 3. Disco C: (EspaÃ§o livre e ocupaÃ§Ã£o)
+        # 3. Disco C: (Espaço livre e ocupação)
         $disk = Get-CimInstance Win32_LogicalDisk @sessionArgs -Filter "DeviceID='C:'"
         $diskFree  = [math]::Round($disk.FreeSpace / 1GB, 1)
         $diskTotal = [math]::Round($disk.Size / 1GB, 1)
@@ -252,7 +252,7 @@ function Get-MachineMetrics {
             $diskWriteStr = "  N/D"
         }
 
-        # 5. TrÃ¡fego de Rede (Rx / Tx)
+        # 5. Tráfego de Rede (Rx / Tx)
         $recvBytes = 0.0
         $sentBytes = 0.0
         $rxStr = "   0 KB/s"
@@ -272,7 +272,7 @@ function Get-MachineMetrics {
         }
 
         # 6. Top 10 Processos com maior consumo (Win32_PerfFormattedData_PerfProc_Process)
-        # NormalizaÃ§Ã£o de CPU por nÃºmero de nÃºcleos lÃ³gicos para evitar aberraÃ§Ãµes > 100%
+        # Normalização de CPU por número de núcleos lógicos para evitar aberrações > 100%
         $topProcs = [System.Collections.Generic.List[hashtable]]::new()
         try {
             $numCores = if ($isLocal) {
@@ -304,11 +304,11 @@ function Get-MachineMetrics {
             }
         } catch {}
 
-        # 7. Temperatura do Hardware (Â°C)
+        # 7. Temperatura do Hardware (°C)
         $tempVal = $null
         
         # 7.0 Provedor especializado LibreHardwareMonitor HTTP Web Server (porta 8085)
-        # CompatÃ­vel com LibreHardwareMonitor v0.9.6+ e driver PawnIO em Windows 11 com HVCI
+        # Compatível com LibreHardwareMonitor v0.9.6+ e driver PawnIO em Windows 11 com HVCI
         try {
             $httpHost = if ($isLocal) { "127.0.0.1" } else { $ComputerName }
             $lhmHttpUrl = "http://${httpHost}:8085/data.json"
@@ -321,7 +321,7 @@ function Get-MachineMetrics {
                 while ($stack.Count -gt 0) {
                     $node = $stack.Pop()
                     if ($node.Value -and $node.Text) {
-                        if ($node.Value -match '([0-9]+[.,]?[0-9]*)\s*Â°?C') {
+                        if ($node.Value -match '([0-9]+[.,]?[0-9]*)\s*°?C') {
                             $val = [double]($Matches[1] -replace ',', '.')
                             if ($val -gt 0 -and $node.Text -notlike "*Distance*" -and $node.Text -notlike "*TjMax*" -and $node.Text -notlike "*Margin*") {
                                 $httpTemps.Add([PSCustomObject]@{
@@ -354,7 +354,7 @@ function Get-MachineMetrics {
             }
         } catch {}
 
-        # 7.1 Provedor especializado LibreHardwareMonitor WMI (DTS real por nÃºcleo/encapsulamento de CPU)
+        # 7.1 Provedor especializado LibreHardwareMonitor WMI (DTS real por núcleo/encapsulamento de CPU)
         if ($null -eq $tempVal) {
             try {
             $lhmSensors = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" @sessionArgs -Filter "SensorType='Temperature'" |
@@ -365,12 +365,12 @@ function Get-MachineMetrics {
                 if ($cpuPkg) {
                     $tempVal = [math]::Round($cpuPkg.Value, 0)
                 } else {
-                    # Prioridade 2: Sensores de CPU Core (pico tÃ©rmico entre os nÃºcleos)
+                    # Prioridade 2: Sensores de CPU Core (pico térmico entre os núcleos)
                     $cpuCores = @($lhmSensors | Where-Object { $_.Name -like "*CPU*" -or $_.Name -like "*Core*" })
                     if ($cpuCores.Count -gt 0) {
                         $tempVal = [math]::Round(($cpuCores | Measure-Object -Property Value -Maximum).Maximum, 0)
                     } else {
-                        # Prioridade 3: Maior leitura entre demais sensores tÃ©rmicos
+                        # Prioridade 3: Maior leitura entre demais sensores térmicos
                         $tempVal = [math]::Round(($lhmSensors | Measure-Object -Property Value -Maximum).Maximum, 0)
                     }
                 }
@@ -403,7 +403,7 @@ function Get-MachineMetrics {
         if ($null -eq $tempVal) {
             try {
                 $tzList = @(Get-CimInstance -Namespace "root/wmi" -ClassName "MSAcpi_ThermalZoneTemperature" @sessionArgs)
-                # Prioriza zonas com leituras dinÃ¢micas (descarta 2982 dK = 25Â°C estÃ¡tico de BIOS Dell sem driver OEM)
+                # Prioriza zonas com leituras dinâmicas (descarta 2982 dK = 25°C estático de BIOS Dell sem driver OEM)
                 $validTz = $tzList | Where-Object { $_.CurrentTemperature -gt 2732 -and $_.CurrentTemperature -ne 2982 } | Select-Object -First 1
                 if (-not $validTz) {
                     $validTz = $tzList | Where-Object { $_.CurrentTemperature -gt 2732 } | Select-Object -First 1
@@ -492,14 +492,14 @@ function Build-Lines($m, $prev) {
         return @{ Console = $cLine; File = $fLine }
     }
 
-    # Barras grÃ¡ficas (10 posiÃ§Ãµes)
+    # Barras gráficas (10 posições)
     $fillCpu = [math]::Min($barLen, [math]::Max(0, [math]::Round(($m.Cpu / 100) * $barLen)))
     $barCpu = ("=" * $fillCpu) + ("-" * ($barLen - $fillCpu))
 
     $fillRam = [math]::Min($barLen, [math]::Max(0, [math]::Round(($m.PctRam / 100) * $barLen)))
     $barRam = ("=" * $fillRam) + ("-" * ($barLen - $fillRam))
 
-    # ComparaÃ§Ãµes de cores (Amarelo se subiu, Verde se desceu, Branco se estÃ¡vel)
+    # Comparações de cores (Amarelo se subiu, Verde se desceu, Branco se estável)
     $cpuColored       = Color-Num $m.Cpu $prev.Cpu ("{0,3}%" -f $m.Cpu)
     $ramUsedColored   = Color-Num $m.UsedRam $prev.UsedRam ("{0,4:N1}" -f $m.UsedRam)
     $ramPctColored    = Color-Num $m.PctRam $prev.PctRam ("({0,2}%)" -f $m.PctRam)
@@ -521,10 +521,10 @@ function Build-Lines($m, $prev) {
     $cNetStr    = "Rx: $rxColored | Tx: $txColored"
     $cPingStr   = "Ping: $pingColored"
     $cUptimeStr = "Uptime: {0,7}" -f $m.Uptime
-    $cTempStr   = if ($null -ne $m.Temp) { "Temp: {0,2}Â°C" -f $m.Temp } else { "Temp: ---" }
+    $cTempStr   = if ($null -ne $m.Temp) { "Temp: {0,2}°C" -f $m.Temp } else { "Temp: ---" }
     $cLine      = "$cStatus $cName $cCpuStr $cRamStr $cDiskStr  $cDiskIOStr  $cNetStr  $cPingStr  $cUptimeStr  $cTempStr"
 
-    # Linha para o arquivo texto (texto puro, compatÃ­vel com regex de auditoria)
+    # Linha para o arquivo texto (texto puro, compatível com regex de auditoria)
     $fStatus    = "ONLINE    "
     $fCpuStr    = "[{0}] {1,3}%" -f $barCpu, $m.Cpu
     $fRamStr    = "[{0}] {1,4:N1}/{2,4:N1} GB ({3,2}%)" -f $barRam, $m.UsedRam, $m.TotalRam, $m.PctRam
@@ -534,7 +534,7 @@ function Build-Lines($m, $prev) {
     $fPingStr   = "Ping: {0,3}ms" -f $m.Ping
     $bootShort  = if ($m.BootDate -and $m.BootDate.Length -ge 16) { $m.BootDate.Substring(0, 16) } else { $m.BootDate }
     $fUptimeStr = "Uptime: {0,7} (Boot: {1})" -f $m.Uptime, $bootShort
-    $fTempStr   = if ($null -ne $m.Temp) { "Temp: {0}Â°C" -f $m.Temp } else { "Temp: ---" }
+    $fTempStr   = if ($null -ne $m.Temp) { "Temp: {0}°C" -f $m.Temp } else { "Temp: ---" }
     $fLine      = "{0,-10} {1,-22} {2,-16} {3,-28} {4,-22} {5,-24} {6,-24}  {7}  {8}  {9}" -f $fStatus, $m.Display, $fCpuStr, $fRamStr, $fDiskStr, $fDiskIOStr, $fNetStr, $fPingStr, $fUptimeStr, $fTempStr
 
     return @{ Console = $cLine; File = $fLine }
@@ -549,7 +549,7 @@ while ($true) {
     $hora = Get-Date -Format 'HH:mm:ss'
     $sampleCount++
 
-    # 1. Coleta mÃ©tricas de todas as mÃ¡quinas
+    # 1. Coleta métricas de todas as máquinas
     $currentMetrics = @{}
     $consoleLines = [System.Collections.Generic.List[string]]::new()
     $fileLines = [System.Collections.Generic.List[string]]::new()
@@ -568,7 +568,7 @@ while ($true) {
     # 2. Grava bloco no arquivo texto (AAAAMMDD - HHMM - PC Processmonitor.txt)
     $fileBlock = [System.Text.StringBuilder]::new()
     $null = $fileBlock.AppendLine("[$hora] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================")
-    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            LatÃªncia (Ping)     Uptime / Ãšltimo Boot             Temperatura")
+    $null = $fileBlock.AppendLine("Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime / Último Boot             Temperatura")
     $null = $fileBlock.AppendLine("---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     --------------------             -----------")
     foreach ($fl in $fileLines) {
         $null = $fileBlock.AppendLine($fl)
@@ -578,7 +578,7 @@ while ($true) {
     }
     [System.IO.File]::AppendAllText($logFilePath, $fileBlock.ToString(), [System.Text.UTF8Encoding]::new($false))
 
-    # 2.1 Grava snapshot dos Top 10 Processos por nÃ³ em top_processes.json
+    # 2.1 Grava snapshot dos Top 10 Processos por nó em top_processes.json
     try {
         $topProcMap = @{}
         foreach ($pc in $Computadores) {
@@ -602,13 +602,13 @@ while ($true) {
             if ($sampleCount -eq 1 -and (Test-Path $dashHtml) -and $env:COMPUTERNAME -ne 'JFMELGACO-1' -and [Environment]::UserInteractive) {
                 try {
                     Start-Process $dashHtml
-                    Write-Host "Dashboard aberto automaticamente no navegador padrÃ£o: $dashHtml" -ForegroundColor Green
+                    Write-Host "Dashboard aberto automaticamente no navegador padrão: $dashHtml" -ForegroundColor Green
                 } catch {}
             }
         }
     } catch {}
 
-    # 3.1 Recarrega dinamicamente machines.json a cada 5 amostras caso alterado pelo usuÃ¡rio
+    # 3.1 Recarrega dinamicamente machines.json a cada 5 amostras caso alterado pelo usuário
     if ($sampleCount % 5 -eq 0 -and (Test-Path $machinesJsonPath)) {
         try {
             $dynamicComputers = Get-Content -Raw $machinesJsonPath -Encoding UTF8 | ConvertFrom-Json
@@ -618,7 +618,7 @@ while ($true) {
         } catch {}
     }
 
-    # 4. RenderizaÃ§Ã£o no terminal "na mesma linha"
+    # 4. Renderização no terminal "na mesma linha"
     if ($null -eq $startTop) {
         try {
             if ([Console]::CursorTop + $tableHeight + 2 -ge [Console]::BufferHeight) {
@@ -640,9 +640,9 @@ while ($true) {
         }
     }
 
-    # Imprime tabela com cabeÃ§alho, dados e rodapÃ© de status
+    # Imprime tabela com cabeçalho, dados e rodapé de status
     $headerBanner = "[$hora] === DESEMPENHO DA REDE (JFMELGACO) ================================================================================================================================================="
-    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            LatÃªncia (Ping)     Uptime               Temperatura"
+    $headerCols   = "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime               Temperatura"
     $headerDiv    = "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     ------               -----------"
 
     Write-Host "$cCyan$headerBanner$cReset$esc[K"
@@ -658,11 +658,11 @@ while ($true) {
     Write-Host "$legenda$esc[K"
     Write-Host "$infoRodape$esc[K"
 
-    # 5. Guarda as mÃ©tricas atuais para a prÃ³xima comparaÃ§Ã£o
+    # 5. Guarda as métricas atuais para a próxima comparação
     $prevMetrics = $currentMetrics
 
     if ($MaxIterations -gt 0 -and $sampleCount -ge $MaxIterations) {
-        Write-Host "Monitoramento concluÃ­do apÃ³s $sampleCount mediÃ§Ã£o(Ãµes)." -ForegroundColor Cyan
+        Write-Host "Monitoramento concluído após $sampleCount medição(ões)." -ForegroundColor Cyan
         break
     }
 
