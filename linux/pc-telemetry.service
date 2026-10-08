@@ -1,0 +1,14 @@
+[Unit]
+Description=PCProcessMonitor - Linux Telemetry Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /opt/pcprocessmonitor/pc_telemetry.py
+Restart=always
+RestartSec=5
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
