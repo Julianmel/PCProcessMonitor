@@ -12,6 +12,19 @@
 [Console]::InputEncoding  = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
+# Garantia de instância única por máquina (previne processos duplicados concorrentes)
+try {
+    $myPid = $PID
+    $duplicateProcesses = @(Get-CimInstance Win32_Process -Filter "Name LIKE '%powershell%'" | 
+        Where-Object { $_.ProcessId -ne $myPid -and $_.CommandLine -like "*Monitor-Rede.ps1*" })
+    if ($duplicateProcesses.Count -gt 0) {
+        foreach ($proc in $duplicateProcesses) {
+            Write-Host "Encerrando instância anterior do coletor (PID $($proc.ProcessId))..." -ForegroundColor Yellow
+            try { Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue } catch {}
+        }
+    }
+} catch {}
+
 # Ajusta a largura da janela e do buffer do console para acomodar o painel sem quebras
 try {
     $rawUI = $Host.UI.RawUI
@@ -679,17 +692,34 @@ while ($true) {
         }
     } catch {}
 
-    # 3. Atualiza o dashboard HTML em tempo real
+    # 3. Atualiza o dashboard HTML em tempo real de forma desacoplada
     try {
         $builder = Join-Path $ScriptDir "Build-HtmlDashboard.ps1"
         if (Test-Path $builder) {
             $dashHtml = Join-Path $ScriptDir "dashboard_desempenho.html"
-            & $builder -LogFile $logFilePath -OutputFile $dashHtml *>$null
-            if ($sampleCount -eq 1 -and (Test-Path $dashHtml) -and $env:COMPUTERNAME -eq 'JFMELGACO-4' -and [Environment]::UserInteractive) {
-                try {
-                    Start-Process $dashHtml
-                    Write-Host "Dashboard aberto automaticamente no navegador padrão: $dashHtml" -ForegroundColor Green
-                } catch {}
+            
+            # Na 1ª amostra ou se o HTML ainda não existir, gera sincronamente uma vez
+            if ($sampleCount -eq 1 -or (-not (Test-Path $dashHtml))) {
+                & $builder -LogFile $logFilePath -OutputFile $dashHtml *>$null
+                if ($sampleCount -eq 1 -and (Test-Path $dashHtml) -and $env:COMPUTERNAME -eq 'JFMELGACO-4' -and [Environment]::UserInteractive) {
+                    try {
+                        Start-Process $dashHtml
+                        Write-Host "Dashboard aberto automaticamente no navegador padrão: $dashHtml" -ForegroundColor Green
+                    } catch {}
+                }
+            } elseif ($sampleCount % 5 -eq 0) {
+                # A cada 5 amostras, executa em background job apenas se o job anterior já tiver concluído
+                if ($script:dashJob -and $script:dashJob.State -ne 'Running') {
+                    Receive-Job $script:dashJob *>$null
+                    Remove-Job $script:dashJob -Force -ErrorAction SilentlyContinue
+                    $script:dashJob = $null
+                }
+                if ($null -eq $script:dashJob) {
+                    $script:dashJob = Start-Job -ScriptBlock {
+                        param($b, $l, $o)
+                        & $b -LogFile $l -OutputFile $o *>$null
+                    } -ArgumentList $builder, $logFilePath, $dashHtml
+                }
             }
         }
     } catch {}

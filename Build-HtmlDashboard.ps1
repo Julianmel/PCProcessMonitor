@@ -262,19 +262,24 @@ foreach ($pc in $pcsList) {
     $lastBoot    = if ($validBoot) { $validBoot | Select-Object -Last 1 } else { $null }
 
     if (-not $lastUptime -or -not $lastBoot) {
-        try {
-            $opt = New-CimSessionOption -Protocol Dcom
-            $s = New-CimSession -ComputerName $pc -SessionOption $opt -OperationTimeoutSec 1 -ErrorAction Stop
-            $osObj = Get-CimInstance Win32_OperatingSystem -CimSession $s -OperationTimeoutSec 1 -ErrorAction Stop
-            Remove-CimSession $s -ErrorAction SilentlyContinue
-            if ($osObj.LastBootUpTime) {
-                if (-not $lastBoot) { $lastBoot = $osObj.LastBootUpTime.ToString("dd/MM/yyyy HH:mm") }
-                if (-not $lastUptime) {
-                    $diff = (Get-Date) - $osObj.LastBootUpTime
-                    $lastUptime = if ($diff.Days -gt 0) { "{0}d {1}h" -f $diff.Days, $diff.Hours } else { "{0}h {1}m" -f $diff.Hours, $diff.Minutes }
+        if ($pc -ne 'JFMELGACO-1') {
+            try {
+                $opt = New-CimSessionOption -Protocol Dcom
+                $s = New-CimSession -ComputerName $pc -SessionOption $opt -OperationTimeoutSec 1 -ErrorAction Stop
+                $osObj = Get-CimInstance Win32_OperatingSystem -CimSession $s -OperationTimeoutSec 1 -ErrorAction Stop
+                Remove-CimSession $s -ErrorAction SilentlyContinue
+                if ($osObj.LastBootUpTime) {
+                    if (-not $lastBoot) { $lastBoot = $osObj.LastBootUpTime.ToString("dd/MM/yyyy HH:mm") }
+                    if (-not $lastUptime) {
+                        $diff = (Get-Date) - $osObj.LastBootUpTime
+                        $lastUptime = if ($diff.Days -gt 0) { "{0}d {1}h" -f $diff.Days, $diff.Hours } else { "{0}h {1}m" -f $diff.Hours, $diff.Minutes }
+                    }
                 }
+            } catch {
+                if (-not $lastUptime) { $lastUptime = "N/D" }
+                if (-not $lastBoot) { $lastBoot = "N/D" }
             }
-        } catch {
+        } else {
             if (-not $lastUptime) { $lastUptime = "N/D" }
             if (-not $lastBoot) { $lastBoot = "N/D" }
         }
@@ -1052,9 +1057,9 @@ $summaryTableRows
                     ticks: { color: '#64748b', font: { size: 10 } }
                 }
             },
-            spanGaps: false,
+            spanGaps: true,
             elements: {
-                line: { tension: 0.25, borderWidth: 2, spanGaps: false },
+                line: { tension: 0.25, borderWidth: 2, spanGaps: true },
                 point: { radius: 0, hoverRadius: 0 }
             }
         };
@@ -1155,7 +1160,7 @@ $summaryTableRows
                     pointRadius: 0,
                     pointHoverRadius: 0,
                     fill: false,
-                    spanGaps: false,
+                    spanGaps: true,
                     hidden: !isMachineVisible(pc),
                     order: isH ? -1 : 1
                 };
@@ -1272,7 +1277,7 @@ $summaryTableRows
                 ...commonOptions,
                 scales: {
                     ...commonOptions.scales,
-                    y: { ...commonOptions.scales.y, min: 20, max: 100, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' °C' } }
+                    y: { ...commonOptions.scales.y, min: 20, max: 110, ticks: { ...commonOptions.scales.y.ticks, callback: v => v + ' °C' } }
                 }
             }
         });
@@ -1327,7 +1332,7 @@ $summaryTableRows
                     ds.order = isH ? -1 : 1;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
-                    ds.spanGaps = false;
+                    ds.spanGaps = true;
                 });
                 charts[k].update(mode);
             });
@@ -2004,13 +2009,5 @@ $utf8Bom = [System.Text.UTF8Encoding]::new($true)
 Write-Host "Dashboard HTML gerado com sucesso em: $OutputFile" -ForegroundColor Green
 Write-Host "Arquivo de dados JS gerado com sucesso em: $dataJsFile" -ForegroundColor Green
 
-# Sincroniza com o compartilhamento na rede se acessível
-$netShareDir = "\\JFMELGACO-1\Technoflora-1\Documents\PCProcessMonitor"
-$netShareHtml = "$netShareDir\dashboard_desempenho.html"
-$netShareDataJs = "$netShareDir\dashboard_data.js"
-if ($OutputFile -ne $netShareHtml -and (Test-Path $netShareDir)) {
-    try {
-        Copy-Item $OutputFile $netShareHtml -Force -ErrorAction SilentlyContinue
-        Copy-Item $dataJsFile $netShareDataJs -Force -ErrorAction SilentlyContinue
-    } catch {}
-}
+# Sincronização central: No modelo atual o coletor roda diretamente no servidor JFMELGACO-2,
+# onde os arquivos são gravados nativamente no diretório de compartilhamento local.
