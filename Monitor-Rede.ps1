@@ -138,6 +138,92 @@ function Get-MachineMetrics {
     $needCleanup = $false
 
     try {
+        # 0. Tenta agente de telemetria HTTP leve (porta 9123 - nos Linux Mint ou agentes REST)
+        if (-not $script:HostIpCache) { $script:HostIpCache = @{ 'JFMELGACO-1' = '192.168.3.57' } }
+        $targetHost = if ($isLocal) {
+            '127.0.0.1'
+        } else {
+            if (-not $script:HostIpCache.ContainsKey($ComputerName)) {
+                $resolvedIp = $null
+                try {
+                    $dnsAddrs = [System.Net.Dns]::GetHostAddresses($ComputerName)
+                    foreach ($addr in $dnsAddrs) {
+                        if ($addr.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) {
+                            $resolvedIp = $addr.IPAddressToString
+                            break
+                        }
+                    }
+                } catch {}
+                $script:HostIpCache[$ComputerName] = if ($resolvedIp) { $resolvedIp } else { $ComputerName }
+            }
+            $script:HostIpCache[$ComputerName]
+        }
+        $linuxHttpUrl = "http://" + $targetHost + ":9123/metrics"
+        $linuxData = $null
+        try {
+            $linuxData = Invoke-RestMethod -Uri $linuxHttpUrl -TimeoutSec 2 -ErrorAction Stop
+        } catch {}
+
+        if ($linuxData -and $null -ne $linuxData.TotalRam) {
+            $cpu = [int]$linuxData.Cpu
+            $totalRam = [double]$linuxData.TotalRam
+            $usedRam = [double]$linuxData.UsedRam
+            $pctRam = [int]$linuxData.PctRam
+            $diskFree = [double]$linuxData.DiskFree
+            $diskTotal = [double]$linuxData.DiskTotal
+            $diskPct = [int]$linuxData.DiskPct
+            $diskReadBytes = [double]$linuxData.DiskReadBytes
+            $diskWriteBytes = [double]$linuxData.DiskWriteBytes
+            $diskReadStr = Format-Speed $diskReadBytes
+            $diskWriteStr = Format-Speed $diskWriteBytes
+            $recvBytes = [double]$linuxData.RxBytes
+            $sentBytes = [double]$linuxData.TxBytes
+            $rxStr = Format-Speed $recvBytes
+            $txStr = Format-Speed $sentBytes
+            $tempVal = if ($null -ne $linuxData.Temp) { [double]$linuxData.Temp } else { $null }
+            $uptimeStr = if ($linuxData.Uptime) { [string]$linuxData.Uptime } else { 'N/D' }
+            $bootDateStr = if ($linuxData.BootDate) { [string]$linuxData.BootDate } else { 'N/D' }
+
+            $topProcs = [System.Collections.Generic.List[hashtable]]::new()
+            if ($linuxData.TopProcesses) {
+                foreach ($pr in $linuxData.TopProcesses) {
+                    $topProcs.Add(@{
+                        Name  = [string]$pr.Name
+                        Pid   = [int]$pr.Pid
+                        Cpu   = [double]$pr.Cpu
+                        MemMB = [double]$pr.MemMB
+                    })
+                }
+            }
+
+            return @{
+                Success        = $true
+                Status         = 'ONLINE'
+                Computer       = $ComputerName
+                Display        = $nomeDisplay
+                Temp           = $tempVal
+                Cpu            = $cpu
+                TotalRam       = $totalRam
+                UsedRam        = $usedRam
+                PctRam         = $pctRam
+                DiskFree       = $diskFree
+                DiskTotal      = $diskTotal
+                DiskPct        = $diskPct
+                DiskReadBytes  = $diskReadBytes
+                DiskWriteBytes = $diskWriteBytes
+                DiskReadStr    = $diskReadStr
+                DiskWriteStr   = $diskWriteStr
+                RxBytes        = $recvBytes
+                TxBytes        = $sentBytes
+                RxStr          = $rxStr
+                TxStr          = $txStr
+                Ping           = $pingMs
+                Uptime         = $uptimeStr
+                BootDate       = $bootDateStr
+                TopProcesses   = $topProcs
+            }
+        }
+
         $sessionArgs = @{ ErrorAction = 'Stop' }
         if (-not $isLocal) {
             $effectiveCred = if ($Cred) { $Cred } else { $script:defaultTelemetryCred }
