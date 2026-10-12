@@ -1,0 +1,16 @@
+[Unit]
+Description=PCProcessMonitor Central Collector and Dashboard Server
+After=network.target
+
+[Service]
+Type=simple
+User=julian
+WorkingDirectory=/opt/pc-processmonitor
+ExecStart=/usr/bin/python3 /opt/pc-processmonitor/central_collector.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
