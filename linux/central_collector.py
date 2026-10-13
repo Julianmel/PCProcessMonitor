@@ -27,11 +27,35 @@ MACHINES = ["JFMELGACO-1", "JFMELGACO-2", "JFMELGACO-3", "JFMELGACO-4"]
 HOST_MAP = {
     "JFMELGACO-1": "127.0.0.1",
     "JFMELGACO-2": "192.168.3.87",
-    "JFMELGACO-3": "192.168.3.42",
+    "JFMELGACO-3": "192.168.3.41",
     "JFMELGACO-4": "192.168.3.39"
 }
 
+RESOLVED_IPS = dict(HOST_MAP)
+
 MAX_POINTS = 300
+
+
+def resolve_host(pc):
+    """Retorna o IP cacheado de pc, com fallback para HOST_MAP."""
+    if pc == "JFMELGACO-1":
+        return "127.0.0.1"
+    return RESOLVED_IPS.get(pc, HOST_MAP.get(pc, "127.0.0.1"))
+
+
+def try_refresh_host(pc):
+    """Atualiza o cache de IP via mDNS caso o DHCP tenha alterado o endereço."""
+    if pc == "JFMELGACO-1":
+        return "127.0.0.1"
+    for candidate in [f"{pc.lower()}.local", f"{pc}.local", pc.lower(), pc]:
+        try:
+            ip = socket.gethostbyname(candidate)
+            if ip:
+                RESOLVED_IPS[pc] = ip
+                return ip
+        except Exception:
+            pass
+    return RESOLVED_IPS.get(pc, HOST_MAP.get(pc, "127.0.0.1"))
 
 
 def format_speed(bytes_per_sec):
@@ -61,8 +85,9 @@ def ping_host(host):
         return None
 
 
-def fetch_metrics(pc, host):
+def fetch_metrics(pc):
     """Consulta métricas via HTTP (porta 9123) com timeout de 2.5s."""
+    host = resolve_host(pc)
     url = f"http://{host}:9123/metrics"
     t0 = time.time()
     try:
@@ -77,11 +102,28 @@ def fetch_metrics(pc, host):
                 "ping": elapsed_ms
             }
     except Exception as e:
+        # Se falhou, tenta atualizar o IP via mDNS caso o DHCP tenha alterado o IP
+        new_host = try_refresh_host(pc)
+        if new_host and new_host != host:
+            try:
+                retry_url = f"http://{new_host}:9123/metrics"
+                req = urllib.request.Request(retry_url, headers={"User-Agent": "PCProcessMonitor-Central/2.0"})
+                with urllib.request.urlopen(req, timeout=2.0) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    elapsed_ms = round((time.time() - t0) * 1000)
+                    return {
+                        "success": True,
+                        "pc": pc,
+                        "data": data,
+                        "ping": elapsed_ms
+                    }
+            except Exception:
+                pass
         return {
             "success": False,
             "pc": pc,
             "error": str(e),
-            "ping": ping_host(host)
+            "ping": ping_host(new_host or host)
         }
 
 
@@ -118,6 +160,11 @@ class CentralCollector:
 
         # Tenta restaurar início da sessão e contagem acumulada do log diário se já existir
         self._init_session_from_existing_log()
+
+        # Resolve IPs dinâmicos dos nós remotos na inicialização
+        for pc in MACHINES:
+            if pc != "JFMELGACO-1":
+                try_refresh_host(pc)
 
     def _init_session_from_existing_log(self):
         """Inicializa startTime e total_collected a partir do log diário se já existir."""
@@ -163,7 +210,7 @@ class CentralCollector:
         results = {}
         with ThreadPoolExecutor(max_workers=4) as executor:
             future_to_pc = {
-                executor.submit(fetch_metrics, pc, HOST_MAP[pc]): pc
+                executor.submit(fetch_metrics, pc): pc
                 for pc in MACHINES
             }
             for fut in future_to_pc:
