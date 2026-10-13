@@ -31,7 +31,7 @@ HOST_MAP = {
     "JFMELGACO-4": "192.168.3.39"
 }
 
-MAX_POINTS = 80
+MAX_POINTS = 300
 
 
 def format_speed(bytes_per_sec):
@@ -112,6 +112,44 @@ class CentralCollector:
         self.log_file_path = None
         self.current_log_date = None
 
+        self.session_start_dt = datetime.datetime.now()
+        self.session_start_time = self.session_start_dt.strftime("%H:%M:%S")
+        self.total_collected = 0
+
+        # Tenta restaurar início da sessão e contagem acumulada do log diário se já existir
+        self._init_session_from_existing_log()
+
+    def _init_session_from_existing_log(self):
+        """Inicializa startTime e total_collected a partir do log diário se já existir."""
+        today_prefix = datetime.datetime.now().strftime("%Y%m%d")
+        try:
+            if not os.path.exists(self.data_dir):
+                return
+            files = [f for f in os.listdir(self.data_dir) if f.startswith(today_prefix) and f.endswith(".txt")]
+            if not files:
+                return
+            files.sort()
+            latest_file = os.path.join(self.data_dir, files[-1])
+            first_ts = None
+            sample_count = 0
+            with open(latest_file, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if "DESEMPENHO DA REDE" in line:
+                        sample_count += 1
+                        if not first_ts and line.startswith("["):
+                            end_bracket = line.find("]")
+                            if end_bracket != -1:
+                                first_ts = line[1:end_bracket].strip()
+            if first_ts:
+                self.session_start_time = first_ts
+            if sample_count > 0:
+                self.total_collected = sample_count
+                self.log_file_path = latest_file
+                self.current_log_date = today_prefix
+                print(f"[COLETOR] Sessao restaurada do log: inicio={self.session_start_time}, amostras_anteriores={self.total_collected}")
+        except Exception as e:
+            print(f"[COLETOR] Aviso ao inspecionar log existente: {e}")
+
     def get_log_file(self):
         now_str = datetime.datetime.now().strftime("%Y%m%d")
         if self.current_log_date != now_str or not self.log_file_path or not os.path.exists(self.log_file_path):
@@ -136,6 +174,7 @@ class CentralCollector:
         ts_str = now.strftime("%H:%M:%S")
 
         with self.lock:
+            self.total_collected += 1
             self.timestamps.append(ts_str)
             if len(self.timestamps) > MAX_POINTS:
                 self.timestamps.pop(0)
@@ -347,9 +386,11 @@ class CentralCollector:
 
             # 3. Grava dashboard_data.js e top_processes.json
             payload = {
-                "startTime": self.timestamps[0] if self.timestamps else "--:--:--",
+                "startTime": self.session_start_time,
                 "endTime": self.timestamps[-1] if self.timestamps else "--:--:--",
-                "totalPoints": len(self.timestamps),
+                "windowStartTime": self.timestamps[0] if self.timestamps else "--:--:--",
+                "totalPoints": self.total_collected,
+                "windowPoints": len(self.timestamps),
                 "timestamps": list(self.timestamps),
                 "rawData": self.machine_data,
                 "stats": self.latest_stats,
@@ -406,6 +447,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
 
+    def end_headers(self):
+        # Desativa expressamente o cache HTTP para dados dinamicos e paginas do dashboard
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
     def do_GET(self):
         if self.path in ["/", "/index.html", "/dashboard"]:
             self.path = "/dashboard_desempenho.html"
@@ -419,13 +467,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "host": socket.gethostname(),
                 "time": datetime.datetime.now().isoformat()
             }
+            if collector_instance:
+                data["sessionStartTime"] = collector_instance.session_start_time
+                data["totalCollected"] = collector_instance.total_collected
             self.wfile.write(json.dumps(data).encode("utf-8"))
             return
         return super().do_GET()
 
     def log_message(self, format, *args):
-        # Desativa logs de requisições HTTP para economizar IO e CPU
+        # Desativa logs de requisicoes HTTP para economizar IO e CPU
         pass
+
+
+collector_instance = None
 
 
 def run_web_server(port=PORT_WEB):
@@ -440,6 +494,7 @@ if __name__ == "__main__":
     print("=" * 70)
     
     collector = CentralCollector(data_dir=DEFAULT_DATA_DIR, web_dir=WEB_DIR)
+    collector_instance = collector
 
     # Inicia o servidor Web em thread de background
     web_thread = threading.Thread(target=run_web_server, args=(PORT_WEB,), daemon=True)

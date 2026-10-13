@@ -1712,11 +1712,15 @@ $summaryTableRows
 
             const timeRangeEl = document.getElementById('headerTimeRange');
             if (timeRangeEl && payload.startTime && payload.endTime) {
-                timeRangeEl.innerHTML = payload.startTime + ' &rarr; ' + payload.endTime;
+                const winInfo = (payload.windowPoints && payload.windowPoints !== payload.totalPoints) 
+                    ? ` <span class="text-slate-500 text-[10px] font-normal">(janela: ${payload.windowPoints}p)</span>` 
+                    : '';
+                timeRangeEl.innerHTML = `${payload.startTime} &rarr; ${payload.endTime}${winInfo}`;
             }
             const sampleCountEl = document.getElementById('headerSampleCount');
-            if (sampleCountEl && payload.totalPoints) {
-                sampleCountEl.innerText = payload.totalPoints + ' amostras';
+            if (sampleCountEl && (payload.totalPoints !== undefined)) {
+                const formattedCount = Number(payload.totalPoints).toLocaleString('pt-BR');
+                sampleCountEl.innerText = `${formattedCount} amostras`;
             }
 
             pcsList.forEach(pc => {
@@ -1912,7 +1916,7 @@ $summaryTableRows
 
         function requestDataUpdate() {
             if (window.location.protocol.startsWith('http')) {
-                fetch('dashboard_data.js?t=' + Date.now())
+                fetch('dashboard_data.js?_ts=' + Date.now(), { cache: 'no-store' })
                     .then(res => {
                         if (!res.ok) throw new Error('HTTP ' + res.status);
                         return res.text();
@@ -1929,7 +1933,7 @@ $summaryTableRows
             if (old) old.remove();
             const s = document.createElement('script');
             s.id = 'dynamicDataScript';
-            s.src = 'dashboard_data.js?t=' + Date.now();
+            s.src = 'dashboard_data.js?_ts=' + Date.now();
             document.head.appendChild(s);
         }
 
@@ -1982,6 +1986,13 @@ $summaryTableRows
                 }
             }
         }, 1000);
+
+        // Dispara atualizacao imediata no carregamento do DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', requestDataUpdate);
+        } else {
+            requestDataUpdate();
+        }
     </script>
 </body>
 </html>
