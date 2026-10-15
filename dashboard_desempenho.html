@@ -60,18 +60,18 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <!-- Seletor Task Manager -->
+            <!-- Seletor Task Manager (Janelas em Minutos) -->
             <div class="flex items-center gap-1 bg-slate-900/90 px-1 py-0.5 rounded-lg border border-slate-700/60">
-                <button onclick="setWindowMode(60)" id="btnWin_60" class="text-[11px] px-2.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer">
-                    &#9889; 60 (TaskMgr)
+                <button onclick="setWindowMode(60)" id="btnWin_60" class="text-[11px] px-2.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer" title="Últimos 60 minutos (1 hora)">
+                    &#9889; 60 min (1h)
                 </button>
-                <button onclick="setWindowMode(120)" id="btnWin_120" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                    120
+                <button onclick="setWindowMode(120)" id="btnWin_120" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer" title="Últimos 120 minutos (2 horas)">
+                    120 min (2h)
                 </button>
-                <button onclick="setWindowMode(300)" id="btnWin_300" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
-                    300
+                <button onclick="setWindowMode(300)" id="btnWin_300" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer" title="Últimos 300 minutos (5 horas)">
+                    300 min (5h)
                 </button>
-                <button onclick="setWindowMode('all')" id="btnWin_all" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer">
+                <button onclick="setWindowMode('all')" id="btnWin_all" class="text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 cursor-pointer" title="Todo o período acumulado">
                     Todas
                 </button>
             </div>
@@ -693,12 +693,18 @@
         let customFilteredTimestamps = [];
         let customFilteredData = {};
 
+        function timeStrToSeconds(ts) {
+            if (!ts || typeof ts !== 'string') return 0;
+            const p = ts.split(':');
+            return (parseInt(p[0], 10) || 0) * 3600 + (parseInt(p[1], 10) || 0) * 60 + (parseInt(p[2], 10) || 0);
+        }
+
         function formatXAxisTick(label) {
             if (!label || label === '') return '';
             if (label.includes(':')) {
                 const parts = label.split(':');
-                if (currentWindowSize === 'all' || (customFilterActive && customFilteredTimestamps.length > 360)) {
-                    if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
+                if (parts.length >= 2) {
+                    return `${parts[0]}h${parts[1]}`;
                 }
             }
             return label;
@@ -711,22 +717,39 @@
                     data: seriesData || []
                 };
             }
-            const numSize = winSize === 'all' ? 'all' : parseInt(winSize);
-            if (numSize === 'all' || allTimestamps.length >= numSize) {
-                const start = numSize === 'all' ? 0 : Math.max(0, allTimestamps.length - numSize);
+            if (!allTimestamps || allTimestamps.length === 0) {
+                return { labels: [], data: [] };
+            }
+
+            if (winSize === 'all') {
                 return {
-                    labels: allTimestamps.slice(start),
-                    data: seriesData ? seriesData.slice(start) : []
-                };
-            } else {
-                const emptyCount = numSize - allTimestamps.length;
-                const emptyLabels = Array(emptyCount).fill('');
-                const emptyData = Array(emptyCount).fill(null);
-                return {
-                    labels: emptyLabels.concat(allTimestamps),
-                    data: emptyData.concat(seriesData || [])
+                    labels: allTimestamps,
+                    data: seriesData || []
                 };
             }
+
+            const minutes = parseInt(winSize, 10) || 60;
+            const targetSpanSec = minutes * 60;
+            const lastIdx = allTimestamps.length - 1;
+            const lastSec = timeStrToSeconds(allTimestamps[lastIdx]);
+
+            let startIdx = 0;
+            for (let i = lastIdx; i >= 0; i--) {
+                const curSec = timeStrToSeconds(allTimestamps[i]);
+                let diffSec = lastSec - curSec;
+                if (diffSec < 0) {
+                    diffSec += 86400; // Ajuste para virada de meia-noite
+                }
+                if (diffSec > targetSpanSec) {
+                    startIdx = i + 1;
+                    break;
+                }
+            }
+
+            return {
+                labels: allTimestamps.slice(startIdx),
+                data: seriesData ? seriesData.slice(startIdx) : []
+            };
         }
 
         function getAlignedDataset(pc, metricKey) {
@@ -1179,18 +1202,20 @@
                 el.innerText = '';
                 return;
             }
-            const first = valid[0];
-            const last = valid[valid.length - 1];
+            const fRaw = valid[0];
+            const lRaw = valid[valid.length - 1];
+            const first = formatXAxisTick(fRaw);
+            const last = formatXAxisTick(lRaw);
             if (customFilterActive) {
                 el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">&#9203; Filtro: ${first} &rarr; ${last} (${valid.length}p)</span>`;
             } else if (currentWindowSize === '60') {
-                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Janela 60: ${first} &rarr; ${last}</span>`;
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">&#9889; 1h (60 min): ${first} &rarr; ${last}</span>`;
             } else if (currentWindowSize === '120') {
-                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Janela 120: ${first} &rarr; ${last}</span>`;
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">&#9889; 2h (120 min): ${first} &rarr; ${last}</span>`;
             } else if (currentWindowSize === '300') {
-                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Janela 300: ${first} &rarr; ${last}</span>`;
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">&#9889; 5h (300 min): ${first} &rarr; ${last}</span>`;
             } else if (currentWindowSize === 'all') {
-                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">Sess&atilde;o: ${first} &rarr; ${last}</span>`;
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">Sess&atilde;o: ${first} &rarr; ${last} (${valid.length}p)</span>`;
             }
         }
 
@@ -1204,11 +1229,12 @@
 
             updateWindowRangeBadge(finalLabels);
 
-            let targetTicks = 6;
-            if (currentWindowSize === '60' || currentWindowSize === '120') targetTicks = 6;
-            else if (currentWindowSize === '300') targetTicks = 8;
-            else if (currentWindowSize === 'all') targetTicks = 10;
-            else if (currentWindowSize === 'custom') targetTicks = Math.min(10, Math.max(5, Math.round(finalLabels.length / 30)));
+            let targetTicks = 7;
+            if (currentWindowSize === '60') targetTicks = 7;
+            else if (currentWindowSize === '120') targetTicks = 7;
+            else if (currentWindowSize === '300') targetTicks = 6;
+            else if (currentWindowSize === 'all') targetTicks = 8;
+            else if (currentWindowSize === 'custom') targetTicks = Math.min(8, Math.max(5, Math.round(finalLabels.length / 30)));
 
             const mode = updateMode !== undefined ? updateMode : 'none';
             ['cpu', 'ram', 'rx', 'tx', 'io', 'ping', 'temp', 'internet'].forEach(k => {

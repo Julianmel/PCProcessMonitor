@@ -417,8 +417,27 @@ class CentralCollector:
                 self.log_file_path = latest_file
                 self.current_log_date = today_prefix
                 print(f"[COLETOR] Sessao restaurada do log: inicio={self.session_start_time}, amostras_anteriores={self.total_collected}")
+
+            # Tenta também restaurar o histórico recente de timestamps e machine_data a partir de dashboard_data.js
+            js_path = os.path.join(self.web_dir, "dashboard_data.js")
+            if os.path.exists(js_path):
+                with open(js_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                s_idx = content.find("(")
+                e_idx = content.rfind(")")
+                if s_idx != -1 and e_idx != -1 and e_idx > s_idx:
+                    prev = json.loads(content[s_idx + 1:e_idx])
+                    if "timestamps" in prev and prev["timestamps"]:
+                        self.timestamps = list(prev["timestamps"])[-MAX_POINTS:]
+                    if "rawData" in prev and prev["rawData"]:
+                        for pc in MACHINES:
+                            if pc in prev["rawData"]:
+                                for k, arr in prev["rawData"][pc].items():
+                                    if isinstance(arr, list) and k in self.machine_data[pc]:
+                                        self.machine_data[pc][k] = list(arr)[-MAX_POINTS:]
+                    print(f"[COLETOR] Historico de {len(self.timestamps)} pontos recuperado de dashboard_data.js")
         except Exception as e:
-            print(f"[COLETOR] Aviso ao inspecionar log existente: {e}")
+            print(f"[COLETOR] Aviso ao inspecionar log ou dashboard existente: {e}")
 
     def get_log_file(self):
         now_str = datetime.datetime.now().strftime("%Y%m%d")
