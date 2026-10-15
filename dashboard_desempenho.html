@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Monitor de Rede Technoflora v1.2.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1691,11 +1694,12 @@
             if (payload.stats) { stats = payload.stats; window.stats = payload.stats; }
 
             const timeRangeEl = document.getElementById('headerTimeRange');
-            if (timeRangeEl && payload.startTime && payload.endTime) {
+            if (timeRangeEl && payload.endTime) {
+                const sTime = payload.windowStartTime || payload.startTime || '--:--:--';
                 const winInfo = (payload.windowPoints && payload.windowPoints !== payload.totalPoints) 
                     ? ` <span class="text-slate-500 text-[10px] font-normal">(janela: ${payload.windowPoints}p)</span>` 
                     : '';
-                timeRangeEl.innerHTML = `${payload.startTime} &rarr; ${payload.endTime}${winInfo}`;
+                timeRangeEl.innerHTML = `${sTime} &rarr; ${payload.endTime}${winInfo}`;
             }
             const sampleCountEl = document.getElementById('headerSampleCount');
             if (sampleCountEl && (payload.totalPoints !== undefined)) {
