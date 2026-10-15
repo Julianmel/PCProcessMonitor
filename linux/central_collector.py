@@ -34,7 +34,7 @@ HOST_MAP = {
 
 RESOLVED_IPS = dict(HOST_MAP)
 
-MAX_POINTS = 4000
+MAX_POINTS = 30000
 
 
 def resolve_host(pc):
@@ -450,16 +450,9 @@ class CentralCollector:
             print(f"[COLETOR] Aviso ao inspecionar log ou dashboard existente: {e}")
 
     def _parse_recent_history_from_log(self, file_path, max_points=MAX_POINTS):
-        """Lê o trecho recente do log diário e popula timestamps e buffers dos nós."""
+        """Lê o log diário completo e popula timestamps e buffers dos nós desde a primeira amostra."""
         try:
-            lines_to_read = min(40000, (max_points + 500) * 8)
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                f.seek(0, os.SEEK_END)
-                file_size = f.tell()
-                seek_bytes = min(file_size, lines_to_read * 130)
-                f.seek(file_size - seek_bytes, os.SEEK_SET)
-                if seek_bytes < file_size:
-                    f.readline()
                 lines = f.readlines()
 
             parsed_ts = []
