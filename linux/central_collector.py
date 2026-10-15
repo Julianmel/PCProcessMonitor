@@ -13,6 +13,7 @@ import json
 import socket
 import datetime
 import threading
+import re
 import subprocess
 import urllib.request
 import urllib.error
@@ -33,7 +34,7 @@ HOST_MAP = {
 
 RESOLVED_IPS = dict(HOST_MAP)
 
-MAX_POINTS = 300
+MAX_POINTS = 4000
 
 
 def resolve_host(pc):
@@ -389,6 +390,13 @@ class CentralCollector:
             if pc != "JFMELGACO-1":
                 try_refresh_host(pc)
 
+        # Se recuperou histórico, publica imediatamente no dashboard_data.js
+        if self.timestamps:
+            try:
+                self.write_dashboard_files()
+            except Exception as e:
+                print(f"[COLETOR] Erro ao gravar dashboard inicial: {e}")
+
     def _init_session_from_existing_log(self):
         """Inicializa startTime e total_collected a partir do log diário se já existir."""
         today_prefix = datetime.datetime.now().strftime("%Y%m%d")
@@ -417,6 +425,8 @@ class CentralCollector:
                 self.log_file_path = latest_file
                 self.current_log_date = today_prefix
                 print(f"[COLETOR] Sessao restaurada do log: inicio={self.session_start_time}, amostras_anteriores={self.total_collected}")
+                if self._parse_recent_history_from_log(latest_file, MAX_POINTS):
+                    return
 
             # Tenta também restaurar o histórico recente de timestamps e machine_data a partir de dashboard_data.js
             js_path = os.path.join(self.web_dir, "dashboard_data.js")
@@ -438,6 +448,94 @@ class CentralCollector:
                     print(f"[COLETOR] Historico de {len(self.timestamps)} pontos recuperado de dashboard_data.js")
         except Exception as e:
             print(f"[COLETOR] Aviso ao inspecionar log ou dashboard existente: {e}")
+
+    def _parse_recent_history_from_log(self, file_path, max_points=MAX_POINTS):
+        """Lê o trecho recente do log diário e popula timestamps e buffers dos nós."""
+        try:
+            lines_to_read = min(40000, (max_points + 500) * 8)
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                f.seek(0, os.SEEK_END)
+                file_size = f.tell()
+                seek_bytes = min(file_size, lines_to_read * 130)
+                f.seek(file_size - seek_bytes, os.SEEK_SET)
+                if seek_bytes < file_size:
+                    f.readline()
+                lines = f.readlines()
+
+            parsed_ts = []
+            parsed_data = {
+                pc: {k: [] for k in self.machine_data[pc]}
+                for pc in MACHINES
+            }
+
+            cur_ts = None
+            cur_block = {}
+
+            for line in lines:
+                if "DESEMPENHO DA REDE" in line and line.startswith("["):
+                    if cur_ts and len(cur_block) > 0:
+                        parsed_ts.append(cur_ts)
+                        for pc in MACHINES:
+                            d = cur_block.get(pc, {})
+                            for k in self.machine_data[pc]:
+                                parsed_data[pc][k].append(d.get(k, None))
+                    bracket_end = line.find("]")
+                    cur_ts = line[1:bracket_end].strip() if bracket_end != -1 else None
+                    cur_block = {}
+                elif cur_ts and ("ONLINE" in line or "OFFLINE" in line or "SEM ACESSO" in line):
+                    m_pc = re.search(r"(JFMELGACO-[1-4])", line)
+                    if not m_pc:
+                        continue
+                    pc = m_pc.group(1)
+                    if "OFFLINE" in line or ("---" in line and "ONLINE" not in line):
+                        cur_block[pc] = {k: None for k in self.machine_data[pc]}
+                        ping_m = re.search(r"Ping:\s*(\d+)ms", line)
+                        if ping_m:
+                            cur_block[pc]["ping"] = int(ping_m.group(1))
+                        continue
+
+                    cpu_m = re.search(r"\]\s*(\d+)%", line)
+                    ram_m = re.search(r"([\d\.]+)/\s*([\d\.]+)\s*GB\s*\((\d+)%\)", line)
+                    disk_m = re.search(r"([\d\.]+)\s*GB liv\s*\((\d+)% us\)", line)
+                    io_m = re.search(r"R:\s*([\d\.]+)\s*KB/s\s*\|\s*W:\s*([\d\.]+)\s*KB/s", line)
+                    net_m = re.search(r"Rx:\s*([\d\.]+)\s*KB/s\s*\|\s*Tx:\s*([\d\.]+)\s*KB/s", line)
+                    ping_m = re.search(r"Ping:\s*(\d+)ms", line)
+                    temp_m = re.search(r"Temp:\s*(\d+)°C", line)
+
+                    cur_block[pc] = {
+                        "cpu": int(cpu_m.group(1)) if cpu_m else 0,
+                        "ramPct": int(ram_m.group(3)) if ram_m else 0,
+                        "ramUsed": float(ram_m.group(1)) if ram_m else 0.0,
+                        "diskFree": float(disk_m.group(1)) if disk_m else 0.0,
+                        "diskPct": int(disk_m.group(2)) if disk_m else 0,
+                        "ioR": float(io_m.group(1)) if io_m else 0.0,
+                        "ioW": float(io_m.group(2)) if io_m else 0.0,
+                        "rx": float(net_m.group(1)) if net_m else 0.0,
+                        "tx": float(net_m.group(2)) if net_m else 0.0,
+                        "ping": int(ping_m.group(1)) if ping_m else 0,
+                        "temp": int(temp_m.group(1)) if temp_m else None,
+                        "uptime": "---",
+                        "bootDate": "---",
+                        "internet": 0.0
+                    }
+
+            if cur_ts and len(cur_block) > 0:
+                parsed_ts.append(cur_ts)
+                for pc in MACHINES:
+                    d = cur_block.get(pc, {})
+                    for k in self.machine_data[pc]:
+                        parsed_data[pc][k].append(d.get(k, None))
+
+            if parsed_ts:
+                self.timestamps = parsed_ts[-max_points:]
+                for pc in MACHINES:
+                    for k in self.machine_data[pc]:
+                        self.machine_data[pc][k] = parsed_data[pc][k][-max_points:]
+                print(f"[COLETOR] Historico restaurado do log: {len(self.timestamps)} pontos ({self.timestamps[0]} -> {self.timestamps[-1]})")
+                return True
+        except Exception as e:
+            print(f"[COLETOR] Erro ao restaurar historico do log: {e}")
+        return False
 
     def get_log_file(self):
         now_str = datetime.datetime.now().strftime("%Y%m%d")
@@ -673,29 +771,8 @@ class CentralCollector:
             except Exception as e:
                 print(f"[ERRO] Falha ao gravar log texto: {e}", file=sys.stderr)
 
-            # 3. Grava dashboard_data.js e top_processes.json
-            payload = {
-                "date": now.strftime("%Y-%m-%d"),
-                "startTime": self.session_start_time,
-                "endTime": self.timestamps[-1] if self.timestamps else "--:--:--",
-                "windowStartTime": self.timestamps[0] if self.timestamps else "--:--:--",
-                "totalPoints": self.total_collected,
-                "windowPoints": len(self.timestamps),
-                "timestamps": list(self.timestamps),
-                "rawData": self.machine_data,
-                "stats": self.latest_stats,
-                "topProcesses": self.latest_top_processes
-            }
-
-            js_path = os.path.join(self.web_dir, "dashboard_data.js")
-            tmp_js_path = js_path + ".tmp"
-            try:
-                js_content = f"window.updateDashboardData({json.dumps(payload, ensure_ascii=False)});\n"
-                with open(tmp_js_path, "w", encoding="utf-8") as f:
-                    f.write(js_content)
-                os.replace(tmp_js_path, js_path)
-            except Exception as e:
-                print(f"[ERRO] Falha ao gravar dashboard_data.js: {e}", file=sys.stderr)
+            # 3. Grava dashboard_data.js
+            self.write_dashboard_files(now)
 
             # Top processes JSON
             tp_path = os.path.join(self.data_dir, "top_processes.json")
@@ -720,6 +797,32 @@ class CentralCollector:
                     pass
 
         return ts_str, len(self.timestamps)
+
+    def write_dashboard_files(self, now=None):
+        if not now:
+            now = datetime.datetime.now()
+        payload = {
+            "date": now.strftime("%Y-%m-%d"),
+            "startTime": self.session_start_time,
+            "endTime": self.timestamps[-1] if self.timestamps else "--:--:--",
+            "windowStartTime": self.timestamps[0] if self.timestamps else "--:--:--",
+            "totalPoints": self.total_collected,
+            "windowPoints": len(self.timestamps),
+            "timestamps": list(self.timestamps),
+            "rawData": self.machine_data,
+            "stats": self.latest_stats,
+            "topProcesses": self.latest_top_processes
+        }
+
+        js_path = os.path.join(self.web_dir, "dashboard_data.js")
+        tmp_js_path = js_path + ".tmp"
+        try:
+            js_content = f"window.updateDashboardData({json.dumps(payload, ensure_ascii=False)});\n"
+            with open(tmp_js_path, "w", encoding="utf-8") as f:
+                f.write(js_content)
+            os.replace(tmp_js_path, js_path)
+        except Exception as e:
+            print(f"[ERRO] Falha ao gravar dashboard_data.js: {e}", file=sys.stderr)
 
     def run_collector_loop(self):
         print(f"[COLETOR] Loop de amostragem iniciado (intervalo: {self.interval}s)...")

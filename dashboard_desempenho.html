@@ -701,6 +701,15 @@
             return (parseInt(p[0], 10) || 0) * 3600 + (parseInt(p[1], 10) || 0) * 60 + (parseInt(p[2], 10) || 0);
         }
 
+        function secondsToTimeStr(sec) {
+            let s = Math.round(sec) % 86400;
+            if (s < 0) s += 86400;
+            const h = String(Math.floor(s / 3600)).padStart(2, '0');
+            const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+            const sc = String(s % 60).padStart(2, '0');
+            return `${h}:${m}:${sc}`;
+        }
+
         function formatXAxisTick(label) {
             if (!label || label === '') return '';
             if (label.includes(':')) {
@@ -734,24 +743,47 @@
             const targetSpanSec = minutes * 60;
             const lastIdx = allTimestamps.length - 1;
             const lastSec = timeStrToSeconds(allTimestamps[lastIdx]);
+            let targetStartSec = lastSec - targetSpanSec;
+            if (targetStartSec < 0) targetStartSec += 86400;
 
-            let startIdx = 0;
+            let startIdx = -1;
             for (let i = lastIdx; i >= 0; i--) {
                 const curSec = timeStrToSeconds(allTimestamps[i]);
                 let diffSec = lastSec - curSec;
-                if (diffSec < 0) {
-                    diffSec += 86400; // Ajuste para virada de meia-noite
-                }
-                if (diffSec > targetSpanSec) {
-                    startIdx = i + 1;
+                if (diffSec < 0) diffSec += 86400;
+                if (diffSec >= targetSpanSec) {
+                    startIdx = i;
                     break;
                 }
             }
 
-            return {
-                labels: allTimestamps.slice(startIdx),
-                data: seriesData ? seriesData.slice(startIdx) : []
-            };
+            if (startIdx !== -1) {
+                return {
+                    labels: allTimestamps.slice(startIdx),
+                    data: seriesData ? seriesData.slice(startIdx) : []
+                };
+            } else {
+                const oldestSec = timeStrToSeconds(allTimestamps[0]);
+                let gapSec = oldestSec - targetStartSec;
+                if (gapSec < 0) gapSec += 86400;
+
+                const avgStepSec = allTimestamps.length > 1
+                    ? Math.max(1, Math.round((lastSec - oldestSec) / (allTimestamps.length - 1)))
+                    : 5;
+                const padCount = Math.max(1, Math.round(gapSec / avgStepSec));
+
+                const padLabels = [];
+                for (let p = 0; p < padCount; p++) {
+                    const curP = targetStartSec + Math.round(p * (gapSec / padCount));
+                    padLabels.push(secondsToTimeStr(curP));
+                }
+                const padData = Array(padCount).fill(null);
+
+                return {
+                    labels: padLabels.concat(allTimestamps),
+                    data: padData.concat(seriesData || [])
+                };
+            }
         }
 
         function getAlignedDataset(pc, metricKey) {
@@ -785,13 +817,26 @@
                     ticks: {
                         color: '#64748b',
                         font: { size: 10 },
-                        maxTicksLimit: 6,
-                        autoSkip: true,
+                        autoSkip: false,
                         maxRotation: 0,
                         minRotation: 0,
                         callback: function(val, index) {
                             return formatXAxisTick(this.getLabelForValue(val));
                         }
+                    },
+                    afterBuildTicks: function(axis) {
+                        const labels = axis.chart.data.labels;
+                        if (!labels || labels.length < 2) return;
+                        let count = 7;
+                        if (currentWindowSize === '300') count = 6;
+                        else if (currentWindowSize === 'all') count = 8;
+                        else if (currentWindowSize === 'custom') count = Math.min(8, Math.max(5, Math.round(labels.length / 30)));
+                        const ticks = [];
+                        for (let i = 0; i < count; i++) {
+                            const idx = Math.round((labels.length - 1) * i / (count - 1));
+                            ticks.push({ value: idx });
+                        }
+                        axis.ticks = ticks;
                     }
                 },
                 y: {
