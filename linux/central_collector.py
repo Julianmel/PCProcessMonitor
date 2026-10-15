@@ -464,6 +464,19 @@ class CentralCollector:
             except Exception:
                 pass
 
+            # Comparativo S.O. vs App (a cada 5 amostras)
+            if self.total_collected % 5 == 0:
+                try:
+                    import audit_jfmelgaco1
+                    audit_res = audit_jfmelgaco1.run_full_audit()
+                    cmp_path = os.path.join(self.web_dir, "comparativo_data.js")
+                    tmp_cmp_path = cmp_path + ".tmp"
+                    with open(tmp_cmp_path, "w", encoding="utf-8") as f:
+                        f.write(f"window.updateComparativoData({json.dumps(audit_res, ensure_ascii=False)});\n")
+                    os.replace(tmp_cmp_path, cmp_path)
+                except Exception:
+                    pass
+
         return ts_str, len(self.timestamps)
 
     def run_collector_loop(self):
@@ -504,6 +517,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path in ["/", "/index.html", "/dashboard"]:
             self.path = "/dashboard_desempenho.html"
+        elif self.path in ["/comparativo", "/auditoria"]:
+            self.path = "/comparativo_jfmelgaco1.html"
         elif self.path == "/api/status":
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -518,6 +533,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 data["sessionStartTime"] = collector_instance.session_start_time
                 data["totalCollected"] = collector_instance.total_collected
             self.wfile.write(json.dumps(data).encode("utf-8"))
+            return
+        elif self.path.startswith("/api/comparativo"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                import audit_jfmelgaco1
+                audit_data = audit_jfmelgaco1.run_full_audit()
+            except Exception as e:
+                audit_data = {"error": str(e), "status": "ERROR"}
+            self.wfile.write(json.dumps(audit_data, ensure_ascii=False).encode("utf-8"))
             return
         return super().do_GET()
 
