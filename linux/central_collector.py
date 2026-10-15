@@ -643,7 +643,7 @@ class CentralCollector:
             # 2. Grava bloco no arquivo texto canônico diário
             log_path = self.get_log_file()
             block_lines = [
-                f"[{ts_str}] ============================== DESEMPENHO DA REDE (JFMELGACO) ==============================",
+                f"[{ts_str}] ============================== DESEMPENHO DA REDE (TECHNOFLORA) ==============================",
                 "Status     Computador             CPU              RAM                          Disco C:               Disco I/O (R / W)        Rede (Rx / Tx)            Latência (Ping)     Uptime / Último Boot             Temperatura",
                 "---------- ----------             ---              ---                          --------               -----------------        --------------            ---------------     --------------------             -----------"
             ] + file_lines
@@ -656,6 +656,7 @@ class CentralCollector:
 
             # 3. Grava dashboard_data.js e top_processes.json
             payload = {
+                "date": now.strftime("%Y-%m-%d"),
                 "startTime": self.session_start_time,
                 "endTime": self.timestamps[-1] if self.timestamps else "--:--:--",
                 "windowStartTime": self.timestamps[0] if self.timestamps else "--:--:--",

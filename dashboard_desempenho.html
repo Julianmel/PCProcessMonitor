@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Rede JFMELGACO v1.2.1</title>
+    <title>Monitor de Rede Technoflora v1.2.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -50,11 +50,13 @@
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span id="livePulseDot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 transition-colors duration-300"></span>
             </span>
-            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede JFMELGACO <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.2.1</span></h1>
+            <h1 class="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">Monitor de Rede Technoflora <span class="text-[10px] text-cyan-400 font-normal px-1.5 py-0.2 rounded bg-cyan-950/60 border border-cyan-800/80">v1.2.1</span></h1>
             <span class="text-slate-500">|</span>
             <span class="text-slate-400" id="headerTimeRange">Carregando telemetria...</span>
             <span class="text-slate-500">|</span>
             <span class="text-cyan-400 font-semibold" id="headerSampleCount">Sincronizando...</span>
+            <span class="text-slate-500">|</span>
+            <span class="text-amber-300 font-mono text-[10.5px]" id="headerWindowRange"></span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -73,6 +75,11 @@
                     Todas
                 </button>
             </div>
+
+            <!-- Botão Filtro por Data e Hora -->
+            <button onclick="toggleDateFilterBar()" id="btnToggleDateFilter" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1 shadow-sm" title="Filtrar dados exibidos por data e hora inicial e final">
+                <span>📅</span> <span id="btnDateFilterLabel">Filtrar Per&iacute;odo</span>
+            </button>
 
             <!-- Auto-Refresh com Período Customizável -->
             <div class="flex items-center gap-1.5 bg-cardbg border border-borderbg px-2 py-1 rounded-lg">
@@ -105,6 +112,30 @@
             </button>
         </div>
     </header>
+
+    <!-- BARRA RETRÁTIL DE FILTRO POR DATA E HORA -->
+    <div id="dateFilterBar" class="hidden bg-slate-900/95 border-b border-borderbg px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 z-20">
+        <div class="flex flex-wrap items-center gap-2.5">
+            <span class="text-cyan-400 font-bold flex items-center gap-1 text-[11px]">
+                <span>⏱️</span> Filtrar Faixa de Hor&aacute;rio:
+            </span>
+            <div class="flex items-center gap-1">
+                <label class="text-slate-400 text-[10.5px]">De:</label>
+                <input type="datetime-local" id="filterStart" class="bg-cardbg border border-slate-700 rounded px-1.5 py-0.5 text-slate-200 text-[11px] focus:outline-none focus:border-cyan-500 font-mono">
+            </div>
+            <div class="flex items-center gap-1">
+                <label class="text-slate-400 text-[10.5px]">At&eacute;:</label>
+                <input type="datetime-local" id="filterEnd" class="bg-cardbg border border-slate-700 rounded px-1.5 py-0.5 text-slate-200 text-[11px] focus:outline-none focus:border-cyan-500 font-mono">
+            </div>
+            <button onclick="applyCustomDateFilter()" class="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm">
+                &#128269; Aplicar Filtro
+            </button>
+            <button onclick="clearCustomDateFilter()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 text-[11px] transition cursor-pointer flex items-center gap-1">
+                &#10005; Limpar / Tempo Real
+            </button>
+        </div>
+        <div id="filterInfoBadge" class="text-[11px] text-amber-300 font-medium font-mono"></div>
+    </div>
 
     <!-- CONTAINER PRINCIPAL: GRÁFICOS (ESQUERDA) + SERVIDORES NA VERTICAL (DIREITA) -->
     <div id="dashboardContent" class="flex-1 flex flex-col lg:flex-row gap-2.5 min-h-0 my-1 overflow-hidden">
@@ -657,7 +688,29 @@
         // Lógica de Janela Temporal Task Manager
         let currentWindowSize = localStorage.getItem('monitorWindowSize') || '60';
 
+        // Estado do Filtro Personalizado por Data e Hora
+        let customFilterActive = false;
+        let customFilteredTimestamps = [];
+        let customFilteredData = {};
+
+        function formatXAxisTick(label) {
+            if (!label || label === '') return '';
+            if (label.includes(':')) {
+                const parts = label.split(':');
+                if (currentWindowSize === 'all' || (customFilterActive && customFilteredTimestamps.length > 360)) {
+                    if (parts.length >= 2) return `${parts[0]}:${parts[1]}`;
+                }
+            }
+            return label;
+        }
+
         function alignDataTaskmanager(allTimestamps, seriesData, winSize) {
+            if (customFilterActive) {
+                return {
+                    labels: customFilteredTimestamps,
+                    data: seriesData || []
+                };
+            }
             const numSize = winSize === 'all' ? 'all' : parseInt(winSize);
             if (numSize === 'all' || allTimestamps.length >= numSize) {
                 const start = numSize === 'all' ? 0 : Math.max(0, allTimestamps.length - numSize);
@@ -677,6 +730,11 @@
         }
 
         function getAlignedDataset(pc, metricKey) {
+            if (customFilterActive) {
+                return (customFilteredData[pc] && customFilteredData[pc][metricKey])
+                    ? customFilteredData[pc][metricKey]
+                    : [];
+            }
             const series = (rawData[pc] && rawData[pc][metricKey]) ? rawData[pc][metricKey] : [];
             return alignDataTaskmanager(timestamps, series, currentWindowSize).data;
         }
@@ -699,7 +757,17 @@
             scales: {
                 x: {
                     grid: { color: 'rgba(51, 65, 85, 0.35)' },
-                    ticks: { color: '#64748b', maxTicksLimit: 12, font: { size: 10 } }
+                    ticks: {
+                        color: '#64748b',
+                        font: { size: 10 },
+                        maxTicksLimit: 6,
+                        autoSkip: true,
+                        maxRotation: 0,
+                        minRotation: 0,
+                        callback: function(val, index) {
+                            return formatXAxisTick(this.getLabelForValue(val));
+                        }
+                    }
                 },
                 y: {
                     grid: { color: 'rgba(51, 65, 85, 0.35)' },
@@ -944,7 +1012,146 @@
             }
         });
 
+        function toggleDateFilterBar() {
+            const bar = document.getElementById('dateFilterBar');
+            if (!bar) return;
+            const isHidden = bar.classList.contains('hidden');
+            if (isHidden) {
+                bar.classList.remove('hidden');
+                initDateFilterInputs();
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        function initDateFilterInputs() {
+            const startIn = document.getElementById('filterStart');
+            const endIn = document.getElementById('filterEnd');
+            if (!startIn || !endIn) return;
+            if (startIn.value && endIn.value) return;
+
+            const now = new Date();
+            const todayYMD = now.toISOString().split('T')[0];
+
+            if (timestamps && timestamps.length > 0) {
+                const firstTs = timestamps[0];
+                const lastTs = timestamps[timestamps.length - 1];
+                if (firstTs && firstTs.includes(':')) {
+                    startIn.value = `${todayYMD}T${firstTs.slice(0, 5)}`;
+                }
+                if (lastTs && lastTs.includes(':')) {
+                    endIn.value = `${todayYMD}T${lastTs.slice(0, 5)}`;
+                }
+            } else {
+                const startDef = new Date(now.getTime() - 3600000);
+                startIn.value = startDef.toISOString().slice(0, 16);
+                endIn.value = now.toISOString().slice(0, 16);
+            }
+        }
+
+        function parseTimeToMs(tsStr, baseDateYMD) {
+            if (!tsStr) return 0;
+            if (tsStr.includes('T') || (tsStr.includes('-') && tsStr.includes(':'))) {
+                return new Date(tsStr).getTime();
+            }
+            const today = baseDateYMD || new Date().toISOString().split('T')[0];
+            return new Date(`${today}T${tsStr}`).getTime();
+        }
+
+        function applyCustomDateFilter() {
+            const startVal = document.getElementById('filterStart').value;
+            const endVal = document.getElementById('filterEnd').value;
+            const badge = document.getElementById('filterInfoBadge');
+            const btnFilter = document.getElementById('btnToggleDateFilter');
+            const btnLabel = document.getElementById('btnDateFilterLabel');
+
+            if (!startVal || !endVal) {
+                if (badge) badge.innerText = 'Preencha a data e hora inicial e final.';
+                return;
+            }
+
+            const tMin = new Date(startVal).getTime();
+            const tMax = new Date(endVal).getTime();
+
+            if (tMin >= tMax) {
+                if (badge) badge.innerText = 'A data/hora inicial deve ser anterior à data/hora final.';
+                return;
+            }
+
+            const todayYMD = new Date(startVal).toISOString().split('T')[0];
+            let startIdx = -1;
+            let endIdx = -1;
+
+            for (let i = 0; i < timestamps.length; i++) {
+                const tMs = parseTimeToMs(timestamps[i], todayYMD);
+                if (tMs >= tMin && startIdx === -1) {
+                    startIdx = i;
+                }
+                if (tMs <= tMax) {
+                    endIdx = i;
+                }
+            }
+
+            if (startIdx === -1 || endIdx < startIdx) {
+                if (badge) badge.innerText = 'Nenhuma amostra encontrada no intervalo selecionado.';
+                return;
+            }
+
+            customFilteredTimestamps = timestamps.slice(startIdx, endIdx + 1);
+            customFilteredData = {};
+            pcsList.forEach(pc => {
+                customFilteredData[pc] = {};
+                if (rawData[pc]) {
+                    Object.keys(rawData[pc]).forEach(metric => {
+                        if (Array.isArray(rawData[pc][metric])) {
+                            customFilteredData[pc][metric] = rawData[pc][metric].slice(startIdx, endIdx + 1);
+                        }
+                    });
+                }
+            });
+
+            customFilterActive = true;
+            currentWindowSize = 'custom';
+            updateButtonStyles();
+
+            if (btnFilter) {
+                btnFilter.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/35 text-amber-300 border border-amber-500/50 font-bold transition cursor-pointer flex items-center gap-1 shadow-sm';
+            }
+            if (btnLabel) {
+                btnLabel.innerText = 'Filtro Ativo ⏳';
+            }
+            if (badge) {
+                badge.innerHTML = `Exibindo <strong class="text-white">${customFilteredTimestamps.length}</strong> amostras (${timestamps[startIdx]} &rarr; ${timestamps[endIdx]})`;
+            }
+
+            refreshChartsWindow('none');
+        }
+
+        function clearCustomDateFilter() {
+            customFilterActive = false;
+            customFilteredTimestamps = [];
+            customFilteredData = {};
+            currentWindowSize = localStorage.getItem('monitorWindowSize') || '60';
+
+            const badge = document.getElementById('filterInfoBadge');
+            if (badge) badge.innerText = '';
+            const btnFilter = document.getElementById('btnToggleDateFilter');
+            const btnLabel = document.getElementById('btnDateFilterLabel');
+            if (btnFilter) {
+                btnFilter.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-medium transition cursor-pointer flex items-center gap-1 shadow-sm';
+            }
+            if (btnLabel) {
+                btnLabel.innerText = 'Filtrar Período';
+            }
+
+            updateButtonStyles();
+            refreshChartsWindow('none');
+        }
+
         function setWindowMode(size) {
+            if (customFilterActive) {
+                clearCustomDateFilter();
+            }
             currentWindowSize = String(size);
             localStorage.setItem('monitorWindowSize', currentWindowSize);
             updateButtonStyles();
@@ -955,7 +1162,7 @@
             ['60', '120', '300', 'all'].forEach(s => {
                 const btn = document.getElementById('btnWin_' + s);
                 if (!btn) return;
-                if (String(currentWindowSize) === s) {
+                if (!customFilterActive && String(currentWindowSize) === s) {
                     btn.className = 'text-[11px] px-2.5 py-0.5 rounded font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition shadow-sm cursor-pointer';
                 } else {
                     btn.className = 'text-[11px] px-2.5 py-0.5 rounded text-slate-400 hover:text-slate-200 transition cursor-pointer';
@@ -964,11 +1171,51 @@
         }
         updateButtonStyles();
 
+        function updateWindowRangeBadge(labels) {
+            const el = document.getElementById('headerWindowRange');
+            if (!el) return;
+            const valid = (labels || []).filter(l => l && l !== '');
+            if (valid.length === 0) {
+                el.innerText = '';
+                return;
+            }
+            const first = valid[0];
+            const last = valid[valid.length - 1];
+            if (customFilterActive) {
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">&#9203; Filtro: ${first} &rarr; ${last} (${valid.length}p)</span>`;
+            } else if (currentWindowSize === '60') {
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Janela 60: ${first} &rarr; ${last}</span>`;
+            } else if (currentWindowSize === '120') {
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Janela 120: ${first} &rarr; ${last}</span>`;
+            } else if (currentWindowSize === '300') {
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-medium">Janela 300: ${first} &rarr; ${last}</span>`;
+            } else if (currentWindowSize === 'all') {
+                el.innerHTML = `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-medium">Sess&atilde;o: ${first} &rarr; ${last}</span>`;
+            }
+        }
+
         function refreshChartsWindow(updateMode) {
-            const finalLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
+            let finalLabels;
+            if (customFilterActive) {
+                finalLabels = customFilteredTimestamps;
+            } else {
+                finalLabels = alignDataTaskmanager(timestamps, timestamps, currentWindowSize).labels;
+            }
+
+            updateWindowRangeBadge(finalLabels);
+
+            let targetTicks = 6;
+            if (currentWindowSize === '60' || currentWindowSize === '120') targetTicks = 6;
+            else if (currentWindowSize === '300') targetTicks = 8;
+            else if (currentWindowSize === 'all') targetTicks = 10;
+            else if (currentWindowSize === 'custom') targetTicks = Math.min(10, Math.max(5, Math.round(finalLabels.length / 30)));
+
             const mode = updateMode !== undefined ? updateMode : 'none';
             ['cpu', 'ram', 'rx', 'tx', 'io', 'ping', 'temp', 'internet'].forEach(k => {
                 if (!charts[k]) return;
+                if (charts[k].options && charts[k].options.scales && charts[k].options.scales.x && charts[k].options.scales.x.ticks) {
+                    charts[k].options.scales.x.ticks.maxTicksLimit = targetTicks;
+                }
                 charts[k].data.labels = finalLabels;
                 charts[k].data.datasets.forEach(ds => {
                     const isH = (highlightedMachine === ds.pcKey);
@@ -1550,7 +1797,9 @@
                 if (currentModalPc) renderProcessModalBody(currentModalPc);
             }
 
-            refreshChartsWindow('none');
+            if (!customFilterActive) {
+                refreshChartsWindow('none');
+            }
 
             const dot = document.getElementById('livePulseDot');
             if (dot) {
