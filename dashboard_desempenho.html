@@ -56,6 +56,8 @@
             <span class="text-slate-500">|</span>
             <span class="text-cyan-400 font-semibold" id="headerSampleCount">Sincronizando...</span>
             <span class="text-slate-500">|</span>
+            <span id="activeModeBadge" class="text-[11.5px] font-black tracking-wider px-2 py-0.5 rounded shadow-sm flex items-center gap-1"></span>
+            <span class="text-slate-500">|</span>
             <span class="text-amber-300 font-mono text-[10.5px]" id="headerWindowRange"></span>
         </div>
 
@@ -107,8 +109,8 @@
             </a>
 
             <!-- Alternador Tela Única / Rolagem -->
-            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar entre Tela Única e Modo com Rolagem" class="text-[11px] px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer">
-                &#128421;&#xFE0F; Tela &Uacute;nica
+            <button onclick="toggleScrollMode()" id="btnScrollMode" title="Alternar para Modo Rolagem (exibir todos os 9 gráficos)" class="text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer transition shadow-sm flex items-center gap-1">
+                &#128220; Modo Rolagem
             </button>
         </div>
     </header>
@@ -1529,6 +1531,7 @@
         function applyScreenMode() {
             const body = document.getElementById('mainBody');
             const btn = document.getElementById('btnScrollMode');
+            const activeModeBadge = document.getElementById('activeModeBadge');
             const chartsMain = document.getElementById('chartsMain');
             const dashboardContent = document.getElementById('dashboardContent');
 
@@ -1587,8 +1590,13 @@
                 });
 
                 if (btn) {
-                    btn.innerHTML = '&#128421;&#xFE0F; Tela &Uacute;nica (6 Gr&aacute;ficos)';
-                    btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer transition';
+                    btn.innerHTML = '&#128220; Modo Rolagem';
+                    btn.title = 'Alternar para Modo Rolagem (exibir todos os 9 gráficos)';
+                    btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-semibold cursor-pointer transition shadow-sm flex items-center gap-1';
+                }
+                if (activeModeBadge) {
+                    activeModeBadge.innerHTML = '&#128421;&#xFE0F; TELA &Uacute;NICA';
+                    activeModeBadge.className = 'text-[11.5px] font-black tracking-wider px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_8px_rgba(6,182,212,0.25)] flex items-center gap-1';
                 }
             } else {
                 body.className = "bg-darkbg text-slate-100 min-h-screen p-3 overflow-y-auto text-xs font-sans";
@@ -1608,8 +1616,13 @@
                 });
 
                 if (btn) {
-                    btn.innerHTML = '&#128220; Modo Rolagem (9 Gr&aacute;ficos)';
-                    btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-indigo-500/25 hover:bg-indigo-500/35 text-indigo-300 border border-indigo-500/50 font-semibold cursor-pointer transition shadow-sm';
+                    btn.innerHTML = '&#128421;&#xFE0F; Tela &Uacute;nica';
+                    btn.title = 'Alternar para Tela Única (modo compacto sem rolagem)';
+                    btn.className = 'text-[11px] px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-semibold cursor-pointer transition shadow-sm flex items-center gap-1';
+                }
+                if (activeModeBadge) {
+                    activeModeBadge.innerHTML = '&#128220; MODO ROLAGEM';
+                    activeModeBadge.className = 'text-[11.5px] font-black tracking-wider px-2 py-0.5 rounded bg-indigo-500/25 text-indigo-300 border border-indigo-500/50 shadow-[0_0_8px_rgba(99,102,241,0.25)] flex items-center gap-1';
                 }
             }
             setTimeout(() => {
