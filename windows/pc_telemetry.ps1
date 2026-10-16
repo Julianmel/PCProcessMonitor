@@ -9,7 +9,7 @@ param(
     [int]$IntervalSeconds = 1
 )
 
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 # Garantia de instância única
 $myPid = $PID
@@ -272,9 +272,17 @@ try {
         while ($listener.Pending()) {
             try {
                 $client = $listener.AcceptTcpClient()
+                $client.ReceiveTimeout = 1500
+                $client.SendTimeout = 1500
                 $stream = $client.GetStream()
+                $stream.ReadTimeout = 1500
+                $stream.WriteTimeout = 1500
                 $buffer = New-Object byte[] 2048
                 $read = $stream.Read($buffer, 0, $buffer.Length)
+                if ($read -le 0) {
+                    $client.Close()
+                    continue
+                }
                 $request = [System.Text.Encoding]::ASCII.GetString($buffer, 0, $read)
 
                 [System.Threading.Monitor]::Enter($metricsLock)
