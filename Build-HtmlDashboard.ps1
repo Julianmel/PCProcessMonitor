@@ -1057,9 +1057,9 @@ $summaryTableRows
                     ticks: { color: '#64748b', font: { size: 10 } }
                 }
             },
-            spanGaps: true,
+            spanGaps: false,
             elements: {
-                line: { tension: 0.25, borderWidth: 2, spanGaps: true },
+                line: { tension: 0.25, borderWidth: 2, spanGaps: false },
                 point: { radius: 0, hoverRadius: 0 }
             }
         };
@@ -1160,7 +1160,7 @@ $summaryTableRows
                     pointRadius: 0,
                     pointHoverRadius: 0,
                     fill: false,
-                    spanGaps: true,
+                    spanGaps: false,
                     hidden: !isMachineVisible(pc),
                     order: isH ? -1 : 1
                 };
@@ -1332,7 +1332,7 @@ $summaryTableRows
                     ds.order = isH ? -1 : 1;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
-                    ds.spanGaps = true;
+                    ds.spanGaps = false;
                 });
                 charts[k].update(mode);
             });

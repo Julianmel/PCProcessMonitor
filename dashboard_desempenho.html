@@ -893,9 +893,9 @@
                     ticks: { color: '#64748b', font: { size: 10 } }
                 }
             },
-            spanGaps: true,
+            spanGaps: false,
             elements: {
-                line: { tension: 0.25, borderWidth: 2, spanGaps: true },
+                line: { tension: 0.25, borderWidth: 2, spanGaps: false },
                 point: { radius: 0, hoverRadius: 0 }
             }
         };
@@ -996,7 +996,20 @@
                     pointRadius: 0,
                     pointHoverRadius: 0,
                     fill: false,
-                    spanGaps: true,
+                    spanGaps: false,
+                    segment: {
+                        borderColor: ctx => {
+                            const lbls = ctx.chart && ctx.chart.data ? ctx.chart.data.labels : null;
+                            if (lbls && ctx.p0DataIndex !== undefined && ctx.p1DataIndex !== undefined) {
+                                const s0 = timeStrToSeconds(lbls[ctx.p0DataIndex]);
+                                const s1 = timeStrToSeconds(lbls[ctx.p1DataIndex]);
+                                let diff = s1 - s0;
+                                if (diff < -43200) diff += 86400;
+                                if (diff > 60 || diff < 0) return 'transparent';
+                            }
+                            return undefined;
+                        }
+                    },
                     hidden: !isMachineVisible(pc),
                     order: isH ? -1 : 1
                 };
@@ -1346,7 +1359,7 @@
                     ds.order = isH ? -1 : 1;
                     ds.data = getAlignedDataset(ds.pcKey, ds.metricKey);
                     ds.hidden = !isMachineVisible(ds.pcKey);
-                    ds.spanGaps = true;
+                    ds.spanGaps = false;
                 });
                 charts[k].update(mode);
             });

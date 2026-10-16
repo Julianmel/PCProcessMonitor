@@ -667,7 +667,7 @@ class CentralCollector:
                     md["uptime"].append("---")
                     md["bootDate"].append("---")
                     md["temp"].append(None)
-                    md["internet"].append(0)
+                    md["internet"].append(None)
 
                     f_line = (f"{status_str:<10} {display_pc:<22} ---              "
                               f"---                          ---                    "
