@@ -121,9 +121,14 @@ function Update-LocalMetrics {
         # 1. CPU
         $cpuVal = 0
         try {
-            $perfCpu = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'" -ErrorAction SilentlyContinue
-            if ($perfCpu -and $null -ne $perfCpu.PercentProcessorTime) {
-                $cpuVal = [math]::Min(100, [math]::Max(0, [math]::Round([double]$perfCpu.PercentProcessorTime, 0)))
+            $perfProcInfo = Get-CimInstance Win32_PerfFormattedData_Counters_ProcessorInformation -Filter "Name='_Total'" -ErrorAction SilentlyContinue
+            if ($perfProcInfo -and $null -ne $perfProcInfo.PercentProcessorUtility) {
+                $cpuVal = [math]::Min(100, [math]::Max(0, [math]::Round([double]$perfProcInfo.PercentProcessorUtility, 0)))
+            } else {
+                $perfCpu = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'" -ErrorAction SilentlyContinue
+                if ($perfCpu -and $null -ne $perfCpu.PercentProcessorTime) {
+                    $cpuVal = [math]::Min(100, [math]::Max(0, [math]::Round([double]$perfCpu.PercentProcessorTime, 0)))
+                }
             }
         } catch {}
 
@@ -250,13 +255,13 @@ function Update-LocalMetrics {
     } catch {}
 }
 
-# Inicializa as primeiras métricas
-Update-LocalMetrics
-
-# Inicia o TcpListener na porta configurada
+# Inicia o TcpListener na porta configurada imediatamente para garantir conectividade
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $Port)
 $listener.Start()
 Write-Output "Agente de Telemetria Windows ativo em http://0.0.0.0:$Port/metrics (PID: $PID)"
+
+# Inicializa as primeiras métricas
+Update-LocalMetrics
 
 $lastUpdate = [System.Diagnostics.Stopwatch]::StartNew()
 
