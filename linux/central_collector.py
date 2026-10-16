@@ -33,6 +33,7 @@ HOST_MAP = {
 }
 
 RESOLVED_IPS = dict(HOST_MAP)
+LAST_MDNS_REFRESH = {}
 
 MAX_POINTS = 30000
 
@@ -44,10 +45,14 @@ def resolve_host(pc):
     return RESOLVED_IPS.get(pc, HOST_MAP.get(pc, "127.0.0.1"))
 
 
-def try_refresh_host(pc):
-    """Atualiza o cache de IP via mDNS caso o DHCP tenha alterado o endereço."""
+def try_refresh_host(pc, force=False):
+    """Atualiza o cache de IP via mDNS caso o DHCP tenha alterado o endereço (com throttle de 120s)."""
     if pc == "JFMELGACO-1":
         return "127.0.0.1"
+    now_t = time.time()
+    if not force and (now_t - LAST_MDNS_REFRESH.get(pc, 0)) < 120:
+        return RESOLVED_IPS.get(pc, HOST_MAP.get(pc, "127.0.0.1"))
+    LAST_MDNS_REFRESH[pc] = now_t
     for candidate in [f"{pc.lower()}.local", f"{pc}.local", pc.lower(), pc]:
         try:
             ip = socket.gethostbyname(candidate)
@@ -93,7 +98,7 @@ def fetch_metrics(pc):
     t0 = time.time()
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "PCProcessMonitor-Central/2.0"})
-        with urllib.request.urlopen(req, timeout=4.5) as resp:
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             elapsed_ms = round((time.time() - t0) * 1000)
             return {
@@ -103,13 +108,13 @@ def fetch_metrics(pc):
                 "ping": elapsed_ms
             }
     except Exception as e:
-        # Se falhou, tenta atualizar o IP via mDNS caso o DHCP tenha alterado o IP
+        # Se falhou, tenta atualizar o IP via mDNS caso o DHCP tenha alterado o IP (throttled a cada 120s)
         new_host = try_refresh_host(pc)
         if new_host and new_host != host:
             try:
                 retry_url = f"http://{new_host}:9123/metrics"
                 req = urllib.request.Request(retry_url, headers={"User-Agent": "PCProcessMonitor-Central/2.0"})
-                with urllib.request.urlopen(req, timeout=4.5) as resp:
+                with urllib.request.urlopen(req, timeout=2.5) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     elapsed_ms = round((time.time() - t0) * 1000)
                     return {

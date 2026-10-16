@@ -697,11 +697,41 @@
         let customFilterActive = false;
         let customFilteredTimestamps = [];
         let customFilteredData = {};
+        let currentPayloadDate = null;
+
+        function getLocalYMD(d) {
+            const dt = d || new Date();
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, '0');
+            const day = String(dt.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
 
         function timeStrToSeconds(ts) {
             if (!ts || typeof ts !== 'string') return 0;
             const p = ts.split(':');
             return (parseInt(p[0], 10) || 0) * 3600 + (parseInt(p[1], 10) || 0) * 60 + (parseInt(p[2], 10) || 0);
+        }
+
+        function computeSampleEpochs(allTimestamps) {
+            if (!allTimestamps || allTimestamps.length === 0) return [];
+            const baseDateStr = currentPayloadDate || getLocalYMD(new Date());
+            const parts = baseDateStr.split('-').map(Number);
+            const baseMidnightMs = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1, 0, 0, 0, 0).getTime();
+            const n = allTimestamps.length;
+            const epochs = new Array(n);
+            let dayOffset = 0;
+            let nextSec = timeStrToSeconds(allTimestamps[n - 1]);
+            for (let i = n - 1; i >= 0; i--) {
+                const curSec = timeStrToSeconds(allTimestamps[i]);
+                if (i < n - 1 && curSec > nextSec + 3600) {
+                    // Cruzou a meia-noite voltando no tempo (ex: 00:00 -> 23:59 do dia anterior)
+                    dayOffset -= 1;
+                }
+                nextSec = curSec;
+                epochs[i] = baseMidnightMs + (dayOffset * 86400000) + (curSec * 1000);
+            }
+            return epochs;
         }
 
         function secondsToTimeStr(sec) {
@@ -735,29 +765,45 @@
                 return { labels: [], data: [] };
             }
 
+            const epochs = computeSampleEpochs(allTimestamps);
+            const lastIdx = allTimestamps.length - 1;
+
             if (winSize === 'all') {
+                // Exibe todas as amostras do dia corrente (a partir de 00:00 de hoje)
+                const baseDateStr = currentPayloadDate || getLocalYMD(new Date());
+                const parts = baseDateStr.split('-').map(Number);
+                const todayMidnightMs = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1, 0, 0, 0, 0).getTime();
+                let todayStartIdx = 0;
+                for (let i = 0; i <= lastIdx; i++) {
+                    if (epochs[i] >= todayMidnightMs) {
+                        todayStartIdx = i;
+                        break;
+                    }
+                }
                 return {
-                    labels: allTimestamps,
-                    data: seriesData || []
+                    labels: allTimestamps.slice(todayStartIdx),
+                    data: seriesData ? seriesData.slice(todayStartIdx) : []
                 };
             }
 
             const minutes = parseInt(winSize, 10) || 60;
             const targetSpanSec = minutes * 60;
-            const lastIdx = allTimestamps.length - 1;
+            const lastEpochMs = epochs[lastIdx];
+            const targetStartMs = lastEpochMs - (targetSpanSec * 1000);
             const lastSec = timeStrToSeconds(allTimestamps[lastIdx]);
             let targetStartSec = lastSec - targetSpanSec;
             if (targetStartSec < 0) targetStartSec += 86400;
 
             let startIdx = -1;
             for (let i = lastIdx; i >= 0; i--) {
-                const curSec = timeStrToSeconds(allTimestamps[i]);
-                let diffSec = lastSec - curSec;
-                if (diffSec < 0) diffSec += 86400;
-                if (diffSec >= targetSpanSec) {
+                if (epochs[i] <= targetStartMs) {
                     startIdx = i;
                     break;
                 }
+            }
+            // Se não encontrou ponto exatamente <= targetStartMs mas o primeiro ponto está muito próximo (< 2 min), usa o índice 0
+            if (startIdx === -1 && epochs.length > 0 && (epochs[0] - targetStartMs) <= 120000) {
+                startIdx = 0;
             }
 
             if (startIdx !== -1) {
@@ -1103,32 +1149,28 @@
             if (!startIn || !endIn) return;
             if (startIn.value && endIn.value) return;
 
-            const now = new Date();
-            const todayYMD = now.toISOString().split('T')[0];
+            const todayYMD = currentPayloadDate || getLocalYMD(new Date());
 
             if (timestamps && timestamps.length > 0) {
+                const epochs = computeSampleEpochs(timestamps);
+                const firstDt = new Date(epochs[0]);
+                const lastDt = new Date(epochs[epochs.length - 1]);
+                const firstYMD = getLocalYMD(firstDt);
+                const lastYMD = getLocalYMD(lastDt);
                 const firstTs = timestamps[0];
                 const lastTs = timestamps[timestamps.length - 1];
                 if (firstTs && firstTs.includes(':')) {
-                    startIn.value = `${todayYMD}T${firstTs.slice(0, 5)}`;
+                    startIn.value = `${firstYMD}T${firstTs.slice(0, 5)}`;
                 }
                 if (lastTs && lastTs.includes(':')) {
-                    endIn.value = `${todayYMD}T${lastTs.slice(0, 5)}`;
+                    endIn.value = `${lastYMD}T${lastTs.slice(0, 5)}`;
                 }
             } else {
+                const now = new Date();
                 const startDef = new Date(now.getTime() - 3600000);
-                startIn.value = startDef.toISOString().slice(0, 16);
-                endIn.value = now.toISOString().slice(0, 16);
+                startIn.value = `${getLocalYMD(startDef)}T${String(startDef.getHours()).padStart(2, '0')}:${String(startDef.getMinutes()).padStart(2, '0')}`;
+                endIn.value = `${todayYMD}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             }
-        }
-
-        function parseTimeToMs(tsStr, baseDateYMD) {
-            if (!tsStr) return 0;
-            if (tsStr.includes('T') || (tsStr.includes('-') && tsStr.includes(':'))) {
-                return new Date(tsStr).getTime();
-            }
-            const today = baseDateYMD || new Date().toISOString().split('T')[0];
-            return new Date(`${today}T${tsStr}`).getTime();
         }
 
         function applyCustomDateFilter() {
@@ -1143,24 +1185,24 @@
                 return;
             }
 
-            const tMin = new Date(startVal).getTime();
-            const tMax = new Date(endVal).getTime();
+            const tMin = new Date(startVal.length === 16 ? startVal + ':00.000' : startVal).getTime();
+            const tMax = new Date(endVal.length === 16 ? endVal + ':59.999' : endVal).getTime();
 
             if (tMin >= tMax) {
                 if (badge) badge.innerText = 'A data/hora inicial deve ser anterior à data/hora final.';
                 return;
             }
 
-            const todayYMD = new Date(startVal).toISOString().split('T')[0];
+            const epochs = computeSampleEpochs(timestamps);
             let startIdx = -1;
             let endIdx = -1;
 
             for (let i = 0; i < timestamps.length; i++) {
-                const tMs = parseTimeToMs(timestamps[i], todayYMD);
-                if (tMs >= tMin && startIdx === -1) {
-                    startIdx = i;
-                }
-                if (tMs <= tMax) {
+                const tMs = epochs[i];
+                if (tMs >= tMin && tMs <= tMax) {
+                    if (startIdx === -1) {
+                        startIdx = i;
+                    }
                     endIdx = i;
                 }
             }
@@ -1689,6 +1731,7 @@
         window.updateDashboardData = function(payload) {
             if (!payload || !payload.timestamps || !payload.rawData) return;
 
+            if (payload.date) currentPayloadDate = payload.date;
             timestamps = payload.timestamps;
             rawData = payload.rawData;
             if (payload.stats) { stats = payload.stats; window.stats = payload.stats; }
