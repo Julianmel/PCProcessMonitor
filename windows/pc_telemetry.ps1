@@ -76,10 +76,12 @@ function Get-LhmTemperature {
     try {
         $sensors = @(Get-CimInstance -Namespace "root/LibreHardwareMonitor" -ClassName "Sensor" -Filter "SensorType='Temperature'" -ErrorAction SilentlyContinue)
         if ($sensors.Count -gt 0) {
-            $cpuPkg = $sensors | Where-Object { $_.Name -like "*Package*" -or $_.Name -like "*Tctl/Tdie*" } | Select-Object -First 1
+            $cpuPkg = $sensors | Where-Object { ($_.Name -like "*Package*" -or $_.Name -like "*Tctl/Tdie*") -and $_.Value -gt 0 } | Select-Object -First 1
             if ($cpuPkg) { return [math]::Round($cpuPkg.Value, 0) }
-            $maxCore = ($sensors | Where-Object { $_.Name -like "*CPU*" -or $_.Name -like "*Core*" } | Measure-Object -Property Value -Maximum).Maximum
+            $maxCore = ($sensors | Where-Object { ($_.Name -like "*CPU*" -or $_.Name -like "*Core*") -and $_.Value -gt 0 } | Measure-Object -Property Value -Maximum).Maximum
             if ($maxCore -gt 0) { return [math]::Round($maxCore, 0) }
+            $anyValid = ($sensors | Where-Object { $_.Value -gt 0 -and $_.Name -notlike "*Distance*" -and $_.Name -notlike "*TjMax*" } | Measure-Object -Property Value -Maximum).Maximum
+            if ($anyValid -gt 0) { return [math]::Round($anyValid, 0) }
         }
     } catch {}
 
@@ -87,10 +89,12 @@ function Get-LhmTemperature {
     try {
         $sensors = @(Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName "Sensor" -Filter "SensorType='Temperature'" -ErrorAction SilentlyContinue)
         if ($sensors.Count -gt 0) {
-            $cpuPkg = $sensors | Where-Object { $_.Name -like "*Package*" } | Select-Object -First 1
+            $cpuPkg = $sensors | Where-Object { $_.Name -like "*Package*" -and $_.Value -gt 0 } | Select-Object -First 1
             if ($cpuPkg) { return [math]::Round($cpuPkg.Value, 0) }
-            $maxCore = ($sensors | Where-Object { $_.Name -like "*CPU*" } | Measure-Object -Property Value -Maximum).Maximum
+            $maxCore = ($sensors | Where-Object { ($_.Name -like "*CPU*" -or $_.Name -like "*Core*") -and $_.Value -gt 0 } | Measure-Object -Property Value -Maximum).Maximum
             if ($maxCore -gt 0) { return [math]::Round($maxCore, 0) }
+            $anyValid = ($sensors | Where-Object { $_.Value -gt 0 -and $_.Name -notlike "*Distance*" -and $_.Name -notlike "*TjMax*" } | Measure-Object -Property Value -Maximum).Maximum
+            if ($anyValid -gt 0) { return [math]::Round($anyValid, 0) }
         }
     } catch {}
 
