@@ -464,7 +464,8 @@ class CentralCollector:
             cur_ts = None
             cur_block = {}
 
-            for line in lines:
+            for raw_line in lines:
+                line = raw_line.replace("\x00", "").lstrip()
                 if "DESEMPENHO DA REDE" in line and line.startswith("["):
                     if cur_ts and len(cur_block) > 0:
                         parsed_ts.append(cur_ts)
@@ -533,9 +534,18 @@ class CentralCollector:
     def get_log_file(self):
         now_str = datetime.datetime.now().strftime("%Y%m%d")
         if self.current_log_date != now_str or not self.log_file_path or not os.path.exists(self.log_file_path):
-            self.current_log_date = now_str
-            timestamp = datetime.datetime.now().strftime("%Y%m%d - %H%M")
-            self.log_file_path = os.path.join(self.data_dir, f"{timestamp} - PC Processmonitor.txt")
+            existing = []
+            if os.path.exists(self.data_dir):
+                existing = sorted([f for f in os.listdir(self.data_dir) if f.startswith(now_str) and f.endswith(".txt")])
+            if existing:
+                self.current_log_date = now_str
+                self.log_file_path = os.path.join(self.data_dir, existing[-1])
+                if len(self.timestamps) < 50:
+                    self._init_session_from_existing_log()
+            else:
+                self.current_log_date = now_str
+                timestamp = datetime.datetime.now().strftime("%Y%m%d - %H%M")
+                self.log_file_path = os.path.join(self.data_dir, f"{timestamp} - PC Processmonitor.txt")
         return self.log_file_path
 
     def collect_cycle(self):
