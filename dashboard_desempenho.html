@@ -150,11 +150,12 @@
 
             <!-- 1. CPU CHART -->
             <div id="card-chart-cpu" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                        1. Uso de CPU (%) &larr; Task Manager
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-cyan-400 shrink-0"></span>
+                        <span id="title-chart-cpu">1. Uso de CPU (%) &larr; Task Manager</span>
                     </span>
+                    <div id="selectors-chart-cpu" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="cpuChart"></canvas>
@@ -163,11 +164,12 @@
 
             <!-- 2. RAM CHART -->
             <div id="card-chart-ram" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
-                        2. Uso de Mem&oacute;ria RAM (%) &larr; Task Manager
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-indigo-400 shrink-0"></span>
+                        <span id="title-chart-ram">2. Uso de Mem&oacute;ria RAM (%) &larr; Task Manager</span>
                     </span>
+                    <div id="selectors-chart-ram" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="ramChart"></canvas>
@@ -176,11 +178,12 @@
 
             <!-- 3. RX CHART (Download Local) -->
             <div id="card-chart-rx" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        3. Rede Local: Recep&ccedil;&atilde;o / Download (Rx em KB/s)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400 shrink-0"></span>
+                        <span id="title-chart-rx">3. Rede Local: Recep&ccedil;&atilde;o / Download (Rx em KB/s)</span>
                     </span>
+                    <div id="selectors-chart-rx" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="rxChart"></canvas>
@@ -189,11 +192,12 @@
 
             <!-- 4. TX CHART (Upload Local) -->
             <div id="card-chart-tx" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
-                        4. Rede Local: Transmiss&atilde;o / Upload (Tx em KB/s)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-cyan-400 shrink-0"></span>
+                        <span id="title-chart-tx">4. Rede Local: Transmiss&atilde;o / Upload (Tx em KB/s)</span>
                     </span>
+                    <div id="selectors-chart-tx" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="txChart"></canvas>
@@ -202,11 +206,12 @@
 
             <!-- 5. PING LATENCY CHART -->
             <div id="card-chart-ping" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-purple-400"></span>
-                        5. Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-purple-400 shrink-0"></span>
+                        <span id="title-chart-ping">5. Rede: Lat&ecirc;ncia ICMP (Ping RTT em ms)</span>
                     </span>
+                    <div id="selectors-chart-ping" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="pingChart"></canvas>
@@ -215,32 +220,26 @@
 
             <!-- 6. TEMPERATURA DOS EQUIPAMENTOS CHART -->
             <div id="card-chart-temp" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-rose-400"></span>
-                        6. Hardware: Temperatura (&deg;C)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-rose-400 shrink-0"></span>
+                        <span id="title-chart-temp">6. Hardware: Temperatura (&deg;C)</span>
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot6Chart('temp')" id="btnSlot6Temp" title="Exibir Temperatura no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" id="btnSlot6Net" title="Exibir Tráfego Internet no slot 6" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127760; Internet</button>
-                    </div>
+                    <div id="selectors-chart-temp" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="tempChart"></canvas>
                 </div>
             </div>
 
-            <!-- 7. PERFORMANCE DE REDE / INTERNET CHART (SLOT 6 ALTERNATIVO OU ROLAGEM) -->
+            <!-- 7. PERFORMANCE DE REDE / INTERNET CHART -->
             <div id="card-chart-internet" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow hidden">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-blue-400"></span>
-                        6. Tr&aacute;fego Internet (Download / Upload em Mbps)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-blue-400 shrink-0"></span>
+                        <span id="title-chart-internet">7. Tr&aacute;fego Internet (Download / Upload em Mbps)</span>
                     </span>
-                    <div class="flex items-center gap-1">
-                        <button onclick="toggleSlot6Chart('temp')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer">&#127777;&#xFE0F; Temp</button>
-                        <button onclick="toggleSlot6Chart('internet')" class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer">&#127760; Internet</button>
-                    </div>
+                    <div id="selectors-chart-internet" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="internetChart"></canvas>
@@ -249,11 +248,12 @@
 
             <!-- 8. DISK FREE CHART -->
             <div id="card-chart-disk" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow hidden">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        8. Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400 shrink-0"></span>
+                        <span id="title-chart-disk">8. Armazenamento: Espa&ccedil;o Livre em Disco C: (GB)</span>
                     </span>
+                    <div id="selectors-chart-disk" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="diskChart"></canvas>
@@ -262,11 +262,12 @@
 
             <!-- 9. DISK IO CHART -->
             <div id="card-chart-io" class="chart-card bg-cardbg border border-borderbg rounded-xl p-2 flex flex-col h-full min-h-0 shadow hidden">
-                <div class="flex items-center justify-between mb-1 px-1 shrink-0">
-                    <span class="font-bold text-white flex items-center gap-1.5 text-xs">
-                        <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                        9. Disco C: Taxa de I/O Escrita (KB/s)
+                <div class="flex items-center justify-between gap-1 mb-1 px-1 shrink-0 flex-wrap">
+                    <span class="font-bold text-white flex items-center gap-1.5 text-xs truncate">
+                        <span class="h-2 w-2 rounded-full bg-amber-400 shrink-0"></span>
+                        <span id="title-chart-io">9. Disco C: Taxa de I/O Escrita (KB/s)</span>
                     </span>
+                    <div id="selectors-chart-io" class="slot-selector-bar flex items-center gap-0.5 flex-wrap"></div>
                 </div>
                 <div class="chart-wrapper flex-1 min-h-0 relative">
                     <canvas id="ioChart"></canvas>
@@ -1621,14 +1622,81 @@
             if (e.target.id === 'machinesModal') toggleMachinesModal(false);
         });
 
-        // MODO TELA ÚNICA VS ROLAGEM
+        // MODO TELA ÚNICA VS ROLAGEM + SELETORES DE GRÁFICOS POR SLOT (ISSUE #57)
         let isSingleScreen = localStorage.getItem('monitorSingleScreen') !== 'false';
-        let currentSlot6Mode = localStorage.getItem('monitorSlot6Mode') || 'temp';
+        const CHART_CATALOG = [
+            { key: 'cpu',      short: 'CPU',   title: 'Uso de CPU (%) \u2190 Task Manager',                     activeClass: 'bg-cyan-500/30 text-cyan-200 font-bold border-cyan-500/60 shadow-sm' },
+            { key: 'ram',      short: 'RAM',   title: 'Uso de Mem\u00f3ria RAM (%) \u2190 Task Manager',        activeClass: 'bg-indigo-500/30 text-indigo-200 font-bold border-indigo-500/60 shadow-sm' },
+            { key: 'rx',       short: 'Rx',    title: 'Rede Local: Recep\u00e7\u00e3o / Download (Rx em KB/s)', activeClass: 'bg-emerald-500/30 text-emerald-200 font-bold border-emerald-500/60 shadow-sm' },
+            { key: 'tx',       short: 'Tx',    title: 'Rede Local: Transmiss\u00e3o / Upload (Tx em KB/s)',     activeClass: 'bg-cyan-500/30 text-cyan-200 font-bold border-cyan-500/60 shadow-sm' },
+            { key: 'ping',     short: 'Ping',  title: 'Rede: Lat\u00eancia ICMP (Ping RTT em ms)',              activeClass: 'bg-purple-500/30 text-purple-200 font-bold border-purple-500/60 shadow-sm' },
+            { key: 'temp',     short: 'Temp',  title: 'Hardware: Temperatura (\u00b0C)',                        activeClass: 'bg-rose-500/30 text-rose-200 font-bold border-rose-500/60 shadow-sm' },
+            { key: 'internet', short: 'Net',   title: 'Tr\u00e1fego Internet (Download / Upload em Mbps)',      activeClass: 'bg-blue-500/30 text-blue-200 font-bold border-blue-500/60 shadow-sm' },
+            { key: 'disk',     short: 'Disco', title: 'Armazenamento: Espa\u00e7o Livre em Disco C: (GB)',      activeClass: 'bg-emerald-500/30 text-emerald-200 font-bold border-emerald-500/60 shadow-sm' },
+            { key: 'io',       short: 'I/O',   title: 'Disco C: Taxa de I/O Escrita (KB/s)',                    activeClass: 'bg-amber-500/30 text-amber-200 font-bold border-amber-500/60 shadow-sm' }
+        ];
+        const DEFAULT_SLOTS = ['cpu', 'ram', 'rx', 'tx', 'ping', 'temp'];
+        let slotAssignments = [...DEFAULT_SLOTS];
+        try {
+            const savedSlots = JSON.parse(localStorage.getItem('monitorSlotAssignments') || 'null');
+            if (Array.isArray(savedSlots) && savedSlots.length === 6 && new Set(savedSlots).size === 6 && savedSlots.every(k => CHART_CATALOG.some(c => c.key === k))) {
+                slotAssignments = savedSlots;
+            } else {
+                const legacySlot6 = localStorage.getItem('monitorSlot6Mode');
+                if (legacySlot6 && CHART_CATALOG.some(c => c.key === legacySlot6) && !DEFAULT_SLOTS.slice(0, 5).includes(legacySlot6)) {
+                    slotAssignments[5] = legacySlot6;
+                }
+            }
+        } catch (e) {}
+
+        function selectSlotChart(slotIdx, targetKey) {
+            if (slotIdx < 0 || slotIdx >= 6) return;
+            const currentKey = slotAssignments[slotIdx];
+            if (currentKey === targetKey) return;
+            const existingIdx = slotAssignments.indexOf(targetKey);
+            if (existingIdx !== -1) {
+                slotAssignments[existingIdx] = currentKey;
+            }
+            slotAssignments[slotIdx] = targetKey;
+            try {
+                localStorage.setItem('monitorSlotAssignments', JSON.stringify(slotAssignments));
+            } catch (e) {}
+            applyScreenMode();
+        }
 
         function toggleSlot6Chart(mode) {
-            currentSlot6Mode = mode;
-            localStorage.setItem('monitorSlot6Mode', mode);
-            applyScreenMode();
+            selectSlotChart(5, mode);
+        }
+
+        function renderSlotSelectorBar(slotIdx, activeKey) {
+            const bar = document.getElementById('selectors-chart-' + activeKey);
+            if (!bar) return;
+            bar.innerHTML = '';
+            bar.classList.remove('hidden');
+            CHART_CATALOG.forEach(item => {
+                const btn = document.createElement('button');
+                const isCurrent = (item.key === activeKey);
+                const otherSlotIdx = slotAssignments.indexOf(item.key);
+                const isVisibleElsewhere = (!isCurrent && otherSlotIdx !== -1);
+
+                btn.type = 'button';
+                btn.textContent = item.short;
+                if (isCurrent) {
+                    btn.className = 'text-[9.5px] px-1.5 py-0.5 rounded border transition cursor-pointer ' + item.activeClass;
+                    btn.title = 'Ativo no Slot ' + (slotIdx + 1) + ': ' + item.title;
+                } else if (isVisibleElsewhere) {
+                    btn.className = 'text-[9.5px] px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-600/80 transition cursor-pointer';
+                    btn.title = 'Exibido no Slot ' + (otherSlotIdx + 1) + ' (' + item.title + ') \u2014 clique para permutar com o Slot ' + (slotIdx + 1);
+                } else {
+                    btn.className = 'text-[9.5px] px-1.5 py-0.5 rounded bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700/70 transition cursor-pointer';
+                    btn.title = 'Exibir no Slot ' + (slotIdx + 1) + ': ' + item.title;
+                }
+                btn.onclick = function(e) {
+                    e.stopPropagation();
+                    selectSlotChart(slotIdx, item.key);
+                };
+                bar.appendChild(btn);
+            });
         }
 
         function applyScreenMode() {
@@ -1637,16 +1705,6 @@
             const activeModeBadge = document.getElementById('activeModeBadge');
             const chartsMain = document.getElementById('chartsMain');
             const dashboardContent = document.getElementById('dashboardContent');
-
-            const cardCpu = document.getElementById('card-chart-cpu');
-            const cardRam = document.getElementById('card-chart-ram');
-            const cardRx = document.getElementById('card-chart-rx');
-            const cardTx = document.getElementById('card-chart-tx');
-            const cardPing = document.getElementById('card-chart-ping');
-            const cardTemp = document.getElementById('card-chart-temp');
-            const cardInternet = document.getElementById('card-chart-internet');
-            const cardDisk = document.getElementById('card-chart-disk');
-            const cardIo = document.getElementById('card-chart-io');
 
             const allChartCards = document.querySelectorAll('.chart-card');
 
@@ -1658,34 +1716,29 @@
                 if (chartsMain) {
                     chartsMain.className = "flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-3 gap-2 h-full min-h-0 overflow-hidden pr-0.5";
                 }
-                // Cards 1 a 5 sempre visíveis
-                [cardCpu, cardRam, cardRx, cardTx, cardPing].forEach(el => {
-                    if (el) el.classList.remove('hidden');
-                });
-                // Slot 6: alterna entre Temperatura e Internet
-                if (currentSlot6Mode === 'internet') {
-                    if (cardTemp) cardTemp.classList.add('hidden');
-                    if (cardInternet) cardInternet.classList.remove('hidden');
-                } else {
-                    if (cardTemp) cardTemp.classList.remove('hidden');
-                    if (cardInternet) cardInternet.classList.add('hidden');
-                }
-                // Cards de disco ocultos na tela única para manter estritamente 6 gráficos
-                if (cardDisk) cardDisk.classList.add('hidden');
-                if (cardIo) cardIo.classList.add('hidden');
 
-                // Atualiza botões de alternância do slot 6
-                const btnTemp = document.getElementById('btnSlot6Temp');
-                const btnNet = document.getElementById('btnSlot6Net');
-                if (btnTemp && btnNet) {
-                    if (currentSlot6Mode === 'internet') {
-                        btnTemp.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
-                        btnNet.className = 'text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-300 font-bold border border-blue-500/50 transition cursor-pointer';
+                CHART_CATALOG.forEach(meta => {
+                    const card = document.getElementById('card-chart-' + meta.key);
+                    const titleEl = document.getElementById('title-chart-' + meta.key);
+                    const selBar = document.getElementById('selectors-chart-' + meta.key);
+                    const slotIdx = slotAssignments.indexOf(meta.key);
+                    if (slotIdx !== -1) {
+                        if (card) {
+                            card.classList.remove('hidden');
+                            card.style.order = String(slotIdx + 1);
+                        }
+                        if (titleEl) {
+                            titleEl.textContent = (slotIdx + 1) + '. ' + meta.title;
+                        }
+                        renderSlotSelectorBar(slotIdx, meta.key);
                     } else {
-                        btnTemp.className = 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50 transition cursor-pointer';
-                        btnNet.className = 'text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer';
+                        if (card) {
+                            card.classList.add('hidden');
+                            card.style.order = '99';
+                        }
+                        if (selBar) selBar.classList.add('hidden');
                     }
-                }
+                });
 
                 allChartCards.forEach(c => {
                     c.classList.remove('h-[220px]', 'min-h-[200px]', 'shrink-0');
@@ -1709,9 +1762,21 @@
                 if (chartsMain) {
                     chartsMain.className = "flex-1 flex flex-col gap-2.5 overflow-y-auto pr-1";
                 }
-                // Na rolagem, todos os 9 gráficos ficam visíveis
-                [cardCpu, cardRam, cardRx, cardTx, cardPing, cardTemp, cardInternet, cardDisk, cardIo].forEach(el => {
-                    if (el) el.classList.remove('hidden');
+                // Na rolagem, todos os 9 gráficos ficam visíveis na ordem natural 1..9
+                CHART_CATALOG.forEach((meta, idx) => {
+                    const card = document.getElementById('card-chart-' + meta.key);
+                    const titleEl = document.getElementById('title-chart-' + meta.key);
+                    const selBar = document.getElementById('selectors-chart-' + meta.key);
+                    if (card) {
+                        card.classList.remove('hidden');
+                        card.style.order = String(idx + 1);
+                    }
+                    if (titleEl) {
+                        titleEl.textContent = (idx + 1) + '. ' + meta.title;
+                    }
+                    if (selBar) {
+                        selBar.classList.add('hidden');
+                    }
                 });
                 allChartCards.forEach(c => {
                     c.classList.remove('h-full', 'min-h-0');
